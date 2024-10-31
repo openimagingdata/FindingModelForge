@@ -1,0 +1,24 @@
+version = 1
+requires-python = ">=3.11"
+
+[manifest]
+members = [
+    "backend",
+    "findingmodelforge",
+    "frontend",
+]
+
+[[package]]
+name = "backend"
+version = "0.1.0"
+source = { virtual = "packages/backend" }
+
+[[package]]
+name = "findingmodelforge"
+version = "0.1.0"
+source = { editable = "packages/findingmodel" }
+
+[[package]]
+name = "frontend"
+version = "0.1.0"
+source = { virtual = "packages/frontend" }

@@ -1,0 +1,21 @@
+[project]
+name = "findingmodelforge"
+version = "0.1.0"
+description = "Tools and application for creating imaging finding models/semantic labels"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.ruff]
+line-length = 120
+extend-exclude = ["__pycache__"]
+fix = true
+preview = true
+
+[tool.ruff.lint]
+extend-select = ["B", "C4", "E", "F", "Q", "SIM", "TCH"]
+
+[tool.ruff.format]
