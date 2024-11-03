@@ -1,0 +1,7 @@
+line-length = 120
+extend-exclude = ["__pycache__"]
+fix = true
+preview = true
+
+[lint]
+extend-select = ["B", "C4", "E", "F", "Q", "SIM", "TCH"]

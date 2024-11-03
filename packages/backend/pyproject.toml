@@ -1,7 +1,0 @@
-[project]
-name = "backend"
-version = "0.1.0"
-description = "API for exposing the findingmodelforge library"
-readme = "README.md"
-requires-python = ">=3.11"
-dependencies = []

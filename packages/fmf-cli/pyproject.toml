@@ -1,0 +1,10 @@
+[project]
+name = "fmf-cli"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["findingmodelforge"]
+
+[tool.uv.sources]
+findingmodelforge = { path = "../findingmodelforge" }
