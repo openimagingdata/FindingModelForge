@@ -1,0 +1,55 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  GREETING: Hello, World!
+  LIBRARY_DIR: packages/findingmodelforge
+  API_DIR: packages/fmf-api
+  TMP_PACKAGES_DIR: tmp_packages
+  API_CONTAINER_NAME: findingmodelforge-api:latest
+
+tasks:
+  default:
+    cmds:
+      - echo "{{.GREETING}}"
+    silent: true
+  
+  build_library:
+    desc: "Build the findingmodelforge library"
+    dir: "{{.LIBRARY_DIR}}"
+    cmds:
+      - echo "Building library..."
+      - uv build
+    silent: true
+
+  copy_library_to_api:
+    desc: "(INT) Copy findingmodelforge library packages to the API directory"
+    deps:
+      - build_library
+    dir: "{{.API_DIR}}"
+    cmds:
+      - echo "Copying library to API..."
+      - mkdir -p {{.TMP_PACKAGES_DIR}}
+      - cp -r ../../{{.LIBRARY_DIR}} {{.TMP_PACKAGES_DIR}}
+      - rm -rf {{.TMP_PACKAGES_DIR}}/.venv
+    internal: true
+
+  build_api:
+    desc: "Build the findingmodelforge API container"
+    deps:
+      - copy_library_to_api 
+    dir: "{{.API_DIR}}"
+    cmds:
+      - echo "Building API container..."
+      - docker build -t {{.API_CONTAINER_NAME}} .
+      - rm -rf {{.TMP_PACKAGES_DIR}}
+    silent: true
+  
+  run_api:
+    desc: "Run the findingmodelforge API container"
+    dir: "{{.API_DIR}}"
+    cmds:
+      - echo "Running API..."
+      - docker run -p 8000:80 {{.API_CONTAINER_NAME}}
+    silent: true

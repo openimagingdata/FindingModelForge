@@ -124,7 +124,7 @@ standard = [
 [[package]]
 name = "findingmodelforge"
 version = "0.1.0"
-source = { directory = "../findingmodelforge" }
+source = { editable = "../findingmodelforge" }
 
 [package.metadata]
 
@@ -152,7 +152,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", extras = ["standard"], specifier = ">=0.115.4" },
-    { name = "findingmodelforge", directory = "../findingmodelforge" },
+    { name = "findingmodelforge", editable = "../findingmodelforge" },
 ]
 
 [package.metadata.requires-dev]
