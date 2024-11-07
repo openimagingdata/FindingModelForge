@@ -81,7 +81,7 @@ Browse to [localhost:8000](http://localhost:8000/docs) to see the API interface 
 - Target Python version 3.12
 - Use type hinting as extensively as possible
 - Use environment variables for configuration; propose to use [python-decouple](https://github.com/HBNetwork/python-decouple) to load configuration from the environment
-
+- Where possible, pull prompt definitions out into non-code files ([Jinja2 templates](https://jinja.palletsprojects.com/en/stable/templates/))
 
 ### Preferred Libraries
 
@@ -98,6 +98,7 @@ Browse to [localhost:8000](http://localhost:8000/docs) to see the API interface 
   - `instructor`
   - `tokenizers`
   - `semantic-text-splitter`
+  - `DSPy`?
 - Database
   - `beanie`
   - `motor`
