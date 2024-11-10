@@ -85,13 +85,15 @@ Browse to [localhost:8000](http://localhost:8000/docs) to see the API interface 
 
 ### Preferred Libraries
 
-- [pydantic] for data model definitions:
-  - Drives APIs
-  - Drives database models via ODM
-  - Drives web UI
-  - Exports JSON schemas
-  - Used for structured data extraction
-- LLMs:
+- **Data Models**
+  - [pydantic](https://docs.pydantic.dev/latest/) for data model definitions:
+    - Drives APIs
+    - Drives database models via ODM
+    - Drives web UI
+    - Exports JSON schemas
+    - Used for structured data extraction
+  - [Beanie](https://beanie-odm.dev) as our object document mapper, directly moving between Pydantic objects and documents in the database.
+- **LLMs**:
   - `openai`
   - `sentence-transformers`
   - `tiktoken`
@@ -99,14 +101,14 @@ Browse to [localhost:8000](http://localhost:8000/docs) to see the API interface 
   - `tokenizers`
   - `semantic-text-splitter`
   - `DSPy`?
-- Database
+- **Database**
   - `beanie`
   - `motor`
-- Web
+- **Web**
   - `fastapi`
   - `uvicorn`
-- Logging
+- **Logging**
   - `loguru`
-
-- Utility
+- **Utility**
   - `case-switcher`
+  - `platformtools`
