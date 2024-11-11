@@ -53,3 +53,10 @@ tasks:
       - echo "Running API..."
       - docker run -p 8000:80 {{.API_CONTAINER_NAME}}
     silent: true
+  
+  start_local_mongo:
+    desc: "Start a local MongoDB instance"
+    cmds:
+      - echo "Starting MongoDB..."
+      - docker run --name mongodb -p 27017:27017 -d mongodb/mongodb-community-server:latest
+    silent: true
