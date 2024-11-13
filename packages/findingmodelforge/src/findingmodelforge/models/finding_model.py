@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Sequence
 
 from pydantic import BaseModel, Field
 
@@ -67,7 +67,7 @@ class FindingModelBase(BaseModel):
         description="A one-to-two sentence description of the finding that might be included in a textbook",
     )
     attributes: Annotated[
-        list[Attribute],
+        Sequence[Attribute],
         Field(
             ...,
             min_length=1,
