@@ -94,21 +94,22 @@ Browse to [localhost:8000](http://localhost:8000/docs) to see the API interface 
     - Used for structured data extraction
   - [Beanie](https://beanie-odm.dev) as our object document mapper, directly moving between Pydantic objects and documents in the database.
 - **LLMs**:
-  - `openai`
-  - `sentence-transformers`
-  - `tiktoken`
-  - `instructor`
-  - `tokenizers`
-  - `semantic-text-splitter`
-  - `DSPy`?
+  - [`openai`](https://github.com/openai/openai-python) - Core LLM
+  - [`sentence-transformers`](https://github.com/UKPLab/sentence-transformers) - Generate embeddings for semantic similarity and search
+  - [`tiktoken`](https://github.com/openai/tiktoken) - Token counting and management for LLM interactions
+  - [`instructor`](https://github.com/jxnl/instructor) - Type-safe structured output parsing from LLM responses
+  - [`tokenizers`](https://github.com/huggingface/tokenizers) - Text tokenization for model input processing
+  - [`semantic-text-splitter`](https://github.com/jerpint/semantic_text_splitter) - Intelligent document chunking for LLM context windows
+  - [`DSPy`](https://github.com/stanfordnlp/dspy) - LLM prompt programming and optimization framework
 - **Database**
-  - `beanie`
-  - `motor`
+  - [`beanie`](https://github.com/roman-right/beanie) - MongoDB object-document mapper for data persistence
+  - [`motor`](https://github.com/mongodb/motor) - Asynchronous MongoDB operations and queries
 - **Web**
-  - `fastapi`
-  - `uvicorn`
+  - [`fastapi`](https://github.com/tiangolo/fastapi) - REST API development and endpoint handling
+  - [`uvicorn`](https://github.com/encode/uvicorn) - ASGI server implementation for application hosting
+  - [`nicegui`](https://github.com/zauberzeug/nicegui/) - Python and browser based front-end
 - **Logging**
-  - `loguru`
+  - [`loguru`](https://github.com/Delgan/loguru) - Application logging and debugging infrastructure
 - **Utility**
-  - `case-switcher`
+  - [`case-switcher`](https://github.com/fields8/case-switcher) - String case format standardization and conversion
   - `platformtools`
