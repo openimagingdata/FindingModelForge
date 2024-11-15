@@ -47,4 +47,9 @@ asyncio_default_fixture_loop_scope = "function"
 
 [tool.commitizen]
 version_provider = "pep621"
-version_files = [ "src/findingmodelforge/__init__.py" ]
+tag_format = "v$version"
+version_files = [
+    "pyproject.toml:version",
+    "src/findingmodelforge/__init__.py"
+]
+update_changelog_on_bump = true
