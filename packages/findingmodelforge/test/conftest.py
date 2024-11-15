@@ -7,11 +7,11 @@ MONGO_DSN = "mongodb://localhost:27017"
 DATABASE_NAME = "fmf_test"
 
 
-@pytest_asyncio.fixture()  # scope="module", loop_scope="module")
+@pytest_asyncio.fixture()
 async def db_init():
-    client = AsyncIOMotorClient(MONGO_DSN)
-    await client.drop_database(DATABASE_NAME)
+    client: AsyncIOMotorClient = AsyncIOMotorClient(MONGO_DSN)
     database = client.get_database(DATABASE_NAME)
-    # loop = asyncio.get_event_loop()
     await init_beanie(database, document_models=[FindingModelDb])
-    # return loop
+    yield
+    await client.drop_database(DATABASE_NAME)
+    client.close()
