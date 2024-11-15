@@ -1,9 +1,12 @@
 [project]
 name = "findingmodelforge"
 version = "0.1.0"
-description = "Add your description here"
+description = "Tools for building data models of imaging findings"
 authors = [
-    { name = "Tarik Alkasab", email = "tarik@alkasab.org" }
+    { name = "Tarik Alkasab", email = "tarik@alkasab.org" },
+    { name = "Vijay Dawal", email = "vijaydawal@microsoft.com"},
+    { name = "Yilun Zhang", email = "zhangyilun1337@gmail.com"},
+    { name = "Catie Ladd", email = "catieladd@microsoft.com"},
 ]
 requires-python = ">=3.11"
 dependencies = [
@@ -12,6 +15,17 @@ dependencies = [
     "pydantic>=2.9.2",
     "pymongo>=4.9.2",
 ]
+readme = "README.md"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Development Status :: 3 - Alpha",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/openimagingdata/FindingModelForge"
+Issues = "https://github.com/openimagingdata/FindingModelForge/issues"
 
 [build-system]
 requires = ["hatchling"]
@@ -24,8 +38,13 @@ dev = [
     "pytest-asyncio>=0.24.0",
     "ruff>=0.7.2",
     "jupyter>=1.1.1",
+    "commitizen>=3.30.1",
 ]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+
+[tool.commitizen]
+version_provider = "pep621"
+version_files = [ "src/findingmodelforge/__init__.py" ]
