@@ -1,6 +1,9 @@
+import asyncio
 from pprint import pprint
 
 from dynaconf import settings  # type: ignore
+
+from findingmodelforge.finding_model_generator import describe_finding_name
 
 
 def get_settings():
@@ -17,3 +20,6 @@ def get_settings():
 if __name__ == "__main__":
     print("Finding Model Forge configuration:")
     pprint(get_settings())
+
+    described_finding = asyncio.run(describe_finding_name("Pneumothorax"))
+    pprint(described_finding)
