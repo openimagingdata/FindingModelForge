@@ -3,11 +3,16 @@ from pathlib import Path
 from dynaconf import Dynaconf  # type: ignore
 
 settings = Dynaconf(
-    root_path=Path(__file__).parent.parent,
+    # Use development, testing, etc
     environments=True,
-    envvar_prefix="FMF",
+    # `settings_files` = Load these files in the order.
     settings_files=["settings.toml", ".secrets.toml"],
+    root_path=Path(__file__).parent.parent,
 )
 
+
+# Not working yet
 # `envvar_prefix` = export envvars with `export FMF_FOO=bar`.
-# `settings_files` = Load these files in the order.
+#  envvar_prefix="FMF",
+#  load_dotenv=True,
+#  env_switcher="FMF_ENV",
