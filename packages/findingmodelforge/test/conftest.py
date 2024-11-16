@@ -1,3 +1,5 @@
+from typing import AsyncGenerator
+
 import pytest_asyncio
 from beanie import init_beanie
 from findingmodelforge.models.finding_model_db import FindingModelDb
@@ -8,7 +10,7 @@ DATABASE_NAME = "fmf_test"
 
 
 @pytest_asyncio.fixture()
-async def db_init():
+async def db_init() -> AsyncGenerator[None, None]:
     client: AsyncIOMotorClient = AsyncIOMotorClient(MONGO_DSN)
     database = client.get_database(DATABASE_NAME)
     await init_beanie(database, document_models=[FindingModelDb])
