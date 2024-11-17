@@ -1,13 +1,14 @@
-[development]
-DEBUG = true
+[default]
 MONGO_DSN = "mongodb://localhost:27017"
 DATABASE_NAME = "findingmodelforge"
+PERPLEXITY_BASE_URL = "https://api.perplexity.ai"
+
+[development]
+DEBUG = true
 
 [testing]
 DEBUG = true
-MONGO_DSN = "mongodb://localhost:27017"
 DATABASE_NAME = "fmf_test"
 
 [production]
 DEBUG = false
-DATABASE_NAME = "findingmodelforge"
