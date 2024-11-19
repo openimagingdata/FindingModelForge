@@ -3,7 +3,7 @@ from typing import AsyncGenerator
 import pytest
 import pytest_asyncio
 from beanie import init_beanie
-from dynaconf import settings  # type: ignore
+from findingmodelforge import settings  # type: ignore
 from findingmodelforge.models.finding_model_db import FindingModelDb
 from motor.motor_asyncio import AsyncIOMotorClient
 

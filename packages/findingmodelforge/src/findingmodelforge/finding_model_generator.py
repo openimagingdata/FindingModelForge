@@ -28,7 +28,20 @@ class DescribedFindingWithDetail(DescribedFinding):
 
 
 def get_async_client() -> AsyncInstructor:
-    return instructor.from_openai(AsyncOpenAI(api_key=settings.OPENAI_API_KEY))
+    try:
+        api_key = settings.OPENAI_API_KEY
+    except AttributeError:
+        raise AttributeError("OPENAI_API_KEY is not set in the configuration") from None
+    return instructor.from_openai(AsyncOpenAI(api_key=api_key))
+
+
+def get_async_perplexity_client() -> AsyncOpenAI:
+    try:
+        api_key = settings.PERPLEXITY_API_KEY
+        base_url = settings.PERPLEXITY_BASE_URL
+    except AttributeError:
+        raise AttributeError("PERPLEXITY_API_KEY and/or PERPLEXITY_BASE_URL not set in the configuration") from None
+    return AsyncOpenAI(api_key=api_key, base_url=base_url)
 
 
 async def describe_finding_name(finding_name: str, model_name: str = DEFAULT_OPENAI_MODEL) -> DescribedFinding | Any:
@@ -62,7 +75,7 @@ async def describe_finding_name(finding_name: str, model_name: str = DEFAULT_OPE
 async def get_detail_on_finding(
     finding: DescribedFinding, model_name: str = DEFAULT_PERPLEXITY_MODEL
 ) -> DescribedFindingWithDetail | None:
-    client = AsyncOpenAI(api_key=settings.PERPLEXITY_API_KEY, base_url=settings.PERPLEXITY_BASE_URL)
+    client = get_async_perplexity_client()
     response = await client.chat.completions.create(  # type: ignore
         messages=[
             {
