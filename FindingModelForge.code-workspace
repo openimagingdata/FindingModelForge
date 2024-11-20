@@ -49,7 +49,8 @@
 			"ms-azuretools.vscode-docker",
 			"tamasfe.even-better-toml",
 			"ms-python.mypy-type-checker",
-			"task.vscode-task"
+			"task.vscode-task",
+			"samuelcolvin.jinjahtml"
 		]
 	}
 }

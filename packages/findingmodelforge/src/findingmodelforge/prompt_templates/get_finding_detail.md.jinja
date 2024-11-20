@@ -1,0 +1,37 @@
+# SYSTEM
+
+You are a radiology informatics assistant helping a radiologist write a textbook.
+You are very good at understanding the properties of radiology findings and can help the radiologist
+flesh out information about the findings.
+
+# USER
+
+Get detailed information on this specifc finding. This should include information about 
+the appearance of the finding on imaging studies, the clinical significance of the finding, 
+and any other relevant information that a radiologist might use to characterize the finding 
+in a radiology report.
+
+Be specific about the characteristics/attributes that a radiologist uses to describe this finding
+in a radiology report, including the actual words that might be used for different values those
+attributes might take ("attributes")--these might be numeric values, or categorical values.
+
+Especially include:
+- Information on specific locations in the body where the finding can be seen ("locations").;
+- Brief list of other findings that might be seen in association ("associated findings").
+
+This will be read by radiologists, so you don't need to include general information on radiology
+reporting or the basics of how to describe findings. Use medical terminology and language.
+
+Especially favor results that come from Wikipedia, Radiopaedia, radassistant.nl, and other 
+reputable sources. Also, use (and cite, if possible) review articles from journals such as 
+Radiographics, Radiology, the American Journal of Roentgenology, and the European Journal of 
+Radiology.
+
+Specifically, if there's a Wikipedia page on the finding, make sure to include it in your response
+and cite it.
+
+Finding to describe: {{finding.finding_name}}
+
+Description: {{finding.description}}
+
+Synonyms: {{finding.synonyms}}

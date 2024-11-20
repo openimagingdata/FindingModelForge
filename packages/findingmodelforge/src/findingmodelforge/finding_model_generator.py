@@ -3,6 +3,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from .clients import get_async_instructor_client, get_async_perplexity_client
+from .prompt_template import create_prompt_messages, load_prompt_template
 
 DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
 DEFAULT_PERPLEXITY_MODEL = "llama-3.1-sonar-large-128k-online"
@@ -27,26 +28,10 @@ class DescribedFindingWithDetail(DescribedFinding):
 
 async def describe_finding_name(finding_name: str, model_name: str = DEFAULT_OPENAI_MODEL) -> DescribedFinding | Any:
     client = get_async_instructor_client()
+    prompt_template = load_prompt_template("get_finding_description")
+    messages = create_prompt_messages(prompt_template, finding_name=finding_name)
     result = await client.chat.completions.create(
-        messages=[
-            {
-                "role": "system",
-                "content": """You are a radiology informatics assistant helping a radiologist write a textbook.
-                    You are very good at understanding the properties of radiology findings and can help the radiologist
-                    flesh out information about the findings.""",
-            },
-            {
-                "role": "user",
-                "content": f"""Create a one-to-two sentence definition/description for the finding. 
-                    If applicable, include synonyms as might be used by radiologists and other health 
-                    care professionals, including acronyms.
-                    
-                    The description should be concise and use medical terminology; it's intended to be read by health 
-                    care professionsals rather than laypersons.
-                    
-                    Finding to describe: {finding_name}""",
-            },
-        ],
+        messages=messages,
         model=model_name,
         response_model=DescribedFinding,
     )
@@ -57,47 +42,10 @@ async def get_detail_on_finding(
     finding: DescribedFinding, model_name: str = DEFAULT_PERPLEXITY_MODEL
 ) -> DescribedFindingWithDetail | None:
     client = get_async_perplexity_client()
+    prompt_template = load_prompt_template("get_finding_detail")
+    prompt_messages = create_prompt_messages(prompt_template, finding=finding)
     response = await client.chat.completions.create(  # type: ignore
-        messages=[
-            {
-                "role": "system",
-                "content": """You are a radiology informatics assistant helping a radiologist write a textbook.
-                    You are very good at understanding the properties of radiology findings and can help the radiologist
-                    flesh out information about the findings.""",
-            },
-            {
-                "role": "user",
-                "content": f"""Get detailed information on this specifc finding. This should include information about 
-                    the appearance of the finding on imaging studies, the clinical significance of the finding, 
-                    and any other relevant information that a radiologist might use to characterize the finding 
-                    in a radiology report.
-
-                    Be specific about the characteristics/attributes that a radiologist uses to describe this finding
-                    in a radiology report, including the actual words that might be used for different values those
-                    attributes might take ("attributes")--these might be numeric values, or categorical values.
-
-                    Especially include:
-                    - Information on specific locations in the body where the finding can be seen ("locations").;
-                    - Brief list of other findings that might be seen in association ("associated findings").
-
-                    This will be read by radiologists, so you don't need to include general information on radiology
-                    reporting or the basics of how to describe findings. Use medical terminology and language.
-
-                    Especially favor results that come from Wikipedia, Radiopaedia, radassistant.nl, and other 
-                    reputable sources. Also, use (and cite, if possible) review articles from journals such as 
-                    Radiographics, Radiology, the American Journal of Roentgenology, and the European Journal of 
-                    Radiology.
-
-                    Specifically, if there's a Wikipedia page on the finding, make sure to include it in your response
-                    and cite it.
-                    
-                    Finding to describe: {finding.finding_name}
-
-                    Description: {finding.description}
-
-                    Synonyms: {finding.synonyms}""",
-            },
-        ],
+        messages=prompt_messages,
         model=model_name,
     )
     if not response.choices or not response.choices[0].message or not response.choices[0].message.content:

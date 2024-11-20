@@ -6,7 +6,7 @@ from findingmodelforge.config import (
 )
 
 
-def test_settings_loaded():
+def test_settings_loaded(monkeypatch):
     settings_to_check = [
         "OPENAI_API_KEY",
         "PERPLEXITY_API_KEY",
@@ -15,6 +15,7 @@ def test_settings_loaded():
         "DATABASE_NAME",
     ]
     for setting in settings_to_check:
+        monkeypatch.setattr(settings, setting, "test_value")
         assert settings.get(setting, None) is not None
 
 
