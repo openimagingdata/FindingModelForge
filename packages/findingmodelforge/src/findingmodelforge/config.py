@@ -16,4 +16,17 @@ settings = Dynaconf(
 )
 
 
-# Not working yet
+def _check_multiple_keys(*keys_to_check: str) -> bool:
+    return all(settings.get(key, None) is not None for key in keys_to_check)
+
+
+def check_ready_for_openai() -> bool:
+    return _check_multiple_keys("OPENAI_API_KEY")
+
+
+def check_ready_for_perplexity() -> bool:
+    return _check_multiple_keys("PERPLEXITY_API_KEY", "PERPLEXITY_BASE_URL")
+
+
+def check_ready_for_mongodb() -> bool:
+    return _check_multiple_keys("MONGO_DSN", "DATABASE_NAME")
