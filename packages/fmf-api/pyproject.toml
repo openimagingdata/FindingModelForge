@@ -12,6 +12,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "commitizen>=3.31.0",
     "mypy>=1.13.0",
     "ruff>=0.7.2",
 ]
