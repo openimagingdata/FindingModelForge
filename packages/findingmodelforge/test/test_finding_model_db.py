@@ -4,6 +4,7 @@ from findingmodelforge.models.finding_model_db import FindingModelDb
 
 
 @pytest.mark.asyncio
+@pytest.mark.needs_db
 async def test_create_and_get_finding_model(db_init):
     # Create an object
     attributes = [NumericAttribute(name="Size", minimum=0, maximum=10, unit="cm", required=False)]
@@ -21,6 +22,7 @@ async def test_create_and_get_finding_model(db_init):
 
 
 @pytest.mark.asyncio
+@pytest.mark.needs_db
 async def get_count(db_init):
     count = await FindingModelDb.count()
     assert count == 1
