@@ -3,8 +3,7 @@ import sys
 from pprint import pprint
 
 from findingmodelforge import settings  # type: ignore
-
-from findingmodelforge.finding_model_generator import describe_finding_name, get_detail_on_finding
+from findingmodelforge.finding_info_tools import describe_finding_name, get_detail_on_finding
 
 
 def get_settings():

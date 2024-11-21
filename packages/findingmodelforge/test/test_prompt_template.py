@@ -71,11 +71,11 @@ def test_generate_messages_from_loaded_template():
     EXPECTED_RESULT = [
         {
             "role": "system",
-            "content": "You are a radiology informatics assistant helping a radiologist write a textbook.\nYou are very good at understanding the properties of radiology findings and can \nhelp the radiologist flesh out information about the findings.",
+            "content": "You are a radiology informatics assistant helping a radiologist write a textbook.\nYou are very good at understanding the properties of radiology findings and can \nhelp the radiologist flesh out information about the findings.",  # noqa: E501
         },
         {
             "role": "user",
-            "content": "Create a one-to-two sentence definition/description for the finding. \nIf applicable, include synonyms as might be used by radiologists and other health \ncare professionals, including acronyms.\n\nThe description should be concise and use medical terminology; it's intended to be \nread by health care professionsals rather than laypersons.\n\nFinding to describe: pneumothorax",
+            "content": "Create a one-to-two sentence definition/description for the finding. \nIf applicable, include synonyms as might be used by radiologists and other health \ncare professionals, including acronyms.\n\nThe description should be concise and use medical terminology; it's intended to be \nread by health care professionsals rather than laypersons.\n\nFinding to describe: pneumothorax",  # noqa: E501
         },
     ]
     result = create_prompt_messages(template, finding_name="pneumothorax")
