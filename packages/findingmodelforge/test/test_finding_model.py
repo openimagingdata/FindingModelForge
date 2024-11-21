@@ -27,6 +27,7 @@ def test_choice_attribute():
     assert attribute.type == AttributeType.CHOICE
     assert len(attribute.values) == 2
     assert attribute.required is True
+    assert attribute.max_selected == 1
 
 
 def test_numeric_attribute():
@@ -35,13 +36,36 @@ def test_numeric_attribute():
         minimum=0,
         maximum=10,
         unit="cm",
-        required=False,
     )
     assert attribute.name == "Size"
     assert attribute.type == AttributeType.NUMERIC
     assert attribute.minimum == 0
     assert attribute.maximum == 10
     assert attribute.unit == "cm"
+    assert attribute.required is False
+
+
+def test_multichoice_attribute():
+    value1 = ChoiceValue(name="Mild")
+    value2 = ChoiceValue(name="Moderate")
+    value3 = ChoiceValue(name="Severe")
+    attribute = ChoiceAttribute(name="Severity", values=[value1, value2, value3], max_selected=2)
+    assert attribute.name == "Severity"
+    assert attribute.type == AttributeType.CHOICE
+    assert len(attribute.values) == 3
+    assert attribute.max_selected == 2
+    assert attribute.required is False
+
+
+def test_multichoice_attribute_max_selected():
+    value1 = ChoiceValue(name="Mild")
+    value2 = ChoiceValue(name="Moderate")
+    value3 = ChoiceValue(name="Severe")
+    attribute = ChoiceAttribute(name="Severity", values=[value1, value2, value3], max_selected=999)
+    assert attribute.name == "Severity"
+    assert attribute.type == AttributeType.CHOICE
+    assert len(attribute.values) == 3
+    assert attribute.max_selected == 3
     assert attribute.required is False
 
 
@@ -62,7 +86,7 @@ def test_finding_model_base(tmp_path):
         required=False,
     )
     finding_model = FindingModelBase(
-        finding_name="ExampleFinding",
+        name="ExampleFinding",
         description="An example finding for testing.",
         attributes=[choice_attribute, numeric_attribute],
     )
@@ -73,6 +97,6 @@ def test_finding_model_base(tmp_path):
     with open(json_file) as f:
         loaded_data = json.load(f)
     loaded_finding_model = FindingModelBase(**loaded_data)
-    assert loaded_finding_model.finding_name == finding_model.finding_name
+    assert loaded_finding_model.name == finding_model.name
     assert loaded_finding_model.description == finding_model.description
     assert len(loaded_finding_model.attributes) == len(finding_model.attributes)

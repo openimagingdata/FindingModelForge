@@ -3,18 +3,12 @@
 version: '3'
 
 vars:
-  GREETING: Hello, World!
   LIBRARY_DIR: packages/findingmodelforge
   API_DIR: packages/fmf-api
   TMP_PACKAGES_DIR: tmp_packages
   API_CONTAINER_NAME: findingmodelforge-api:latest
 
 tasks:
-  default:
-    cmds:
-      - echo "{{.GREETING}}"
-    silent: true
-  
   test_library:
     desc: "Test the findingmodelforge library"
     dir: "{{.LIBRARY_DIR}}"
