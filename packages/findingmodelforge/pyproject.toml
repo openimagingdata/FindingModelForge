@@ -31,6 +31,9 @@ classifiers = [
 Homepage = "https://github.com/openimagingdata/FindingModelForge"
 Issues = "https://github.com/openimagingdata/FindingModelForge/issues"
 
+[project.scripts]
+fmf_cli = "fmf_cli:cli"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

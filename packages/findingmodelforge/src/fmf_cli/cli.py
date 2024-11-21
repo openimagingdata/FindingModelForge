@@ -1,7 +1,7 @@
 import asyncio
-import sys
 from pprint import pprint
 
+import click
 from findingmodelforge import settings  # type: ignore
 from findingmodelforge.finding_info_tools import describe_finding_name, get_detail_on_finding
 
@@ -23,12 +23,23 @@ def get_settings():
     return out
 
 
-if __name__ == "__main__":
+@click.group()
+def cli():
+    pass
+
+
+@cli.command()
+def config():
+    """Show the currently active configuration."""
     print("Finding Model Forge configuration:")
     pprint(get_settings())
 
+
+@cli.command()
+@click.argument("finding_name", default="Pneumothorax")
+def make_info(finding_name):
+    """Generate description/synonyms and more details/citations for a finding name."""
     if settings.get("OPENAI_API_KEY", None):
-        finding_name = sys.argv[1] if len(sys.argv) > 1 else "Pneumothorax"
         described_finding = asyncio.run(describe_finding_name(finding_name))
         pprint(described_finding)
         if settings.get("PERPLEXITY_API_KEY", None) and settings.get("PERPLEXITY_BASE_URL", None):
