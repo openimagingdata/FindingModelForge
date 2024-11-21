@@ -1,12 +1,15 @@
-from fastapi import FastAPI
+from nicegui import app, ui
 
+from .gui import theme
 from .routers import dummy
 
-app = FastAPI()
+
+@ui.page("/")
+def home_page() -> None:
+    with theme.frame("Home"):
+        ui.label("Welcome to Finding Model Forge!")
+
 
 app.include_router(dummy.router)
 
-
-@app.get("/")
-async def root() -> dict[str, str]:
-    return {"message": "Hello World"}
+ui.run(title="Finding Model Forge")

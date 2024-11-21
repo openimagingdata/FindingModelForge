@@ -8,9 +8,6 @@
 		},
 		{
 			"path": "packages/findingmodelforge"
-		},
-		{
-			"path": "packages/fmf-cli"
 		}
 	],
 	"settings": {
