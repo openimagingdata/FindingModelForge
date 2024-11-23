@@ -1,13 +1,12 @@
 from nicegui import app, ui
 
-from .gui import theme
+from .gui.home import home_page
 from .routers import dummy
 
 
 @ui.page("/")
-def home_page() -> None:
-    with theme.frame("Home"):
-        ui.label("Welcome to Finding Model Forge!")
+def index() -> None:
+    home_page(ui)
 
 
 app.include_router(dummy.router)
