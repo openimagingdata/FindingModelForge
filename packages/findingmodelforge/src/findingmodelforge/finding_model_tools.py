@@ -45,10 +45,7 @@ async def create_finding_model_from_markdown(
     return result
 
 
-# Convert this table into a list of dictionaries
-
-
-standard_codes = [
+STANDARD_CODES = [
     {"name": "presence", "snomed_code": "705057003", "snomed_display": "Presence (property) (qualifier value)"},
     {
         "name": "absent",
@@ -180,27 +177,3 @@ standard_codes = [
         "snomed_display": "Anatomic location (property) (qualifier value)",
     },
 ]
-
-# name	RADLEX	RADLEX-DISPLAY	SNOMED	SNOWMED-DISPLAY
-# presence	 	 	705057003	Presence (property) (qualifier value)
-# absent	RID28473	absent	2667000	Absent (qualifier value)
-# present	RID28472	present	52101004	Present (qualifier value)
-# indeterminate	RID39110	indeterminate	82334004	Indeterminate (qualifier value)
-# unknown	RID5655	unknown	261665006	Unknown (qualifier value)
-# location	RID39038	location	758637006	Anatomic location (property) (qualifier value)
-# size	 	 	246115007	Size (attribute)
-# changed	 	 	263703002	Changed status (qualifier value)
-# stable	RID5734	stable	58158008	Stable (qualifier value)
-# unchanged	RID39268	unchanged	260388006	No status change (qualifier value)
-# increased	RID36043	increased	35105006	Increased (qualifier value)
-# decreased	RID36044	decreased	1250004	Decreased (qualifier value)
-# new	RID5720	new	7147002	New (qualifier value)
-# quantity	RID5761	quantity descriptor	246205007	Quantity (attribute)
-# multiple	RID5765	multiple	255204007	Multiple (qualifier value)
-# single	RID5762	single	50607009	Singular (qualifier value)
-# severity	 	 	246112005	Severity (attribute)
-# mild	RID5671	mild	255604002	Mild (qualifier value)
-# moderate	RID5672	moderate	1255665007	Moderate (qualifier value)
-# severe	RID5673	severe	24484000	Severe (severity modifier) (qualifier value)
-# change	RID49896	change	243326001	Changing (qualifier value)
-# Location	RID39038	location	758637006	Anatomic location (property) (qualifier value)
