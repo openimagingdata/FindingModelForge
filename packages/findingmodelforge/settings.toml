@@ -2,6 +2,8 @@
 MONGO_DSN = "mongodb://localhost:27017"
 DATABASE_NAME = "findingmodelforge"
 PERPLEXITY_BASE_URL = "https://api.perplexity.ai"
+DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
+DEFAULT_PERPLEXITY_MODEL = "llama-3.1-sonar-large-128k-online"
 
 [development]
 DEBUG = true

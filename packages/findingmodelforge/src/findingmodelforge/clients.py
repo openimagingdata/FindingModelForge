@@ -2,11 +2,7 @@ import instructor
 from instructor import AsyncInstructor
 from openai import AsyncOpenAI
 
-from .config import check_ready_for_openai, check_ready_for_perplexity, settings
-
-
-class ConfigurationError(RuntimeError):
-    pass
+from .config import ConfigurationError, check_ready_for_openai, check_ready_for_perplexity, settings
 
 
 def get_async_instructor_client() -> AsyncInstructor:

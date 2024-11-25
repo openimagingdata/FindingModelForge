@@ -16,6 +16,10 @@ settings = Dynaconf(
 )
 
 
+class ConfigurationError(RuntimeError):
+    pass
+
+
 def _check_multiple_keys(*keys_to_check: str) -> bool:
     return all(settings.get(key, None) is not None for key in keys_to_check)
 
