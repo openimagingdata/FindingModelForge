@@ -1,10 +1,10 @@
 from pathlib import Path
 
+from findingmodelforge import settings
 from findingmodelforge.models.finding_info import BaseFindingInfo
 from findingmodelforge.models.finding_model import FindingModelBase
 
 from .clients import get_async_instructor_client
-from .config import ConfigurationError, check_ready_for_openai, settings
 from .prompt_template import create_prompt_messages, load_prompt_template
 
 
@@ -13,12 +13,8 @@ async def create_finding_model_from_markdown(
     /,
     markdown_path: str | Path | None = None,
     markdown_text: str | None = None,
-    openai_model: str = settings.default_openai_model,
+    openai_model: str = settings.openai_default_model,
 ) -> FindingModelBase:
-    if not check_ready_for_openai():
-        raise ConfigurationError(
-            "OPENAI_API_KEY is not set in the configuration (add to environment, .env, or .secrets.toml)"
-        )
     if not markdown_path and not markdown_text:
         raise ValueError("Either markdown_path or markdown_text must be provided")
     if markdown_path and markdown_text:

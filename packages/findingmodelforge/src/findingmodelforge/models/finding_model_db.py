@@ -11,7 +11,7 @@ def get_current_datetime():
     return datetime.datetime.now(datetime.UTC)
 
 
-class FindingModelDb(FindingModelBase, Document):
+class FindingModelDb(FindingModelBase, Document):  # type: ignore[misc]
     """The definition of a radiology finding with details on the attributes that a radiologist might use to
     characterize the finding in a radiology report. This class is used to store finding definitions in the database."""
 
