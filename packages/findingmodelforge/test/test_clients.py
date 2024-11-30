@@ -1,11 +1,24 @@
+from contextlib import contextmanager
+from pydantic import SecretStr
 import pytest
-from findingmodelforge.clients import ConfigurationError, get_async_instructor_client, get_async_perplexity_client
-from findingmodelforge.config import settings
+from findingmodelforge.config import ConfigurationError, settings
+
+
+@contextmanager
+def set_blank_api_keys():
+    old_perplexity_api_key = settings.perplexity_api_key
+    old_openai_api_key = settings.openai_api_key
+    settings.perplexity_api_key = SecretStr("")
+    settings.openai_api_key = SecretStr("")
+    yield settings
+    settings.perplexity_api_key = old_perplexity_api_key
+    settings.openai_api_key = old_openai_api_key
 
 
 def test_get_async_instructor_client():
     # Make sure settings are configured for OpenAI
-    settings.__setattr__("OPENAI_API_KEY", "test_openai_key")
+
+    with 
     client = get_async_instructor_client()
     assert client is not None
     # Add additional assertions to verify the client's functionality

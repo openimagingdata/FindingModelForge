@@ -12,4 +12,4 @@ def get_async_instructor_client() -> AsyncInstructor:
 
 def get_async_perplexity_client() -> AsyncOpenAI:
     settings.check_ready_for_perplexity()
-    return AsyncOpenAI(api_key=settings.perplexity_api_key, base_url=str(settings.perplexity_base_url))
+    return AsyncOpenAI(api_key=str(settings.perplexity_api_key), base_url=str(settings.perplexity_base_url))

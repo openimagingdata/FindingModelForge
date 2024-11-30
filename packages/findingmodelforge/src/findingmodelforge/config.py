@@ -9,7 +9,7 @@ class ConfigurationError(RuntimeError):
 
 
 class FindingModelForgeConfig(BaseSettings):
-    environment: Literal["development", "teting", "production"] = Field(default="development")
+    environment: Literal["development", "testing", "production"] = Field(default="development")
 
     # Database
     mongo_dsn: MongoDsn = Field(default=MongoDsn("mongodb://localhost:27017"))
