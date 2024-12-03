@@ -15,7 +15,7 @@ def set_test_settings():
 
 @pytest_asyncio.fixture()
 async def db_init() -> AsyncGenerator[None, None]:
-    client: AsyncIOMotorClient = AsyncIOMotorClient(str(settings.mongo_dsn))
+    client: AsyncIOMotorClient = AsyncIOMotorClient(str(settings.mongo_dsn.get_secret_value()))
     database = client.get_database(settings.database_name)
     await init_beanie(database, document_models=[FindingModelDb])
     yield

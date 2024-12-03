@@ -4,9 +4,9 @@ version = "0.1.0"
 description = "Tools for building data models of imaging findings"
 authors = [
     { name = "Tarik Alkasab", email = "tarik@alkasab.org" },
-    { name = "Vijay Dawal", email = "vijaydawal@microsoft.com"},
-    { name = "Yilun Zhang", email = "zhangyilun1337@gmail.com"},
-    { name = "Catie Ladd", email = "catieladd@microsoft.com"},
+    { name = "Vijay Dawal", email = "vijaydawal@microsoft.com" },
+    { name = "Yilun Zhang", email = "zhangyilun1337@gmail.com" },
+    { name = "Catie Ladd", email = "catieladd@microsoft.com" },
 ]
 requires-python = ">=3.11"
 dependencies = [
@@ -52,12 +52,13 @@ dev = [
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "needs_db: Marks tests as needing a database connection",
+    "asyncio: Marks tests as needing asyncio",
+]
 
 [tool.commitizen]
 version_provider = "pep621"
 tag_format = "v$version"
-version_files = [
-    "pyproject.toml:version",
-    "src/findingmodelforge/__init__.py"
-]
+version_files = ["pyproject.toml:version", "src/findingmodelforge/__init__.py"]
 update_changelog_on_bump = true

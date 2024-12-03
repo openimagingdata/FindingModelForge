@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import Field, HttpUrl, MongoDsn, SecretStr
+from pydantic import Field, HttpUrl, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -12,7 +12,7 @@ class FindingModelForgeConfig(BaseSettings):
     environment: Literal["development", "testing", "production"] = Field(default="development")
 
     # Database
-    mongo_dsn: MongoDsn = Field(default=MongoDsn("mongodb://localhost:27017"))
+    mongo_dsn: SecretStr = Field(default=SecretStr("mongodb://localhost:27017"))
     database_name: str = Field(default="findingmodelforge")
 
     # OpenAI API
@@ -26,22 +26,26 @@ class FindingModelForgeConfig(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", env_prefix="FMF_")
 
-    def check_ready_for_openai(self):
-        if not self.openai_api_key:
+    def check_ready_for_openai(self) -> Literal[True]:
+        if not self.openai_api_key.get_secret_value():
             raise ConfigurationError("OpenAI API key is not set")
+        return True
 
-    def check_ready_for_perplexity(self):
-        if not self.perplexity_api_key:
+    def check_ready_for_perplexity(self) -> Literal[True]:
+        if not self.perplexity_api_key.get_secret_value():
             raise ConfigurationError("Perplexity API key is not set")
+        return True
 
-    def check_ready_for_database(self):
-        if not self.mongo_dsn:
+    def check_ready_for_database(self) -> Literal[True]:
+        if not self.mongo_dsn.get_secret_value():
             raise ConfigurationError("MongoDB DSN is not set")
+        return True
 
-    def check_ready_for_mongodb(self):
+    def check_ready_for_mongodb(self) -> Literal[True]:
         self.check_ready_for_database()
         if not self.database_name:
             raise ConfigurationError("Database name is not set")
+        return True
 
 
 settings = FindingModelForgeConfig()
