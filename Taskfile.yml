@@ -13,8 +13,16 @@ tasks:
     desc: "Test the findingmodelforge library"
     dir: "{{.LIBRARY_DIR}}"
     cmds:
-      # Check if the mongodb container is running; if not, have to use 'pytest -m "not needs_db"'
-      - docker ps | grep -q mongodb && pytest || pytest -m "not needs_db"
+      - docker ps | grep -q mongodb && uv run pytest || uv run pytest -m "not needs_db"
+    silent: true
+
+  test_library_with_db:
+    desc: "Test the findingmodelforge library with a MongoDB instance"
+    deps:
+      - start_local_mongo
+    dir: "{{.LIBRARY_DIR}}"
+    cmds:
+      - uv run pytest
     silent: true
 
   check_library:
@@ -22,9 +30,9 @@ tasks:
     dir: "{{.LIBRARY_DIR}}"
     cmds:
       - echo "Checking library..."
-      - ruff format
-      - ruff check
-      - mypy src
+      - uv run ruff format
+      - uv run ruff check
+      - uv run mypy src
       # Do the test_library task
       - task test_library
     silent: true
@@ -71,8 +79,8 @@ tasks:
   start_local_mongo:
     desc: "Start a local MongoDB instance"
     cmds:
-      # Check to see if the mongodb container is already running
-      - docker ps | grep -q mongodb || docker run --name mongodb -p 27017:27017 -d mongo:latest
+      # If we have a mongodb container, but it's stopped, start it
+      - docker ps -a | grep -q mongodb && docker start mongodb || docker run -d -v mongodb_data:/data -p 27017:27017 --name mongodb mongo
     silent: true
   
   stop_local_mongo:
