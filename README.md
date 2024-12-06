@@ -8,15 +8,12 @@ Tool set for creating finding models for defining the semantic labels for imagin
 
 - `packages/findingmodelforge`: The core library code for all of the Finding Model Forge functionality,
   including underlying model definitions.
+  - Includes `fmf_cli`, which exposes library functionality via a command-line interface
 - `packages/fmf-api`: A FastAPI application that exposes the `findingmodelforge` library functions via
   api. Its features include:
-  - [ ] FastUI front-end exposing functionality
-  - [ ] GitHub OAuth for interactive user-based authentication
-  - [ ] Temporary: enable API key authenitcation for backend application connections. Hope to
-        transition this to GitHub-based OAuth authentication also
-- `packages/fmf-cli`: Command-line interface for using `findingmodelforge` functionality. Some overlap
-  with the UI (pushed into the library as much as possible), some usage of the API, a lot of overlap
-  functionality.
+  - [ ] [NiceGUI](https://nicegui.io/) front-end exposing functionality
+  - [ ] [GitHub OAuth](https://thelinuxcode.com/how-to-set-up-a-github-oauth-application/) for interactive user-based authentication
+  - [ ] Enable [GitHub OAuth authentication](https://github.com/chrisK824/fastapi-sso-example/blob/main/authentication.py) for backend application connections. (Does this get stored in a JWT token, session, or...) 
 
 ## Run
 
@@ -65,7 +62,7 @@ Browse to [localhost:8000](http://localhost:8000/docs) to see the API interface 
 - Type checking using [mypy](https://www.mypy-lang.org/)
 - [ ] Version management with [commitizen](https://commitizen-tools.github.io/commitizen/)
 - Unit testing and coverage with [pytest](https://docs.pytest.org/en/stable/)
-- [ ] Use `task` for integration tasks (lint, format, type-check, test, build)
+- [x] Use `task` for integration tasks (lint, format, type-check, test, build)
 - [ ] Use GitHub Actions for automatic checking on commit for formatting, linting, and passing tests
 - [ ] Set up [Dependabot](https://docs.github.com/en/code-security/getting-started/dependabot-quickstart-guide) to keep dependencies up to date
 
@@ -80,8 +77,8 @@ Browse to [localhost:8000](http://localhost:8000/docs) to see the API interface 
 
 - Target Python version 3.12
 - Use type hinting as extensively as possible
-- Use environment variables for configuration; propose to use [python-decouple](https://github.com/HBNetwork/python-decouple) to load configuration from the environment
-- Where possible, pull prompt definitions out into non-code files ([Jinja2 templates](https://jinja.palletsprojects.com/en/stable/templates/))
+- Use environment variables for configuration; propose to use [pydantic-settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/) to load configuration from the environment
+- Where possible, pull prompt definitions out into non-code files ([Jinja2 templates](https://jinja.palletsprojects.com/en/stable/templates/)); see `findingmodelforge.prompt_templates`
 
 ### Preferred Libraries
 
@@ -100,7 +97,6 @@ Browse to [localhost:8000](http://localhost:8000/docs) to see the API interface 
   - [`instructor`](https://github.com/jxnl/instructor) - Type-safe structured output parsing from LLM responses
   - [`tokenizers`](https://github.com/huggingface/tokenizers) - Text tokenization for model input processing
   - [`semantic-text-splitter`](https://github.com/jerpint/semantic_text_splitter) - Intelligent document chunking for LLM context windows
-  - [`DSPy`](https://github.com/stanfordnlp/dspy) - LLM prompt programming and optimization framework
 - **Database**
   - [`beanie`](https://github.com/roman-right/beanie) - MongoDB object-document mapper for data persistence
   - [`motor`](https://github.com/mongodb/motor) - Asynchronous MongoDB operations and queries
