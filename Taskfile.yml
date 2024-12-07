@@ -1,6 +1,6 @@
 # https://taskfile.dev
 
-version: '3'
+version: "3"
 
 vars:
   LIBRARY_DIR: packages/findingmodelforge
@@ -14,14 +14,24 @@ tasks:
     dir: "{{.LIBRARY_DIR}}"
     cmds:
       # Check if the mongodb container is running; if not, have to use 'pytest -m "not needs_db"'
-      - docker ps | grep -q mongodb && pytest || pytest -m "not needs_db"
+      - |
+        if [ "$OS" = "Windows_NT" ]; then
+          powershell.exe -Command "docker ps | Select-String -Pattern 'mongodb' -Quiet; if (\$?) { pytest } else { pytest -m 'not needs_db' }"
+        else
+          sh -c "docker ps | grep -q mongodb && pytest || pytest -m 'not needs_db'"
+        fi
     silent: true
 
   check_library:
     desc: "Check the findingmodelforge library"
     dir: "{{.LIBRARY_DIR}}"
     cmds:
-      - echo "Checking library..."
+      - |
+        if [ "$OS" = "Windows_NT" ]; then
+          powershell.exe -Command "echo 'Checking library...'"
+        else
+          sh -c "echo 'Checking library...'"
+        fi
       - ruff format
       - ruff check
       - mypy src
@@ -33,7 +43,12 @@ tasks:
     desc: "Build the findingmodelforge library"
     dir: "{{.LIBRARY_DIR}}"
     cmds:
-      - echo "Building library..."
+      - |
+        if [ "$OS" = "Windows_NT" ]; then
+          powershell.exe -Command "echo 'Building library...'"
+        else
+          sh -c "echo 'Building library...'"
+        fi
       - uv build
     silent: true
 
@@ -43,40 +58,73 @@ tasks:
       - build_library
     dir: "{{.API_DIR}}"
     cmds:
-      - echo "Copying library to API..."
-      - mkdir -p {{.TMP_PACKAGES_DIR}}
-      - cp -r ../../{{.LIBRARY_DIR}} {{.TMP_PACKAGES_DIR}}
-      - rm -rf {{.TMP_PACKAGES_DIR}}/.venv
+      - |
+        if [ "$OS" = "Windows_NT" ]; then
+          powershell.exe -Command "echo 'Copying library to API...'"
+          powershell.exe -Command "New-Item -ItemType Directory -Force -Path {{.TMP_PACKAGES_DIR}}"
+          powershell.exe -Command "Copy-Item -Recurse -Force -Path ../../{{.LIBRARY_DIR}} -Destination {{.TMP_PACKAGES_DIR}}"
+          powershell.exe -Command "if (Test-Path -Path {{.TMP_PACKAGES_DIR}}/.venv) { Remove-Item -Recurse -Force -Path {{.TMP_PACKAGES_DIR}}/.venv }"
+        else
+          sh -c "echo 'Copying library to API...'"
+          sh -c "mkdir -p {{.TMP_PACKAGES_DIR}}"
+          sh -c "cp -r ../../{{.LIBRARY_DIR}} {{.TMP_PACKAGES_DIR}}"
+          sh -c "rm -rf {{.TMP_PACKAGES_DIR}}/.venv"
+        fi
     internal: true
 
   build_api:
     desc: "Build the findingmodelforge API container"
     deps:
-      - copy_library_to_api 
+      - copy_library_to_api
     dir: "{{.API_DIR}}"
     cmds:
-      - echo "Building API container..."
+      - |
+        if [ "$OS" = "Windows_NT" ]; then
+          powershell.exe -Command "echo 'Building API container...'"
+        else
+          sh -c "echo 'Building API container...'"
+        fi
       - docker build -t {{.API_CONTAINER_NAME}} .
-      - rm -rf {{.TMP_PACKAGES_DIR}}
+      - |
+        if [ "$OS" = "Windows_NT" ]; then
+          powershell.exe -Command "Remove-Item -Recurse -Force -Path {{.TMP_PACKAGES_DIR}}"
+        else
+          sh -c "rm -rf {{.TMP_PACKAGES_DIR}}"
+        fi
     silent: true
-  
+
   run_api:
     desc: "Run the findingmodelforge API container"
     dir: "{{.API_DIR}}"
     cmds:
-      - echo "Running API..."
+      - |
+        if [ "$OS" = "Windows_NT" ]; then
+          powershell.exe -Command "echo 'Running API...'"
+        else
+          sh -c "echo 'Running API...'"
+        fi
       - docker run -p 8000:80 {{.API_CONTAINER_NAME}}
     silent: true
-  
+
   start_local_mongo:
     desc: "Start a local MongoDB instance"
     cmds:
       # Check to see if the mongodb container is already running
-      - docker ps | grep -q mongodb || docker run --name mongodb -p 27017:27017 -d mongo:latest
+      - |
+        if [ "$OS" = "Windows_NT" ]; then
+          powershell.exe -Command "docker ps | Select-String -Pattern 'mongodb' -Quiet; if (-not \$?) { docker run --name mongodb -p 27017:27017 -d mongo:latest }"
+        else
+          sh -c "docker ps | grep -q mongodb || docker run --name mongodb -p 27017:27017 -d mongo:latest"
+        fi
     silent: true
-  
+
   stop_local_mongo:
     desc: "Stop the local MongoDB instance"
     cmds:
-      - docker stop mongodb
+      - |
+        if [ "$OS" = "Windows_NT" ]; then
+          powershell.exe -Command "docker stop mongodb"
+        else
+          sh -c "docker stop mongodb"
+        fi
     silent: true
