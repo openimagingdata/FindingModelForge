@@ -24,7 +24,7 @@ class FindingModelForgeConfig(BaseSettings):
     perplexity_api_key: SecretStr = Field(default=SecretStr(""))
     perplexity_default_model: str = Field(default="llama-3.1-sonar-large-128k-online")
 
-    model_config = SettingsConfigDict(env_file=".env", env_prefix="FMF_")
+    model_config = SettingsConfigDict(env_file=".env")
 
     def check_ready_for_openai(self) -> Literal[True]:
         if not self.openai_api_key.get_secret_value():
