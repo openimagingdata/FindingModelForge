@@ -4,14 +4,14 @@
 
 ### Library
 
-- [ ] Copy over and start updating `FindingModel` definition
-- [ ] Get code that uses LLM to generate description from finding model name
+- [x] Copy over and start updating `FindingModel` definition
+- [x] Get code that uses LLM to generate description from finding model name
 - [ ] Create a function `finding_name_to_finding_model()` that:
   - Uses LLM to generate a description from the finding name if one is not provided
   - Generates a `FindingModel` object using the given name and generated (or specified) description
     - Adds `presence` attribute with standard structure/options
     - Adds `change_from_prior` attribute with standard structure/options
-  - Save to the database
+  - [ ] Save to the database
   - Outputs the finding model as JSON
 
 ### CLI
