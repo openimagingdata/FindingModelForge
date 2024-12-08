@@ -26,12 +26,7 @@ tasks:
     desc: "Check the findingmodelforge library"
     dir: "{{.LIBRARY_DIR}}"
     cmds:
-      - |
-        if [ "$OS" = "Windows_NT" ]; then
-          powershell.exe -Command "echo 'Checking library...'"
-        else
-          sh -c "echo 'Checking library...'"
-        fi
+      - print "Checking library..."
       - ruff format
       - ruff check
       - mypy src
@@ -43,54 +38,20 @@ tasks:
     desc: "Build the findingmodelforge library"
     dir: "{{.LIBRARY_DIR}}"
     cmds:
-      - |
-        if [ "$OS" = "Windows_NT" ]; then
-          powershell.exe -Command "echo 'Building library...'"
-        else
-          sh -c "echo 'Building library...'"
-        fi
+      - echo "Building library..."
       - uv build
+      - echo "Building findingmodelforge-files image..."
+      - docker build -t findingmodelforge-files:latest .
     silent: true
-
-  copy_library_to_api:
-    desc: "(INT) Copy findingmodelforge library packages to the API directory"
-    deps:
-      - build_library
-    dir: "{{.API_DIR}}"
-    cmds:
-      - |
-        if [ "$OS" = "Windows_NT" ]; then
-          powershell.exe -Command "echo 'Copying library to API...'"
-          powershell.exe -Command "New-Item -ItemType Directory -Force -Path {{.TMP_PACKAGES_DIR}}"
-          powershell.exe -Command "Copy-Item -Recurse -Force -Path ../../{{.LIBRARY_DIR}} -Destination {{.TMP_PACKAGES_DIR}}"
-          powershell.exe -Command "if (Test-Path -Path {{.TMP_PACKAGES_DIR}}/.venv) { Remove-Item -Recurse -Force -Path {{.TMP_PACKAGES_DIR}}/.venv }"
-        else
-          sh -c "echo 'Copying library to API...'"
-          sh -c "mkdir -p {{.TMP_PACKAGES_DIR}}"
-          sh -c "cp -r ../../{{.LIBRARY_DIR}} {{.TMP_PACKAGES_DIR}}"
-          sh -c "rm -rf {{.TMP_PACKAGES_DIR}}/.venv"
-        fi
-    internal: true
 
   build_api:
     desc: "Build the findingmodelforge API container"
     deps:
-      - copy_library_to_api
+      - build_library
     dir: "{{.API_DIR}}"
     cmds:
-      - |
-        if [ "$OS" = "Windows_NT" ]; then
-          powershell.exe -Command "echo 'Building API container...'"
-        else
-          sh -c "echo 'Building API container...'"
-        fi
+      - echo "Building API image..."
       - docker build -t {{.API_CONTAINER_NAME}} .
-      - |
-        if [ "$OS" = "Windows_NT" ]; then
-          powershell.exe -Command "Remove-Item -Recurse -Force -Path {{.TMP_PACKAGES_DIR}}"
-        else
-          sh -c "rm -rf {{.TMP_PACKAGES_DIR}}"
-        fi
     silent: true
 
   run_api:
