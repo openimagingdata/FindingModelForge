@@ -22,4 +22,5 @@ async def index():
 
 app.include_router(dummy.router)
 
+print(settings.model_dump_json(indent=2))
 ui.run_with(app, title="Finding Model Forge", storage_secret=settings.storage_secret.get_secret_value())
