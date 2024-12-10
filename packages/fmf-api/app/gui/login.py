@@ -8,28 +8,9 @@ from . import theme
 
 
 def login_page(ui):
-    class State:
-        def __init__(self) -> None:
-            self.username = ""
-            self.password = ""
-            self.running = False
-
-    state = State()
-
     with theme.frame("Login"), ui.card().classes("fixed-center"):
-        ui.spinner().bind_visibility_from(state, "running")
         ui.label(text="Login").classes("font-bold text-2xl")
-        ui.input(label="Username", placeholder="start typing").bind_value(state, "username").bind_enabled_from(
-            state, "running", lambda x: not x
-        ).classes("w-full")
-        ui.input(
-            label="Password",
-            placeholder="start typing",
-            password=True,
-            password_toggle_button=True,
-        ).bind_value(state, "password").bind_enabled_from(state, "running", lambda x: not x).classes("w-full")
         with ui.row().classes("w-full"):
-            ui.button("Login", on_click=lambda: 1).props("flat").classes("disabled")
             ui.button(
                 "Login with Github",
                 on_click=lambda: ui.navigate.to(
