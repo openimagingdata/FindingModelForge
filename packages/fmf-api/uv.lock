@@ -411,6 +411,7 @@ dependencies = [
     { name = "fastapi", extra = ["standard"] },
     { name = "findingmodelforge" },
     { name = "nicegui" },
+    { name = "pydantic-settings" },
 ]
 
 [package.dev-dependencies]
@@ -425,6 +426,7 @@ requires-dist = [
     { name = "fastapi", extras = ["standard"], specifier = ">=0.115.4" },
     { name = "findingmodelforge", editable = "../findingmodelforge" },
     { name = "nicegui", specifier = ">=2.5.0" },
+    { name = "pydantic-settings", specifier = ">=2.6.1" },
 ]
 
 [package.metadata.requires-dev]

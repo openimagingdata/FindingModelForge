@@ -55,6 +55,9 @@ cover/
 *.mo
 *.pot
 
+# NiceGUI
+.nicegui
+
 # Django stuff:
 *.log
 local_settings.py
@@ -129,6 +132,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.infisical.json
 
 # Spyder project settings
 .spyderproject

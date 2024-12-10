@@ -50,7 +50,7 @@ tasks:
       - echo "Building library..."
       - uv build
       - echo "Building findingmodelforge-files image..."
-      - docker build -t findingmodelforge-files:latest .
+      - docker build --platform linux/amd64 -t findingmodelforge-files:latest .
     silent: true
 
   build_api:
@@ -60,19 +60,13 @@ tasks:
     dir: "{{.API_DIR}}"
     cmds:
       - echo "Building API image..."
-      - docker build -t {{.API_CONTAINER_NAME}} .
+      - docker build --platform linux/amd64 -t {{.API_CONTAINER_NAME}} .
     silent: true
 
   run_api:
     desc: "Run the findingmodelforge API container"
     dir: "{{.API_DIR}}"
     cmds:
-      - |
-        if [ "$OS" = "Windows_NT" ]; then
-          powershell.exe -Command "echo 'Running API...'"
-        else
-          sh -c "echo 'Running API...'"
-        fi
       - docker run -p 8000:80 {{.API_CONTAINER_NAME}}
     silent: true
 
