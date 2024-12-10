@@ -49,25 +49,46 @@ tasks:
     cmds:
       - echo "Building library..."
       - uv build
+    silent: true
+
+  build_library_image:
+    desc: "Build the findingmodelforge library container"
+    deps:
+      - build_library
+    dir: "{{.LIBRARY_DIR}}"
+    cmds:
       - echo "Building findingmodelforge-files image..."
       - docker build --platform linux/amd64 -t findingmodelforge-files:latest .
     silent: true
 
-  build_api:
+  build_api_image:
     desc: "Build the findingmodelforge API container"
     deps:
-      - build_library
+      - build_library_image
     dir: "{{.API_DIR}}"
     cmds:
       - echo "Building API image..."
       - docker build --platform linux/amd64 -t {{.API_CONTAINER_NAME}} .
     silent: true
 
-  run_api:
-    desc: "Run the findingmodelforge API container"
+  run_api_native:
+    desc: "Run the findingmodelforge API natively"
     dir: "{{.API_DIR}}"
     cmds:
-      - docker run -p 8000:80 {{.API_CONTAINER_NAME}}
+      - infisical run --env=dev -- uv run uvicorn app.main:app --log-level info --reload  --host localhost --port 8000
+    silent: true
+  
+  run_api_container:
+    desc: "Run the findingmodelforge API in a container"
+    dir: "{{.API_DIR}}"
+    cmds:
+      - echo "Running API container..."
+      - |
+        if [ "$OS" = "Windows_NT" ]; then
+          echo "Don't know how to run containers on Windows yet"
+        else
+          docker run --name findingmodelforge_api --platform linux/amd64 -d --env-file <(infisical export --format=dotenv) -p 8000:8000 --rm findingmodelforge-api /app/run_app_dev.sh
+        fi
     silent: true
 
   start_local_mongo:
