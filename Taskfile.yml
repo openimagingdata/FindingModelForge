@@ -22,14 +22,23 @@ tasks:
         fi
     silent: true
 
+  test_library_with_db:
+    desc: "Test the findingmodelforge library with a MongoDB instance"
+    deps:
+      - start_local_mongo
+    dir: "{{.LIBRARY_DIR}}"
+    cmds:
+      - uv run pytest
+    silent: true
+
   check_library:
     desc: "Check the findingmodelforge library"
     dir: "{{.LIBRARY_DIR}}"
     cmds:
-      - print "Checking library..."
-      - ruff format
-      - ruff check
-      - mypy src
+      - echo "Checking library..."
+      - uv run ruff format
+      - uv run ruff check
+      - uv run mypy src
       # Do the test_library task
       - task test_library
     silent: true

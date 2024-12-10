@@ -1,53 +1,48 @@
-from findingmodelforge.config import (
-    check_ready_for_mongodb,
-    check_ready_for_openai,
-    check_ready_for_perplexity,
-    settings,
-)
+import pytest
+from findingmodelforge import settings
+from findingmodelforge.config import ConfigurationError
+from pydantic import SecretStr
 
 
-def test_settings_loaded(monkeypatch):
-    settings_to_check = [
-        "OPENAI_API_KEY",
-        "PERPLEXITY_API_KEY",
-        "PERPLEXITY_BASE_URL",
-        "MONGO_DSN",
-        "DATABASE_NAME",
-    ]
-    for setting in settings_to_check:
-        monkeypatch.setattr(settings, setting, "test_value")
-        assert settings.get(setting, None) is not None
+def test_settings_loaded():
+    assert settings.openai_api_key.get_secret_value()
+    assert settings.perplexity_api_key.get_secret_value()
+    assert settings.perplexity_base_url
+    assert settings.mongo_dsn.get_secret_value()
+    assert settings.database_name
 
 
-def test_check_ready_for_openai(monkeypatch):
-    monkeypatch.setattr(settings, "OPENAI_API_KEY", "test_openai_key")
-    assert check_ready_for_openai() is True
+def test_check_ready_for_openai():
+    assert settings.check_ready_for_openai()
 
-    monkeypatch.setattr(settings, "OPENAI_API_KEY", None)
-    assert check_ready_for_openai() is False
-
-
-def test_check_ready_for_perplexity(monkeypatch):
-    monkeypatch.setattr(settings, "PERPLEXITY_API_KEY", "test_perplexity_key")
-    monkeypatch.setattr(settings, "PERPLEXITY_BASE_URL", "test_perplexity_url")
-    assert check_ready_for_perplexity() is True
-
-    monkeypatch.setattr(settings, "PERPLEXITY_API_KEY", None)
-    assert check_ready_for_perplexity() is False
-
-    monkeypatch.setattr(settings, "PERPLEXITY_API_KEY", "test_perplexity_key")
-    monkeypatch.setattr(settings, "PERPLEXITY_BASE_URL", None)
-    assert check_ready_for_perplexity() is False
+    old_value = settings.openai_api_key
+    settings.openai_api_key = SecretStr("")
+    with pytest.raises(ConfigurationError):
+        settings.check_ready_for_openai()
+    settings.openai_api_key = old_value
 
 
-def test_check_ready_for_mongodb(monkeypatch):
-    monkeypatch.setattr(settings, "MONGO_DSN", "test_mongo_dsn")
-    monkeypatch.setattr(settings, "DATABASE_NAME", "test_database_name")
-    assert check_ready_for_mongodb() is True
+def test_check_ready_for_perplexity():
+    assert settings.check_ready_for_perplexity()
 
-    monkeypatch.setattr(settings, "MONGO_DSN", None)
-    assert check_ready_for_mongodb() is False
+    old_value = settings.perplexity_api_key
+    settings.perplexity_api_key = SecretStr("")
+    with pytest.raises(ConfigurationError):
+        settings.check_ready_for_perplexity()
+    settings.perplexity_api_key = old_value
 
-    monkeypatch.setattr(settings, "MONGO_DSN", "test_mongo_dsn")
-    monkeypatch.setattr(settings, "DATABASE_NAME", None)
-    assert check_ready_for_mongodb() is False
+
+def test_check_ready_for_mongodb():
+    assert settings.check_ready_for_mongodb()
+
+    old_value = settings.mongo_dsn
+    settings.mongo_dsn = SecretStr("")
+    with pytest.raises(ConfigurationError):
+        settings.check_ready_for_mongodb()
+    settings.mongo_dsn = old_value
+
+    old_value = settings.database_name
+    settings.database_name = ""
+    with pytest.raises(ConfigurationError):
+        settings.check_ready_for_mongodb()
+    settings.database_name = old_value

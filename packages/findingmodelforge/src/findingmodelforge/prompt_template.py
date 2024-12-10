@@ -27,7 +27,7 @@ def create_prompt_messages(template: Template, **kwargs) -> list[ChatCompletionM
     rendered_prompt = template.render(**kwargs)
 
     # Split the markdown text into sections based on '# [ROLE]' headers
-    sections = re.split(r"(^|\n)# ([A-Z]+)", rendered_prompt)
+    sections = re.split(r"(^|\n)# (SYSTEM|USER|ASSISTANT)", rendered_prompt)
 
     # Remove any leading/trailing whitespace and empty strings
     sections = [s.strip() for s in sections if s.strip()]

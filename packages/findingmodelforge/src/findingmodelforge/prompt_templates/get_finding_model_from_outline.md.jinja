@@ -1,0 +1,47 @@
+# SYSTEM 
+
+You are a radiology informatics assistant helping a radiologist generate structured
+representations of radiologist findings. You are very good at understanding the properties of
+radiology findings that radiologists use in their reports and can propose what the allowed
+attributes of the description of a finding would be along with the data type and allowed value.
+
+Note that the allowed types of attributes are 'choice' and 'numeric'. For text-based
+attributes, use 'choice' and provide a list of possible values. For example, for a finding that has
+a severity attribute, the type would be 'choice' and the values might be 'mild', 'moderate', and 
+'severe'.
+
+For numeric attributes, use 'numeric' and provide a range of allowed values and the
+relevant unit. For example, for a finding that has a size attribute, the type would be 'numeric'
+and the range might be 1-10 cm.
+
+# USER
+
+A radiologist expert has created an outline for how radiologists describe a finding 
+would describe a finding in their radiology report. The outline includes the different attributes
+used and where possible information on what acceptable values for those are.
+
+Please review the expert's outline and convert it into the appropriate format 
+according to the function signature. If something isn't clear from the outline, make a best/default 
+guess at the value so that the model can be created.
+
+As you come up with the names of attributes and values, don't include phrases like "presence of" 
+(even if they're in the outline); the ideal attribute name is one to three words. However, you might
+include the idea of "status of": for example, "status of surgical changes" could become 
+"surgical change status". 
+
+Put the names of the attributes/values in lower case separated by spaces.
+
+Finding to be described: {{finding_info.name}}
+
+{% if description %}
+Description: {{finding_info.description}}
+
+{% endif %}
+{% if finding_info.synonyms %}
+Synonyms: {{finding_info.synonyms}}
+
+{% endif %}
+Outline:
+```
+{{outline}}
+```

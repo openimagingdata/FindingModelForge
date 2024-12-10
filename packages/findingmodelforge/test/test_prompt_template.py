@@ -1,4 +1,3 @@
-import pytest
 from findingmodelforge.prompt_template import create_prompt_messages, load_prompt_template
 from jinja2 import Template
 
@@ -44,8 +43,10 @@ This is a system message.
 This role is not recognized.
 """
     template = Template(markdown_prompt)
-    with pytest.raises(NotImplementedError):
-        create_prompt_messages(template)
+    messages = create_prompt_messages(template)
+    assert len(messages) == 1
+    assert messages[0]["role"] == "system"
+    assert "# UNKNOWN" in str(messages[0]["content"])
 
 
 def test_generate_messages_from_markdown_incomplete_sections():

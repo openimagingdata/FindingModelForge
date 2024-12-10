@@ -1,14 +1,14 @@
 from typing import Any
 
 from .clients import get_async_instructor_client, get_async_perplexity_client
+from .config import settings
 from .models.finding_info import BaseFindingInfo, DetailedFindingInfo
 from .prompt_template import create_prompt_messages, load_prompt_template
 
-DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
-DEFAULT_PERPLEXITY_MODEL = "llama-3.1-sonar-large-128k-online"
 
-
-async def describe_finding_name(finding_name: str, model_name: str = DEFAULT_OPENAI_MODEL) -> BaseFindingInfo | Any:
+async def describe_finding_name(
+    finding_name: str, model_name: str = settings.openai_default_model
+) -> BaseFindingInfo | Any:
     client = get_async_instructor_client()
     prompt_template = load_prompt_template("get_finding_description")
     messages = create_prompt_messages(prompt_template, finding_name=finding_name)
@@ -21,7 +21,7 @@ async def describe_finding_name(finding_name: str, model_name: str = DEFAULT_OPE
 
 
 async def get_detail_on_finding(
-    finding: BaseFindingInfo, model_name: str = DEFAULT_PERPLEXITY_MODEL
+    finding: BaseFindingInfo, model_name: str = settings.perplexity_default_model
 ) -> DetailedFindingInfo | None:
     client = get_async_perplexity_client()
     prompt_template = load_prompt_template("get_finding_detail")
