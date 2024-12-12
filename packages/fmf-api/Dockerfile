@@ -13,4 +13,5 @@ WORKDIR /app
 RUN uv sync --frozen --no-cache 
 
 EXPOSE 8000
-CMD ["uv", "run", "uvicorn", "app.main:app", "--workers", "1",  "--port", "8000", "--host", "0.0.0.0"]
+COPY ./run_app_prod.sh /usr/local/bin
+CMD ["run_app_prod.sh"]

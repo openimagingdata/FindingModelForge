@@ -18,4 +18,5 @@ cd $APP_DIR
 PORT=${FMF_API_PORT:-8000}
 echo "Starting Uvicorn server in production mode..."
 # we also use a single worker in production mode so socket.io connections are always handled by the same worker
-exec infisical run --token $INFISICAL_TOKEN --projectId $INFISICAL_PROJECT_ID --env prod -- uv run uvicorn app.main:app --workers 1 --log-level warning  --host 0.0.0.0 --port $PORT
+exec infisical run --token $INFISICAL_TOKEN --projectId $INFISICAL_PROJECT_ID --env prod \
+    -- uv run uvicorn app.main:app --workers 1 --log-level warning  --host 0.0.0.0 --port $PORT
