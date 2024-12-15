@@ -6,19 +6,23 @@ vars:
   LIBRARY_DIR: packages/findingmodelforge
   API_DIR: packages/fmf-api
   TMP_PACKAGES_DIR: tmp_packages
-  API_CONTAINER_NAME: findingmodelforge-api:latest
+  API_CONTAINER_NAME: ghcr.io/openimagingdata/findingmodelforge-api:latest
+  LIB_CONTAINER_NAME: ghcr.io/openimagingdata/findingmodelforge-files:latest
 
 tasks:
   test_library:
     desc: "Test the findingmodelforge library"
     dir: "{{.LIBRARY_DIR}}"
+    env:
+      OPENAI_API_KEY: "dummy"
+      PERPLEXITY_API_KEY: "dummy"
     cmds:
       # Check if the mongodb container is running; if not, have to use 'pytest -m "not needs_db"'
       - |
         if [ "$OS" = "Windows_NT" ]; then
           powershell.exe -Command "docker ps | Select-String -Pattern 'mongodb' -Quiet; if (\$?) { pytest } else { pytest -m 'not needs_db' }"
         else
-          sh -c "docker ps | grep -q mongodb && pytest || pytest -m 'not needs_db'"
+          docker ps | grep -q mongodb && uv run pytest || uv run pytest -m "not needs_db"
         fi
     silent: true
 
@@ -27,6 +31,9 @@ tasks:
     deps:
       - start_local_mongo
     dir: "{{.LIBRARY_DIR}}"
+    env:
+      OPENAI_API_KEY: "dummy"
+      PERPLEXITY_API_KEY: "dummy"
     cmds:
       - uv run pytest
     silent: true
@@ -58,7 +65,7 @@ tasks:
     dir: "{{.LIBRARY_DIR}}"
     cmds:
       - echo "Building findingmodelforge-files image..."
-      - docker build --platform linux/amd64 -t findingmodelforge-files:latest .
+      - docker build --platform linux/amd64 -t {{.LIB_CONTAINER_NAME}} .
     silent: true
 
   build_api_image:
@@ -99,7 +106,7 @@ tasks:
         if [ "$OS" = "Windows_NT" ]; then
           powershell.exe -Command "docker ps | Select-String -Pattern 'mongodb' -Quiet; if (-not \$?) { docker run --name mongodb -p 27017:27017 -d mongo:latest }"
         else
-          sh -c "docker ps | grep -q mongodb || docker run --name mongodb -p 27017:27017 -d mongo:latest"
+          docker ps | grep -q mongodb || docker run --name mongodb -v db_data:/data -p 27017:27017 -d mongo:latest
         fi
     silent: true
 
@@ -110,6 +117,6 @@ tasks:
         if [ "$OS" = "Windows_NT" ]; then
           powershell.exe -Command "docker stop mongodb"
         else
-          sh -c "docker stop mongodb"
+          docker stop mongodb
         fi
     silent: true
