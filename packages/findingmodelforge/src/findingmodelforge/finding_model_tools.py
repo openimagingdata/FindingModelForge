@@ -2,7 +2,7 @@ from pathlib import Path
 
 from findingmodelforge import settings
 from findingmodelforge.models.finding_info import BaseFindingInfo
-from findingmodelforge.models.finding_model import FindingModelBase
+from findingmodelforge.models.finding_model import ChoiceAttribute, ChoiceValue, FindingModelBase
 
 from .clients import get_async_instructor_client
 from .prompt_template import create_prompt_messages, load_prompt_template
@@ -39,6 +39,46 @@ async def create_finding_model_from_markdown(
     if not isinstance(result, FindingModelBase):
         raise ValueError("Finding model not returned.")
     return result
+
+
+def create_finding_model_stub_from_finding_info(finding_info: BaseFindingInfo) -> FindingModelBase:
+    finding_name = finding_info.name.lower()
+
+    def create_presence_element(finding_name: str) -> ChoiceAttribute:
+        return ChoiceAttribute(
+            name="presence",
+            description=f"Presence or absence of {finding_name}",
+            values=[
+                ChoiceValue(name="absent", description=f"{finding_name.capitalize()} is absent"),
+                ChoiceValue(name="present", description=f"{finding_name.capitalize()} is present"),
+                ChoiceValue(name="indeterminate", description=f"Presence of {finding_name} cannot be determined"),
+                ChoiceValue(name="unknown", description=f"Presence of {finding_name} is unknown"),
+            ],
+        )
+
+    def create_change_element(finding_name: str) -> ChoiceAttribute:
+        return ChoiceAttribute(
+            name="change from prior",
+            description=f"Whether and how a {finding_name} has changed over time",
+            values=[
+                ChoiceValue(name="unchanged", description=f"{finding_name.capitalize()} is unchanged"),
+                ChoiceValue(name="stable", description=f"{finding_name.capitalize()} is stable"),
+                ChoiceValue(name="increased", description=f"{finding_name.capitalize()} has increased"),
+                ChoiceValue(name="decreased", description=f"{finding_name.capitalize()} has decreased"),
+                ChoiceValue(name="new", description=f"{finding_name.capitalize()} is new"),
+            ],
+        )
+
+    stub = FindingModelBase(
+        name=finding_name,
+        description=finding_info.description,
+        synonyms=finding_info.synonyms,
+        attributes=[
+            create_presence_element(finding_name),
+            create_change_element(finding_name),
+        ],
+    )
+    return stub
 
 
 STANDARD_CODES = [
