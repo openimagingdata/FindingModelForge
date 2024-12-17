@@ -4,7 +4,10 @@ from pathlib import Path
 import click
 from findingmodelforge.config import settings
 from findingmodelforge.finding_info_tools import describe_finding_name, get_detail_on_finding
-from findingmodelforge.finding_model_tools import create_finding_model_from_markdown
+from findingmodelforge.finding_model_tools import (
+    create_finding_model_from_markdown,
+    create_finding_model_stub_from_finding_info,
+)
 from findingmodelforge.models.finding_info import BaseFindingInfo
 from rich.console import Console
 
@@ -33,6 +36,23 @@ def make_info(finding_name):
     with console.status("Getting detailed information... "):
         detailed_response = asyncio.run(get_detail_on_finding(described_finding))
     console.print(detailed_response)
+
+
+@cli.command()
+@click.argument("finding_name", default="Pneumothorax")
+@click.option("--tags", "-t", multiple=True, help="Tags to add to the model.")
+def make_stub_model(finding_name: str, tags: list[str]):
+    """Generate a simple finding model object (presence and change elements only) from a finding name."""
+    from rich.markdown import Markdown
+
+    console = Console()
+    console.print(f"[gray] Getting stub model for [yellow bold]{finding_name}")
+    with console.status("[bold green]Getting description and synonyms..."):
+        described_finding = asyncio.run(describe_finding_name(finding_name))
+    stub = create_finding_model_stub_from_finding_info(described_finding, tags)
+    console.print_json(stub.model_dump_json())
+    md = Markdown(stub.as_markdown())
+    console.print(md)
 
 
 @cli.command()
