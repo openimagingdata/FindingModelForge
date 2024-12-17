@@ -40,13 +40,19 @@ def make_info(finding_name):
 
 @cli.command()
 @click.argument("finding_name", default="Pneumothorax")
-def make_stub_model(finding_name):
+@click.option("--tags", "-t", multiple=True, help="Tags to add to the model.")
+def make_stub_model(finding_name: str, tags: list[str]):
+    """Generate a simple finding model object (presence and change elements only) from a finding name."""
+    from rich.markdown import Markdown
+
     console = Console()
     console.print(f"[gray] Getting stub model for [yellow bold]{finding_name}")
     with console.status("[bold green]Getting description and synonyms..."):
         described_finding = asyncio.run(describe_finding_name(finding_name))
-    stub = create_finding_model_stub_from_finding_info(described_finding)
+    stub = create_finding_model_stub_from_finding_info(described_finding, tags)
     console.print_json(stub.model_dump_json())
+    md = Markdown(stub.as_markdown())
+    console.print(md)
 
 
 @cli.command()

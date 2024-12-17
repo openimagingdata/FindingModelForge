@@ -41,7 +41,9 @@ async def create_finding_model_from_markdown(
     return result
 
 
-def create_finding_model_stub_from_finding_info(finding_info: BaseFindingInfo) -> FindingModelBase:
+def create_finding_model_stub_from_finding_info(
+    finding_info: BaseFindingInfo, tags: list[str] | None = None
+) -> FindingModelBase:
     finding_name = finding_info.name.lower()
 
     def create_presence_element(finding_name: str) -> ChoiceAttribute:
@@ -78,6 +80,8 @@ def create_finding_model_stub_from_finding_info(finding_info: BaseFindingInfo) -
             create_change_element(finding_name),
         ],
     )
+    if tags:
+        stub.tags = tags
     return stub
 
 
