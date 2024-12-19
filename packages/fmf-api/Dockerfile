@@ -19,5 +19,7 @@ ENV PYTHONUNBUFFERED=1
 RUN uv sync --frozen --no-cache 
 
 EXPOSE 8000
-COPY ./run_app_prod.sh /usr/local/bin
-CMD ["run_app_prod.sh"]
+
+ENV PYTHONUNBUFFERED=1
+
+CMD ["/app/run_app_prod.sh"]

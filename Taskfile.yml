@@ -94,7 +94,7 @@ tasks:
         if [ "$OS" = "Windows_NT" ]; then
           echo "Don't know how to run containers on Windows yet"
         else
-          docker run --name findingmodelforge_api --platform linux/amd64 -d --env-file <(infisical export --format=dotenv) -p 8000:8000 --rm findingmodelforge-api /app/run_app_dev.sh
+          docker run --name findingmodelforge_api --platform linux/amd64 -d --env-file <(infisical export --format=dotenv) -p 8000:8000 --rm {{.API_CONTAINER_NAME}} /app/run_app_dev.sh
         fi
     silent: true
 

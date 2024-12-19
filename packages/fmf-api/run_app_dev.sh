@@ -4,7 +4,8 @@
 APP_DIR=/app
 cd $APP_DIR
 
-# Set PORT to FMF_API_PORT if it is set, otherwise default to 8000
-PORT=${FMF_API_PORT:-8000}
-echo "Starting Uvicorn server in dev mode..."
+# Use PORT for PORT if it's set, otherwise default to 8000
+PORT=${PORT:-8000}
+echo "Starting Uvicorn server on ${PORT}..."
+# we also use a single worker in production mode so socket.io connections are always handled by the same worker
 exec uv run uvicorn app.main:app --workers 1 --log-level info  --host 0.0.0.0 --port $PORT
