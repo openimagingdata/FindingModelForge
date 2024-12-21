@@ -3,6 +3,8 @@ from fastapi.responses import RedirectResponse
 from loguru import logger
 from nicegui import app, ui
 
+from app.gui.home import home_page
+
 from .common.config import settings
 from .gui import theme
 from .gui.login import login_page
@@ -29,8 +31,8 @@ async def login() -> None:
 async def index():
     if not app.storage.user.get("authenticated", False):
         return RedirectResponse(url=settings.login_path)
-    with theme.frame("Home"), ui.card().classes("fixed-center"):
-        ui.label("Welcome to Finding Model Forge!")
+    with theme.frame("Home"):
+        home_page()
 
 
 print(settings.model_dump_json(indent=2))

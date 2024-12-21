@@ -1,30 +1,24 @@
 from findingmodelforge.finding_info_tools import describe_finding_name
-from findingmodelforge.models.finding_info import BaseFindingInfo
+from nicegui import ui
 
 from . import theme
 
 
-def home_page(ui):
-    class State:
-        def __init__(self) -> None:
-            self.finding_name = ""
-            self.running = False
-            self.finding_description: BaseFindingInfo | None = None
-
-    state = State()
+def home_page():
+    state = {"running": False, "finding_name": None, "finding_description": None, "synonyms": None}
 
     async def handle_submit():
-        state.running = True
-        state.finding_description = None
-        described = await describe_finding_name(state.finding_name)
-        print("Described: " + described.model_dump_json())
-        state.finding_description = described
-        state.finding_name = ""
-        state.running = False
+        state["running"] = True
+        state["finding_description"] = None
+        described_finding = await describe_finding_name(state["finding_name"])
+        state["finding_description"] = described_finding.description
+        if described_finding.synonyms:
+            state["synonyms"] = ", ".join(described_finding.synonyms)
+        state["running"] = False
 
     with theme.frame("Home"):
-        ui.label("Welcome to Finding Model Forge!")
-
+        with ui.row():
+            ui.label("Welcome to Finding Model Forge!")
         with ui.row():
             ui.spinner().bind_visibility_from(state, "running")
             ui.input(label="Finding name", placeholder="start typing").bind_value(
@@ -32,6 +26,7 @@ def home_page(ui):
             ).bind_enabled_from(state, "running", lambda x: not x).on("keydown.enter", handle_submit).on(
                 "blur", handle_submit
             )
-        with ui.row():
-            json = state.finding_description.model_dump_json() if state.finding_description else ""
-            ui.json_editor(json).bind_visibility_from(state, "finding_description")
+        with ui.row().bind_visibility_from(state, "finding_description"), ui.column():
+            ui.label().bind_text_from(state, "synonyms", lambda x: f"Synonyms: {x}")
+            ui.label("Description")
+            ui.label().bind_text_from(state, "finding_description")
