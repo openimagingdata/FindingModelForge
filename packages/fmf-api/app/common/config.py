@@ -1,8 +1,6 @@
 import secrets
-import sys
 
 from findingmodelforge.config import FindingModelForgeConfig, QuoteStrippedSecretStr, QuoteStrippedStr
-from loguru import logger
 from pydantic import Field, SecretStr
 from typing_extensions import Final
 
@@ -10,7 +8,6 @@ GITHUB_AUTHORIZE_URL: Final[str] = "https://github.com/login/oauth/authorize"
 GITHUB_ACCESS_TOKEN_URL: Final[str] = "https://github.com/login/oauth/access_token"
 GITHUB_USER_INFO_URL: Final[str] = "https://api.github.com/user"
 LOGIN_PATH: Final[str] = "/login"
-# TODO: This should be based on the hostname, which should be the config variable
 AUTH_REDIRECT_URI: Final[str] = "http://localhost:8000/callback"
 
 
@@ -27,17 +24,9 @@ class FindingModelForgeAPIConfig(FindingModelForgeConfig):
     github_client_secret: QuoteStrippedSecretStr
 
     login_path: str = Field(default=LOGIN_PATH)
-    # TODO: Add a hostname variable
-    # TODO: Make this a computed field based on the hostname
     auth_redirect_uri: str = Field(default=AUTH_REDIRECT_URI)
 
     storage_secret: QuoteStrippedSecretStr = Field(default_factory=generate_storage_secret)
 
 
 settings = FindingModelForgeAPIConfig()  # type: ignore
-
-logger.remove()
-logger.add(
-    sys.stderr, format="<green>FMF {level}</green>: <level>{message}</level> [{time:YY-MM-DD HH:mm:ss}]", colorize=True
-)
-logger.add("fmf-web.log", rotation="1 week", retention="1 month", level="WARNING")
