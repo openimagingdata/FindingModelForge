@@ -1,6 +1,8 @@
 import secrets
+import sys
 
 from findingmodelforge.config import FindingModelForgeConfig, QuoteStrippedSecretStr, QuoteStrippedStr
+from loguru import logger
 from pydantic import Field, SecretStr
 from typing_extensions import Final
 
@@ -24,9 +26,20 @@ class FindingModelForgeAPIConfig(FindingModelForgeConfig):
     github_client_secret: QuoteStrippedSecretStr
 
     login_path: str = Field(default=LOGIN_PATH)
+    # TODO: This shouldn't be being passed around like this; should figure out how to fix it sometime
     auth_redirect_uri: str = Field(default=AUTH_REDIRECT_URI)
 
     storage_secret: QuoteStrippedSecretStr = Field(default_factory=generate_storage_secret)
 
 
 settings = FindingModelForgeAPIConfig()  # type: ignore
+
+# Loguru setup
+logger.remove()
+logger.add("fmf-web.log", rotation="1 week", retention="1 month", level="WARNING")
+logger.add(
+    sys.stderr,
+    format="<green>FMF {level}</green>: <level>{message}</level> [{time:YY-MM-DD HH:mm:ss}]",
+    colorize=True,
+    level="INFO",
+)

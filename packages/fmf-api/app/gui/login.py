@@ -7,7 +7,7 @@ from ..common.config import settings
 from . import theme
 
 
-def login_page(ui):
+def login_page():
     with theme.frame("Login"), ui.card().classes("fixed-center"):
         ui.label(text="Login").classes("font-bold text-2xl")
         with ui.row().classes("w-full"):
