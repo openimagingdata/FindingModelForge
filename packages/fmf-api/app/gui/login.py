@@ -11,6 +11,7 @@ def login_page():
     with theme.frame("Login"), ui.card().classes("fixed-center"):
         ui.label(text="Login").classes("font-bold text-2xl")
         with ui.row().classes("w-full"):
+            # TODO: Add the github icon in here
             ui.button(
                 "Login with Github",
                 on_click=lambda: ui.navigate.to(
@@ -35,6 +36,7 @@ async def callback(request: Request):
     if user_data := fetch_user_data(access_token):
         app.storage.user["authenticated"] = True
         app.storage.user["data"] = user_data
+        # TODO: Figure out if we already know this user, and if not, put them in our database
         return RedirectResponse("/")
     else:
         return RedirectResponse(settings.login_path)
@@ -47,6 +49,7 @@ def logout_page():
     return RedirectResponse(settings.login_path)
 
 
+# TODO: Only enable this in development environments
 @app.get("/user-storage")
 def get_user_storage():
     return JSONResponse(content=app.storage.user)
@@ -57,6 +60,7 @@ def fetch_access_token(code: str) -> str:
     Fetches the access token from GitHub
     :param code: The code from GitHub
     :return: The access token"""
+    # TODO: Make this asynchronous
     response = httpx.post(
         settings.github_access_token_url,
         headers={"Accept": "application/json"},
