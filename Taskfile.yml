@@ -6,6 +6,7 @@ vars:
   LIBRARY_DIR: packages/findingmodelforge
   API_DIR: packages/fmf-api
   TMP_PACKAGES_DIR: tmp_packages
+  DB_COMPOSE_FILE: db-compose.yml
   API_CONTAINER_NAME: ghcr.io/openimagingdata/findingmodelforge-api:latest
   LIB_CONTAINER_NAME: ghcr.io/openimagingdata/findingmodelforge-files:latest
 
@@ -100,23 +101,14 @@ tasks:
 
   start_local_mongo:
     desc: "Start a local MongoDB instance"
-    cmds:
-      # Check to see if the mongodb container is already running
-      - |
-        if [ "$OS" = "Windows_NT" ]; then
-          powershell.exe -Command "docker ps | Select-String -Pattern 'mongodb' -Quiet; if (-not \$?) { docker run --name mongodb -p 27017:27017 -d mongo:latest }"
-        else
-          docker ps | grep -q mongodb || docker run --name mongodb -v db_data:/data -p 27017:27017 -d mongo:latest
-        fi
+    dir: "{{.LIBRARY_DIR}}"
+    cmds: 
+      - docker compose -f {{.DB_COMPOSE_FILE}} up -d
     silent: true
 
   stop_local_mongo:
     desc: "Stop the local MongoDB instance"
+    dir: "{{.LIBRARY_DIR}}"
     cmds:
-      - |
-        if [ "$OS" = "Windows_NT" ]; then
-          powershell.exe -Command "docker stop mongodb"
-        else
-          docker stop mongodb
-        fi
+      - docker compose -f {{.DB_COMPOSE_FILE}} down
     silent: true
