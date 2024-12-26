@@ -4,6 +4,7 @@ import pytest
 import pytest_asyncio
 from beanie import init_beanie
 from findingmodelforge import settings
+from findingmodelforge.models.finding_info_db import FindingInfoDb
 from findingmodelforge.models.finding_model_db import FindingModelDb
 from motor.motor_asyncio import AsyncIOMotorClient
 
@@ -17,7 +18,7 @@ def set_test_settings():
 async def db_init() -> AsyncGenerator[None, None]:
     client: AsyncIOMotorClient = AsyncIOMotorClient(str(settings.mongo_dsn.get_secret_value()))
     database = client.get_database(settings.database_name)
-    await init_beanie(database, document_models=[FindingModelDb])
+    await init_beanie(database, document_models=[FindingModelDb, FindingInfoDb])
     yield
     await client.drop_database(settings.database_name)
     client.close()

@@ -8,7 +8,7 @@ class BaseFindingInfo(BaseModel):
 
     name: str = Field(..., title="Finding Name", description="The name of the finding")
     synonyms: list[str] | None = Field(
-        None,
+        default=None,
         title="Synonyms",
         description="Synonyms for the finding name, especially those used by radiologists, including acronyms",
     )
@@ -20,7 +20,7 @@ class DetailedFindingInfo(BaseFindingInfo):
     Detailed class for finding information, with a detailed description and citations.
     """
 
-    detail: str = Field(..., title="Detail", description="A detailed description of the finding")
+    detail: str | None = Field(default=None, title="Detail", description="A detailed description of the finding")
     citations: list[str] | None = Field(
         default=None, title="Citations", description="Citations (ideally URLs) for the detailed description"
     )
