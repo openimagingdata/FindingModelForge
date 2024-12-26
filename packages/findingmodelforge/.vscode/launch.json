@@ -11,7 +11,7 @@
       "type": "debugpy",
       "request": "launch",
       "program": "src/fmf_cli/cli.py",
-      "args": ["make-info", "-d", "ACL tear"]
+      "args": ["make-stub-model", "-t", "knee", "-t", "mri", "medial meniscus tear"]
     }
   ]
 }

@@ -42,6 +42,6 @@ class FindingModelDb(FindingModelBase, Document):  # type: ignore[misc]
     class Settings:
         name = "finding_models"
         indexes = [
-            pymongo.IndexModel("finding_name", unique=True),
+            pymongo.IndexModel("name", unique=True),
         ]
         keep_nulls = False
