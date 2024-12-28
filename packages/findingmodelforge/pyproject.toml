@@ -18,6 +18,9 @@ dependencies = [
     "pydantic-settings>=2.6.1",
     "pydantic>=2.9.2",
     "pymongo>=4.9.2",
+    "lancedb>=0.17.0",
+    "tantivy==0.20.1",
+    "rerankers[gpt]>=0.6.1",
 ]
 readme = "README.md"
 classifiers = [

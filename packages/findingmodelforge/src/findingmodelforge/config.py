@@ -1,5 +1,6 @@
 from typing import Annotated, Literal
 
+import openai
 from pydantic import BeforeValidator, Field, HttpUrl, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -30,6 +31,8 @@ class FindingModelForgeConfig(BaseSettings):
     # Database
     mongo_dsn: QuoteStrippedSecretStr = Field(default=SecretStr("mongodb://localhost:27017"))
     database_name: str = Field(default="findingmodelforge")
+    lancedb_uri: str = Field(default="data/semanticdb")
+    lancedb_embeddings_model: str = Field(default="text-embedding-3-large")
 
     # OpenAI API
     openai_api_key: QuoteStrippedSecretStr = Field(default=SecretStr(""))
@@ -65,3 +68,4 @@ class FindingModelForgeConfig(BaseSettings):
 
 
 settings = FindingModelForgeConfig()
+openai.api_key = settings.openai_api_key.get_secret_value()
