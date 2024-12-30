@@ -1,7 +1,10 @@
 import datetime
+from typing import Sequence
 
 import pymongo
 from beanie import Document, Insert, Replace, SaveChanges, Update, before_event
+from beanie.operators import In
+from bson.objectid import ObjectId
 from pydantic import Field
 
 from .finding_model import FindingModelBase
@@ -45,3 +48,8 @@ class FindingModelDb(FindingModelBase, Document):  # type: ignore[misc]
             pymongo.IndexModel("name", unique=True),
         ]
         keep_nulls = False
+
+    @classmethod
+    async def get_many(cls, ids: list[str]) -> Sequence["FindingModelDb"]:
+        obj_ids: list[ObjectId] = [ObjectId(id) for id in ids]
+        return await cls.find(In(cls.id, obj_ids)).to_list()

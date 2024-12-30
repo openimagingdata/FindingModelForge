@@ -3,6 +3,7 @@ from pathlib import Path
 
 import click
 from findingmodelforge.config import settings
+from findingmodelforge.database import init_document_models, search
 from findingmodelforge.finding_info_tools import describe_finding_name, get_detail_on_finding
 from findingmodelforge.finding_model_tools import (
     create_finding_model_from_markdown,
@@ -12,20 +13,6 @@ from findingmodelforge.models.finding_info import BaseFindingInfo, DetailedFindi
 from findingmodelforge.models.finding_info_db import FindingInfoDb
 from findingmodelforge.models.finding_model_db import FindingModelDb
 from rich.console import Console
-
-INITIALIZED_DB = False
-
-
-async def init_db() -> None:
-    from beanie import init_beanie
-    from motor.motor_asyncio import AsyncIOMotorClient
-
-    global INITIALIZED_DB
-    if not INITIALIZED_DB:
-        client: AsyncIOMotorClient = AsyncIOMotorClient(str(settings.mongo_dsn.get_secret_value()))
-        database = client.get_database(settings.database_name)
-        await init_beanie(database, document_models=[FindingModelDb, FindingInfoDb])
-        INITIALIZED_DB = True
 
 
 @click.group()
@@ -73,7 +60,7 @@ def make_info(finding_name: str, detailed: bool):
         console.print(f"Saved to database: [yellow]: {result.id}")
 
     async def _do_make_info(finding_name: str, detailed: bool) -> None:
-        await init_db()
+        await init_document_models()
         console.print(f"[gray] Getting information on [yellow bold]{finding_name}")
         result = await FindingInfoDb.find_one(FindingInfoDb.name == finding_name)
         if result is not None:
@@ -109,7 +96,7 @@ def make_stub_model(finding_name: str, tags: list[str]):
 
     async def _do_make_stub_model(finding_name: str, tags: list[str]) -> None:
         with console.status("[bold green] Initializing database..."):
-            await init_db()
+            await init_document_models()
         with console.status(f"[bold green] Checking for {finding_name}..."):
             model_result = await FindingModelDb.find_one(FindingModelDb.name == finding_name)
         if model_result is not None:
@@ -135,6 +122,46 @@ def make_stub_model(finding_name: str, tags: list[str]):
 
 
 @cli.command()
+def list_models():
+    """List all finding models in the database."""
+    console = Console()
+
+    async def _do_list_models() -> None:
+        with console.status("[bold green] Initializing database..."):
+            await init_document_models()
+        with console.status("[bold green] Getting models..."):
+            models = await FindingModelDb.find().to_list()
+        if not models:
+            console.print("[bold red]No models found.")
+            return
+        for model in models:
+            console.print(model.name)
+
+    asyncio.run(_do_list_models())
+
+
+@cli.command()
+@click.argument("query")
+@click.option("--num-results", "-n", default=5, help="Number of results to return.")
+def search_models(query: str, num_results: int = 5):
+    """Search for finding models in the database."""
+    console = Console()
+
+    async def _do_search_models(query: str, num_results: int) -> None:
+        with console.status("[bold green] Initializing database..."):
+            await init_document_models()
+        with console.status("[bold green] Searching models..."):
+            models = await search(query, top_k=num_results)
+        if not models:
+            console.print("[bold red]No models found.")
+            return
+        for model in models:
+            console.print(model.name)
+
+    asyncio.run(_do_search_models(query, num_results))
+
+
+@cli.command()
 # Indicate that the argument should be a filename
 @click.argument("finding_path", type=click.Path(exists=True, path_type=Path))
 def markdown_to_fm(finding_path: Path):
@@ -144,7 +171,7 @@ def markdown_to_fm(finding_path: Path):
 
     async def _do_markdown_to_fm(finding_path: Path) -> None:
         with console.status("[bold green] Initializing database..."):
-            await init_db()
+            await init_document_models()
         finding_name = finding_path.stem.replace("_", " ").replace("-", " ")
         console.print(f"[gray] Getting model for [yellow bold]{finding_name}")
         click.echo(f"Converting {finding_path} to finding model format.")
