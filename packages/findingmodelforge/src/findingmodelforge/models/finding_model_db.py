@@ -2,21 +2,29 @@ import datetime
 from typing import Sequence
 
 import pymongo
-from beanie import Document, Insert, Replace, SaveChanges, Update, before_event
-from beanie.operators import In
+from beanie import Delete, Document, Replace, Save, Update, after_event, before_event
+
+# from beanie.operators import In
 from bson.objectid import ObjectId
 from pydantic import Field
 
 from .finding_model import FindingModelBase
+from .search_index import SearchIndex, SearchIndexRecord, SearchResult
 
 
 def get_current_datetime():
     return datetime.datetime.now(datetime.UTC)
 
 
+search_index = SearchIndex("finding_models")
+
+
 class FindingModelDb(FindingModelBase, Document):  # type: ignore[misc]
     """The definition of a radiology finding with details on the attributes that a radiologist might use to
     characterize the finding in a radiology report. This class is used to store finding definitions in the database."""
+
+    def __init__(self, **data):
+        super().__init__(**data)
 
     active: bool = Field(
         default=True,
@@ -34,11 +42,15 @@ class FindingModelDb(FindingModelBase, Document):  # type: ignore[misc]
         description="The date and time the finding definition was last updated",
     )
 
-    @before_event(Insert)
-    def set_created_at(self):
-        self.created_at = get_current_datetime()
+    @after_event(Save)
+    def add_to_search_index(self):
+        search_index.add_or_update_record(self.to_search_index_record())
 
-    @before_event(Update, Replace, SaveChanges)
+    @after_event(Delete)
+    def remove_from_search_index(self):
+        search_index.remove_record(self.id)
+
+    @before_event(Save, Update, Replace)
     def set_updated_at(self):
         self.updated_at = get_current_datetime()
 
@@ -52,4 +64,23 @@ class FindingModelDb(FindingModelBase, Document):  # type: ignore[misc]
     @classmethod
     async def get_many(cls, ids: list[str]) -> Sequence["FindingModelDb"]:
         obj_ids: list[ObjectId] = [ObjectId(id) for id in ids]
-        return await cls.find(In(cls.id, obj_ids)).to_list()
+        return await cls.find({"_id": {"$in": obj_ids}}).to_list()
+
+    @classmethod
+    async def semantic_search(cls, query: str, top_k: int = 5) -> Sequence["FindingModelDb"]:
+        results: Sequence[SearchResult] = await search_index.search(query, top_k=top_k)
+        return await cls.get_many([r.model_id for r in results])
+
+    def to_search_index_record(self) -> SearchIndexRecord:
+        return SearchIndexRecord(
+            model_id=str(self.id),
+            name=self.name,
+            tags=self.tags,
+            text=f"{self.name}\n\nDescription: {self.description}",
+        )
+
+    @classmethod
+    async def initialize_search_index(cls):
+        # Get all the records, turning them into SearchIndexRecord objects using an async list comprehension
+        records = [doc.to_search_index_record() async for doc in cls.find()]
+        search_index.build_semantic_indices(records, drop_if_exists=True)
