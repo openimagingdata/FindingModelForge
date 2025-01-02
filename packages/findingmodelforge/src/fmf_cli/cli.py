@@ -3,7 +3,7 @@ from pathlib import Path
 
 import click
 from findingmodelforge.config import settings
-from findingmodelforge.database import init_document_models, search
+from findingmodelforge.database import init_document_models
 from findingmodelforge.finding_info_tools import describe_finding_name, get_detail_on_finding
 from findingmodelforge.finding_model_tools import (
     create_finding_model_from_markdown,
@@ -151,7 +151,7 @@ def search_models(query: str, num_results: int = 5):
         with console.status("[bold green] Initializing database..."):
             await init_document_models()
         with console.status("[bold green] Searching models..."):
-            models = await search(query, top_k=num_results)
+            models = await FindingModelDb.semantic_search(query, top_k=num_results)
         if not models:
             console.print("[bold red]No models found.")
             return
