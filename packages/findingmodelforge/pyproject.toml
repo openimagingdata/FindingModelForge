@@ -18,7 +18,7 @@ dependencies = [
     "pydantic-settings>=2.6.1",
     "pydantic>=2.9.2",
     "pymongo>=4.9.2",
-    "lancedb>=0.17.0",
+    "lancedb>=0.17.1",
     "tantivy==0.20.1",
     "rerankers[gpt]>=0.6.1",
 ]
@@ -29,6 +29,13 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Operating System :: OS Independent",
 ]
+
+[tool.uv.sources]
+lancedb = { index = "lancedb" }
+
+[[tool.uv.index]]
+name = "lancedb"
+url = "https://pypi.fury.io/lancedb/"
 
 [project.urls]
 Homepage = "https://github.com/openimagingdata/FindingModelForge"
