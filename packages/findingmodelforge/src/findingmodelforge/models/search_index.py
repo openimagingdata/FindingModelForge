@@ -1,7 +1,7 @@
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, NamedTuple, Sequence, TypedDict
 
-import lancedb
+import lancedb  # type: ignore
 from lancedb.embeddings import OpenAIEmbeddings, get_registry  # type: ignore
 from lancedb.pydantic import LanceModel, Vector  # type: ignore
 from rerankers import Reranker  # type: ignore
@@ -9,11 +9,11 @@ from rerankers import Reranker  # type: ignore
 from ..config import settings
 
 if TYPE_CHECKING:
-    from rerankers.reranker import BaseRanker
+    from rerankers.reranker import BaseRanker  # type: ignore
 
 
 def _lancedb_connection_closure():
-    lancedb_connection: lancedb.DBConnection | None = None
+    lancedb_connection: lancedb.DBConnection | None = None  # type: ignore
 
     def _get_lancedb_connection() -> lancedb.DBConnection:
         nonlocal lancedb_connection
@@ -48,7 +48,7 @@ class SearchIndex:
 
         def init_embedding_model():
             registry = get_registry()
-            openai_embedding: OpenAIEmbeddings = registry.get("openai")
+            openai_embedding: OpenAIEmbeddings = registry.get("openai")  # type: ignore
             return openai_embedding.create(
                 name=settings.lancedb_embeddings_model, api_key=settings.openai_api_key.get_secret_value()
             )
@@ -87,6 +87,7 @@ class SearchIndex:
         fm_table = db_conn.create_table(self.table_name, schema=self.schema, mode=mode)
 
         fm_table.add(data_to_load)
+        # TODO: Make sure we create a ANN search index on the vector field
         fm_table.create_fts_index("text", replace=True)
         fm_table.create_scalar_index("model_id", replace=True)
         # TODO: Create an appropriate index on the tags field

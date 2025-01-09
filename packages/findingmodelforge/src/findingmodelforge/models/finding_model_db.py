@@ -48,7 +48,8 @@ class FindingModelDb(FindingModelBase, Document):  # type: ignore[misc]
 
     @after_event(Delete)
     def remove_from_search_index(self):
-        search_index.remove_record(self.id)
+        assert self.id is not None
+        search_index.remove_record(str(self.id))
 
     @before_event(Save, Update, Replace)
     def set_updated_at(self):
@@ -75,7 +76,7 @@ class FindingModelDb(FindingModelBase, Document):  # type: ignore[misc]
         return SearchIndexRecord(
             model_id=str(self.id),
             name=self.name,
-            tags=self.tags,
+            tags=(list(self.tags) if self.tags else []),
             text=f"{self.name}\n\nDescription: {self.description}",
         )
 
@@ -83,4 +84,4 @@ class FindingModelDb(FindingModelBase, Document):  # type: ignore[misc]
     async def initialize_search_index(cls):
         # Get all the records, turning them into SearchIndexRecord objects using an async list comprehension
         records = [doc.to_search_index_record() async for doc in cls.find()]
-        search_index.build_semantic_indices(records, drop_if_exists=True)
+        await search_index.build_semantic_indices(records, drop_if_exists=True)
