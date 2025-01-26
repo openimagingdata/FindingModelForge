@@ -14,7 +14,7 @@ def set_test_settings():
     settings.environment = "testing"
 
 
-@pytest_asyncio.fixture()
+@pytest_asyncio.fixture(scope="function")
 async def db_init() -> AsyncGenerator[None, None]:
     client: AsyncIOMotorClient = AsyncIOMotorClient(str(settings.mongo_dsn.get_secret_value()))
     database = client.get_database(settings.database_name)

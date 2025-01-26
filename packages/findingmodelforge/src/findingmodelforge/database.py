@@ -1,3 +1,5 @@
+from typing import Callable, Coroutine, Optional
+
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
 from .config import settings
@@ -7,7 +9,7 @@ from .models.finding_model_db import FindingModelDb
 # from .models.user_db import UserDb
 
 
-def _mongodb_client_closure():
+def _mongodb_client_closure() -> Callable[[], AsyncIOMotorClient]:
     mongodb_client: AsyncIOMotorClient | None = None
 
     def _get_mongodb_client() -> AsyncIOMotorClient:
@@ -27,12 +29,12 @@ def get_mongodb_database() -> AsyncIOMotorDatabase:
     return db
 
 
-def _beanie_initializer_closure():
+def _beanie_initializer_closure() -> Callable[[Optional[bool]], Coroutine[None, None, None]]:
     from beanie import init_beanie
 
     beanie_initialized = False
 
-    async def _init_beanie(verbose: bool = False) -> None:
+    async def _init_beanie(verbose: Optional[bool] = False) -> None:
         nonlocal beanie_initialized
         if not beanie_initialized:
             db = get_mongodb_database()

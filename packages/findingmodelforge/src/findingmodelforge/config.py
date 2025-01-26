@@ -1,7 +1,7 @@
 from typing import Annotated, Literal
 
 import openai
-from pydantic import BeforeValidator, Field, HttpUrl, SecretStr
+from pydantic import BeforeValidator, Field, HttpUrl, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -44,6 +44,12 @@ class FindingModelForgeConfig(BaseSettings):
     perplexity_default_model: str = Field(default="llama-3.1-sonar-large-128k-online")
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    @model_validator(mode="after")
+    def fix_database_for_testing(self):
+        if self.environment == "testing":
+            self.database_name = f"{self.database_name}_test"
+        return self
 
     def check_ready_for_openai(self) -> Literal[True]:
         if not self.openai_api_key.get_secret_value():
