@@ -5,14 +5,16 @@
 - [ ] Update the `finding_model` definition:
   - [ ] Add `author`, pointing to the `user` table
   - [ ] Add finding model and attribute identifiers
+  - [ ] Add slug name for finding models and attributes, auto-create
   - [ ] Auto-assign finding model and attribute identifiers
   - [ ] Add links to eventual CDE codes (temp, permanent)
   - [ ] Include ability to have links to ontologies
-  - [ ] Include batch creation of 
+  - [ ] Include batch creation of finding models from a CSV file
 - [ ] Add a `user` object so we can keep track of who we have
   - [ ] Pick the right GitHub attributes to cache
   - [ ] Add local info, especially some kind of authorization (`admin` flag?)
 - [ ] Represent CDEs from [RadElement](https://radelement.org) in the LanceDB to enable searching
+- [ ] Clean up finding model names so they have appropriate capitalization
 
 ## `fmf_cli`
 
@@ -29,4 +31,3 @@
   - [ ] Filter the index by tags, etc.
 - [ ] Add a search function to look for finding models
 - [ ] Clean up the main page layout
-
