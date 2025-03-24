@@ -10,6 +10,18 @@ class AttributeType(str, Enum):
     NUMERIC = "numeric"
 
 
+# Define a ID length constant
+ID_LENGTH = 6
+
+AttributeId = Annotated[
+    str,
+    Field(
+        description="The ID of the attribute in the Open Imaging Data Model Finding Model registry",
+        pattern=r"^OIFMA_[A-Z]{4}_[0-9]{" + str(ID_LENGTH) + r"}$",
+    ),
+]
+
+
 class ChoiceValue(BaseModel):
     """A value that a radiologist might choose for a choice attribute. For example, the severity of a finding might be
     severe, or the shape of a finding might be oval."""
@@ -45,6 +57,12 @@ class ChoiceAttribute(BaseModel):
     )
 
 
+class ChoiceAttributeIded(ChoiceAttribute):
+    """A choice attribute that a radiologist would use to characterize a particular finding in a radiology report"""
+
+    oifma_id: AttributeId
+
+
 class NumericAttribute(BaseModel):
     """An attribute of a radiology finding where the radiologist would choose a number from a range. For example, the
     size of a finding might be up to 10 cm or the number of findings might be between 1 and 10."""
@@ -60,6 +78,12 @@ class NumericAttribute(BaseModel):
     )
 
 
+class NumericAttributeIded(NumericAttribute):
+    """A numeric attribute that a radiologist would use to characterize a particular finding in a radiology report"""
+
+    oifma_id: AttributeId
+
+
 Attribute = Annotated[
     ChoiceAttribute | NumericAttribute,
     Field(
@@ -67,6 +91,15 @@ Attribute = Annotated[
         description="An attribute that a radiologist would use to characterize a particular finding in a radiology report",  # noqa: E501
     ),
 ]
+
+AttributeIded = Annotated[
+    ChoiceAttributeIded | NumericAttributeIded,
+    Field(
+        discriminator="type",
+        description="An attribute that a radiologist would use to characterize a particular finding in a radiology report",  # noqa: E501
+    ),
+]
+# The template for the markdown representation of the finding model
 
 MARKDOWN_TEMPLATE_TEXT = """
 # {{ name }}
@@ -156,3 +189,25 @@ class FindingModelBase(BaseModel):
             description=self.description,
             attributes=self.attributes,
         )
+
+
+class FindingModelIded(FindingModelBase):
+    """A finding model that has OIFM IDs for finding models and OIFMA IDs for attributes"""
+
+    oifm_id: Annotated[
+        str,
+        Field(
+            description="The ID of the finding model in the Open Imaging Data Model Finding Model registry",
+            pattern=r"^OIFM_[A-Z]{4}_[0-9]{" + str(ID_LENGTH) + r"}$",
+        ),
+    ]
+    # TODO: Figure out the issue of overriding the attributes field with a more specific type
+    attributes: Annotated[  # type: ignore
+        Sequence[AttributeIded],
+        Field(
+            ...,
+            min_length=1,
+            title="Attributes",
+            description="The attributes a radiologist would use to characterize a particular finding.",
+        ),
+    ]

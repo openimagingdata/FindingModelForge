@@ -1,0 +1,133 @@
+{
+  "name": "Thyroid nodule",
+  "description": "Thyroid nodules are abnormal growths in the thyroid gland that can be benign or malignant.",
+  "synonyms": [
+    "Thyroid mass",
+    "Thyroid lesion"
+  ],
+  "tags": ["thyroid", "head_neck"],
+  "attributes": [
+    {
+      "name": "size",
+      "description": "The size of the nodule in centimeters.",
+      "type": "numeric",
+      "minimum": 0,
+      "maximum": 10,
+      "unit": "cm",
+      "required": true,
+      "oifma_id": "OIFMA_MGBR_825697"
+    },
+    {
+      "name": "composition",
+      "description": "The composition of the nodule.",
+      "type": "choice",
+      "values": [
+        {
+          "name": "solid"
+        },
+        {
+          "name": "cystic"
+        },
+        {
+          "name": "mixed"
+        }
+      ],
+      "required": true,
+      "max_selected": 1,
+      "oifma_id": "OIFMA_MGBR_450236"
+    },
+    {
+      "name": "margin",
+      "description": "The margin of the nodule.",
+      "type": "choice",
+      "values": [
+        {
+          "name": "smooth"
+        },
+        {
+          "name": "irregular"
+        },
+        {
+          "name": "lobulated"
+        }
+      ],
+      "required": true,
+      "max_selected": 1,
+      "oifma_id": "OIFMA_MGBR_144389"
+    },
+    {
+      "name": "calcifications",
+      "description": "The presence of calcifications.",
+      "type": "choice",
+      "values": [
+        {
+          "name": "microcalcifications"
+        },
+        {
+          "name": "macrocalcifications"
+        },
+        {
+          "name": "none"
+        }
+      ],
+      "required": true,
+      "max_selected": 1,
+      "oifma_id": "OIFMA_MGBR_181434"
+    },
+    {
+      "name": "vascularity",
+      "description": "The vascularity of the nodule.",
+      "type": "choice",
+      "values": [
+        {
+          "name": "hypervascular"
+        },
+        {
+          "name": "hypovascular"
+        },
+        {
+          "name": "avascular"
+        }
+      ],
+      "required": true,
+      "max_selected": 1,
+      "oifma_id": "OIFMA_MGBR_900713"
+    },
+    {
+      "name": "lymphadenopathy",
+      "description": "The presence of lymphadenopathy.",
+      "type": "choice",
+      "values": [
+        {
+          "name": "yes"
+        },
+        {
+          "name": "no"
+        }
+      ],
+      "required": true,
+      "max_selected": 1,
+      "oifma_id": "OIFMA_MGBR_736221"
+    },
+    {
+      "name": "location",
+      "description": "The location of the nodule.",
+      "type": "choice",
+      "values": [
+        {
+          "name": "right lobe"
+        },
+        {
+          "name": "left lobe"
+        },
+        {
+          "name": "isthmus"
+        }
+      ],
+      "required": true,
+      "max_selected": 1,
+      "oifma_id": "OIFMA_MGBR_671195"
+    }
+  ],
+  "oifm_id": "OIFM_MGBR_101099"
+}

@@ -1,4 +1,4 @@
-from typing import Callable, Coroutine, Optional
+from typing import Callable, Coroutine, Optional, Protocol
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
@@ -29,7 +29,11 @@ def get_mongodb_database() -> AsyncIOMotorDatabase:
     return db
 
 
-def _beanie_initializer_closure() -> Callable[[Optional[bool]], Coroutine[None, None, None]]:
+class BeanieInitializer(Protocol):
+    def __call__(self, verbose: Optional[bool] = False) -> Coroutine[None, None, None]: ...
+
+
+def _beanie_initializer_closure() -> BeanieInitializer:
     from beanie import init_beanie
 
     beanie_initialized = False

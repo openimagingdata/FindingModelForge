@@ -1,8 +1,15 @@
+import random
 from pathlib import Path
 
 from findingmodelforge import settings
 from findingmodelforge.models.finding_info import BaseFindingInfo
-from findingmodelforge.models.finding_model import ChoiceAttribute, ChoiceValue, FindingModelBase
+from findingmodelforge.models.finding_model import (
+    ID_LENGTH,
+    ChoiceAttribute,
+    ChoiceValue,
+    FindingModelBase,
+    FindingModelIded,
+)
 
 from .clients import get_async_instructor_client
 from .prompt_template import create_prompt_messages, load_prompt_template
@@ -217,3 +224,30 @@ STANDARD_CODES = [
         "snomed_display": "Anatomic location (property) (qualifier value)",
     },
 ]
+
+
+def add_ids_to_finding_model(
+    finding_model: FindingModelBase,
+    source: str,
+) -> FindingModelIded:
+    """
+    Generate and add OIFM IDs to the ID-less finding models with a source code.
+    """
+
+    def random_digits(length: int) -> str:
+        return "".join([str(random.randint(0, 9)) for _ in range(length)])
+
+    def generate_oifm_id(source: str) -> str:
+        return f"OIFM_{source.upper()}_{random_digits(ID_LENGTH)}"
+
+    def generate_oifma_id(source: str) -> str:
+        return f"OIFMA_{source}_{random_digits(ID_LENGTH)}"
+
+    finding_model_dict = finding_model.model_dump()
+    if "oifm_id" not in finding_model_dict:
+        finding_model_dict["oifm_id"] = generate_oifm_id(source)
+    for attribute in finding_model_dict["attributes"]:
+        if "oifma_id" not in attribute:
+            attribute["oifma_id"] = generate_oifma_id(source)
+
+    return FindingModelIded.model_validate(finding_model_dict)
