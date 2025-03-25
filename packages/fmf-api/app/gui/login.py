@@ -78,6 +78,7 @@ def fetch_user_data(access_token: str) -> dict:
     Fetches the user data from GitHub
     :param access_token: The access token
     :return: The user data"""
+    # TODO: Make this asynchronous
     response = httpx.get(
         settings.github_user_info_url,
         headers={"Authorization": f"token {access_token}"},
