@@ -8,7 +8,7 @@ from findingmodelforge.models.finding_model import (
     ChoiceAttribute,
     ChoiceValue,
     FindingModelBase,
-    FindingModelIded,
+    FindingModelFull,
 )
 
 from .clients import get_async_instructor_client
@@ -229,7 +229,7 @@ STANDARD_CODES = [
 def add_ids_to_finding_model(
     finding_model: FindingModelBase,
     source: str,
-) -> FindingModelIded:
+) -> FindingModelFull:
     """
     Generate and add OIFM IDs to the ID-less finding models with a source code.
     """
@@ -241,7 +241,7 @@ def add_ids_to_finding_model(
         return f"OIFM_{source.upper()}_{random_digits(ID_LENGTH)}"
 
     def generate_oifma_id(source: str) -> str:
-        return f"OIFMA_{source}_{random_digits(ID_LENGTH)}"
+        return f"OIFMA_{source.upper()}_{random_digits(ID_LENGTH)}"
 
     finding_model_dict = finding_model.model_dump()
     if "oifm_id" not in finding_model_dict:
@@ -250,4 +250,4 @@ def add_ids_to_finding_model(
         if "oifma_id" not in attribute:
             attribute["oifma_id"] = generate_oifma_id(source)
 
-    return FindingModelIded.model_validate(finding_model_dict)
+    return FindingModelFull.model_validate(finding_model_dict)
