@@ -44,15 +44,18 @@ def menu() -> None:
     user_profile = app.storage.user.get("data", None)
     if not app.storage.user.get("authenticated", False):
         ui.link("Login", "/login").classes(replace="text-white")
-    else:
-        ui.label("Logged in as " + user_profile["name"]).classes(replace="text-white")
-        if user_profile["avatar_url"]:
-            ui.avatar("img:" + user_profile["avatar_url"], color="blue")
-        ui.link("Logout", "/logout").classes(replace="text-white")
-        ui.link("Home", "/").classes(replace="text-white")
-        ui.link("A", "/a").classes(replace="text-white")
-        ui.link("B", "/b").classes(replace="text-white")
-        ui.link("C", "/c").classes(replace="text-white")
+        return
+    assert user_profile is not None and isinstance(user_profile, dict)
+    user_name = user_profile.get("name", None) or user_profile.get("login", None)
+    logged_in_msg = "Logged in as " + user_name if user_name else "Logged in"
+    ui.label(logged_in_msg).classes(replace="text-white")
+    if user_profile.get("avatar_url", None):
+        ui.avatar("img:" + user_profile["avatar_url"], color="blue")
+    ui.link("Logout", "/logout").classes(replace="text-white")
+    ui.link("Home", "/").classes(replace="text-white")
+    ui.link("A", "/a").classes(replace="text-white")
+    ui.link("B", "/b").classes(replace="text-white")
+    ui.link("C", "/c").classes(replace="text-white")
 
 
 @contextmanager
