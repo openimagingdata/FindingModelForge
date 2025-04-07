@@ -2,7 +2,7 @@ from enum import Enum
 from typing import Annotated, Literal, Sequence
 
 from jinja2 import Template
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class AttributeType(str, Enum):
@@ -26,6 +26,24 @@ class ChoiceValue(BaseModel):
     """A value that a radiologist might choose for a choice attribute. For example, the severity of a finding might be
     severe, or the shape of a finding might be oval."""
 
+    name: str
+    description: str | None = None
+
+
+AttributeValueCode = Annotated[
+    str,
+    Field(
+        description="The code for the value in the Open Imaging Data Model Finding Model registry",
+        pattern=r"^OIFMA_[A-Z]{3,4}_[0-9]{" + str(ID_LENGTH) + r"}\.\d+$",
+    ),
+]
+
+
+class ChoiceValueIded(BaseModel):
+    """A value that a radiologist might choose for a choice attribute. For example, the severity of a finding might be
+    severe, or the shape of a finding might be oval."""
+
+    value_code: AttributeValueCode
     name: str
     description: str | None = None
 
@@ -86,9 +104,29 @@ class ChoiceAttributeIded(BaseModel):
     name: AttributeNameStr
     description: AttributeDescriptionStr = None
     type: Literal[AttributeType.CHOICE] = AttributeType.CHOICE
-    values: Annotated[list[ChoiceValue], Field(..., min_length=2)]
+    values: Annotated[list[ChoiceValueIded], Field(..., min_length=2)]
     required: RequiredBool = False
     max_selected: MaxSelectedInt = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def add_value_codes(cls, data):
+        """Add the value codes to the choice values if they are not already present."""
+        oifma_id = data.get("oifma_id")
+        if oifma_id is None:
+            raise ValueError("Cannot generate value codes without an OIFMA ID")
+        new_values = []
+        for i, value_def in enumerate(data["values"]):
+            value_code = {"value_code": f"{oifma_id}.{i}"}
+            if isinstance(value_def, (ChoiceValue, ChoiceValueIded)):
+                new_value = value_def.model_dump() | value_code
+            elif isinstance(value_def, dict):
+                new_value = value_def | value_code
+            else:
+                raise ValueError("Invalid value definition")
+            new_values.append(new_value)
+        data["values"] = new_values
+        return data
 
 
 ChoiceAttributeIded.__doc__ = ChoiceAttribute.__doc__
