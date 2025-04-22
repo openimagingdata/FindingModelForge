@@ -3,112 +3,39 @@
 version: "3"
 
 vars:
-  LIBRARY_DIR: packages/findingmodelforge
-  API_DIR: packages/fmf-api
-  TMP_PACKAGES_DIR: tmp_packages
-  DB_COMPOSE_FILE: db-compose.yml
-  API_CONTAINER_NAME: ghcr.io/openimagingdata/findingmodelforge-api:latest
-  LIB_CONTAINER_NAME: ghcr.io/openimagingdata/findingmodelforge-files:latest
+  CONTAINER_NAME: ghcr.io/openimagingdata/findingmodelforge:latest
 
 tasks:
-  test_library:
-    desc: "Test the findingmodelforge library"
-    dir: "{{.LIBRARY_DIR}}"
-    env:
-      OPENAI_API_KEY: "dummy"
-      PERPLEXITY_API_KEY: "dummy"
+  default:
     cmds:
-      # Check if the mongodb container is running; if not, have to use 'pytest -m "not needs_db"'
-      - |
-        if [ "$OS" = "Windows_NT" ]; then
-          powershell.exe -Command "docker ps | Select-String -Pattern 'mongodb' -Quiet; if (\$?) { pytest } else { pytest -m 'not needs_db' }"
-        else
-          docker ps | grep -q mongodb && uv run pytest || uv run pytest -m "not needs_db"
-        fi
+      - task -l
     silent: true
 
-  test_library_with_db:
-    desc: "Test the findingmodelforge library with a MongoDB instance"
-    deps:
-      - start_local_mongo
-    dir: "{{.LIBRARY_DIR}}"
-    env:
-      OPENAI_API_KEY: "dummy"
-      PERPLEXITY_API_KEY: "dummy"
+  build_image:
+    desc: "Build the findingmodelforge Docker image"
     cmds:
-      - uv run pytest
+      - echo "Building API image..."
+      - docker build --platform linux/amd64 -t {{.CONTAINER_NAME}} .
     silent: true
-
-  check_library:
-    desc: "Check the findingmodelforge library"
-    dir: "{{.LIBRARY_DIR}}"
+  
+  check:
+    desc: "Linting/formatting/type checking"
     cmds:
       - echo "Checking library..."
       - uv run ruff format
-      - uv run ruff check
-      - uv run mypy src
-      # Do the test_library task
-      - task test_library
+      - uv run ruff check --fix
+      - uv run mypy findingmodelforge
     silent: true
 
-  build_library:
-    desc: "Build the findingmodelforge library"
-    dir: "{{.LIBRARY_DIR}}"
+  run:
+    desc: "Run the findingmodelforge app natively"
     cmds:
-      - echo "Building library..."
-      - uv build
-    silent: true
-
-  build_library_image:
-    desc: "Build the findingmodelforge library container"
-    deps:
-      - build_library
-    dir: "{{.LIBRARY_DIR}}"
-    cmds:
-      - echo "Building findingmodelforge-files image..."
-      - docker build --platform linux/amd64 -t {{.LIB_CONTAINER_NAME}} .
-    silent: true
-
-  build_api_image:
-    desc: "Build the findingmodelforge API container"
-    deps:
-      - build_library_image
-    dir: "{{.API_DIR}}"
-    cmds:
-      - echo "Building API image..."
-      - docker build --platform linux/amd64 -t {{.API_CONTAINER_NAME}} .
-    silent: true
-
-  run_api_native:
-    desc: "Run the findingmodelforge API natively"
-    dir: "{{.API_DIR}}"
-    cmds:
-      - infisical run --env=dev -- uv run uvicorn app.main:app --log-level info --reload  --host localhost --port 8000
+      - uv run uvicorn findingmodelforge.main:app --log-level info --reload  --host localhost --port 8000
     silent: true
   
-  run_api_container:
-    desc: "Run the findingmodelforge API in a container"
-    dir: "{{.API_DIR}}"
+  run_container:
+    desc: "Run the findingmodelforge app in a container"
     cmds:
       - echo "Running API container..."
-      - |
-        if [ "$OS" = "Windows_NT" ]; then
-          echo "Don't know how to run containers on Windows yet"
-        else
-          docker run --name findingmodelforge_api --platform linux/amd64 -d --env-file <(infisical export --format=dotenv) -p 8000:8000 --rm {{.API_CONTAINER_NAME}} /app/run_app_dev.sh
-        fi
-    silent: true
-
-  start_local_mongo:
-    desc: "Start a local MongoDB instance"
-    dir: "{{.LIBRARY_DIR}}"
-    cmds: 
-      - docker compose -f {{.DB_COMPOSE_FILE}} up -d
-    silent: true
-
-  stop_local_mongo:
-    desc: "Stop the local MongoDB instance"
-    dir: "{{.LIBRARY_DIR}}"
-    cmds:
-      - docker compose -f {{.DB_COMPOSE_FILE}} down
+      - docker run --name findingmodelforge --platform linux/amd64 -d --env-file .env -p 8000:8000 --rm {{.CONTAINER_NAME}} /app/run_app.sh
     silent: true

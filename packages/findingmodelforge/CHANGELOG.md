@@ -1,5 +1,0 @@
-## Unreleased
-
-### Refactor
-
-- Adding tests
