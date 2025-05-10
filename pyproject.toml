@@ -5,17 +5,18 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "fastapi[standard]>=0.115.4",
-    "findingmodel",
+    "fastapi[standard]>=0.115.12",
+    "findingmodel>=0.1.4",
     "loguru>=0.7.3",
-    "nicegui>=2.5.0",
-    "pydantic-settings>=2.6.1",
+    "nicegui>=2.16.1",
+    "pydantic-settings>=2.9.1",
 ]
 
 [dependency-groups]
 dev = [
-    "mypy>=1.13.0",
-    "ruff>=0.7.2",
+    "go-task-bin>=3.43.3",
+    "mypy>=1.15.0",
+    "ruff>=0.11.9",
 ]
 
 [tool.ruff]
