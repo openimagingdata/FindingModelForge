@@ -50,23 +50,24 @@ def menu() -> None:
     user_name = user_profile.get("name", None) or user_profile.get("login", None)
     logged_in_msg = "Logged in as " + user_name if user_name else "Logged in"
     ui.label(logged_in_msg).classes(replace="text-white")
-    if user_profile.get("avatar_url", None):
-        ui.avatar("img:" + user_profile["avatar_url"], color="blue")
+    # if user_profile.get("avatar_url", None):
+    #     ui.avatar("img:" + user_profile["avatar_url"], color="blue")
     ui.link("Logout", "/logout").classes(replace="text-white")
-    ui.link("Home", "/").classes(replace="text-white")
-    ui.link("A", "/a").classes(replace="text-white")
-    ui.link("B", "/b").classes(replace="text-white")
-    ui.link("C", "/c").classes(replace="text-white")
+    # ui.link("Home", "/").classes(replace="text-white")
+    # ui.link("A", "/a").classes(replace="text-white")
+    # ui.link("B", "/b").classes(replace="text-white")
+    # ui.link("C", "/c").classes(replace="text-white")
 
 
 @contextmanager
 def frame(navigation_title: str) -> Generator[None, None, None]:
     """Custom page frame to share the same styling and behavior across all pages"""
-    ui.colors(primary="#6E93D6", secondary="#53B689", accent="#111B1E", positive="#53B689")
-    with ui.header():
-        ui.label("FindingModelForge").classes("font-bold")
+    ui.colors(primary="#1E3C74", secondary="#88948F", accent="#C3C9B3", positive="#53B689")
+    with ui.header().classes("items-center"):
+        ui.image("findingmodelforge/anvil-white.png").classes("w-10")
+        ui.label("FindingModelForge").classes("font-bold text-2xl")
         ui.space()
-        ui.label(navigation_title)
+        ui.label(navigation_title).classes("text-lg font-bold")
         ui.space()
         with ui.row():
             menu()

@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 from loguru import logger
@@ -35,5 +37,13 @@ def index() -> RedirectResponse | None:
     return None
 
 
+anvil_svg = (Path(__file__).parent / "anvil.svg").read_text()
 print(settings.model_dump_json(indent=2))
-ui.run_with(FastAPI(), title="Finding Model Forge", storage_secret=settings.storage_secret.get_secret_value())
+print(anvil_svg)
+ui.run_with(
+    FastAPI(),
+    title="Finding Model Forge",
+    storage_secret=settings.storage_secret.get_secret_value(),
+    favicon=anvil_svg,
+    dark=True,
+)

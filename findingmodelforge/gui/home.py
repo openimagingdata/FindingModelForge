@@ -1,48 +1,70 @@
+from findingmodel import FindingModelBase, FindingModelFull
 from findingmodel.tools import (
     add_ids_to_finding_model,
     create_finding_model_from_markdown,
     create_finding_model_stub_from_finding_info,
     describe_finding_name,
 )
-from nicegui import ui
+from nicegui import binding, ui
 
 from . import theme
+
+
+@binding.bindable_dataclass
+class State:
+    running: bool = False
+    finding_name: str | None = None
+    show_markdown_in: bool = False
+    markdown_in: str | None = None
+    source: str = "MGBR"
+    markdown: str = ""
+    json: str = ""
+    show_content: bool = False
+
+    def reset(self) -> None:
+        self.running = False
+        self.finding_name = None
+        self.show_markdown_in = False
+        self.markdown_in = None
+        self.source = "MGBR"
+        self.markdown = ""
+        self.json = ""
+        self.show_content = False
 
 
 def home_page() -> None:
     SOURCES = ["MGBR", "MSFT"]
 
-    state = {
-        "running": False,
-        "finding_name": None,
-        "show_markdown_in": False,
-        "markdown_in": "",
-        "source": "MGBR",
-        "markdown": "",
-        "json": "",
-        "show_content": False,
-    }
+    state = State()
 
     async def handle_submit() -> None:
-        state["running"] = True
-        state["finding_description"] = None
-        # TODO: Validate the form and show an error message if we don't have what we need
-        finding_info = await describe_finding_name(state["finding_name"])
-        # TODO: Check for errors, and put an error message display if relevant
-        if markdown := state.get("markdown_id", ""):
-            assert isinstance(markdown, str)
-            finding_model = await create_finding_model_from_markdown(finding_info, markdown_text=markdown.strip())
+        state.running = True
+        if state.finding_name is None or state.finding_name == "":
+            ui.notify("Please enter a finding name")
+            state.running = False
+            return
+        finding_model: FindingModelFull | FindingModelBase
+        if state.show_markdown_in:
+            if state.markdown_in is None or state.markdown_in == "":
+                ui.notify("Please enter finding information")
+                state.running = False
+                return
+            finding_info = await describe_finding_name(state.finding_name)
+            finding_model = await create_finding_model_from_markdown(
+                finding_info, markdown_text=state.markdown_in.strip()
+            )
         else:
+            finding_info = await describe_finding_name(state.finding_name)
             finding_model = create_finding_model_stub_from_finding_info(finding_info)
-        finding_model = add_ids_to_finding_model(finding_model, source=state["source"])
-        state["markdown"] = finding_model.as_markdown()
-        state["json"] = finding_model.model_dump_json(indent=2, exclude_none=True, by_alias=True)
-        state["show_content"] = state["markdown"] or state["json"]
-        state["running"] = False
+        finding_model = add_ids_to_finding_model(finding_model, source=state.source)
+        state.markdown = finding_model.as_markdown()
+        state.json = finding_model.model_dump_json(indent=2, exclude_none=True, by_alias=True)
+        state.show_content = bool(state.markdown) or bool(state.json)
+        state.running = False
 
     with theme.frame("Home"), ui.column().classes("w-4/5 center"):
         with ui.row():
-            ui.label("Finding Model Forge").classes("text-2xl font-bold")
+            ui.label("Create Finding Model").classes("text-2xl font-bold")
         with ui.row().classes("w-full"):
             ui.input(label="Finding name", placeholder="start typing").bind_value(
                 state, "finding_name"
@@ -57,11 +79,11 @@ def home_page() -> None:
                 label="Finding information (Markdown)",
             ).bind_value(state, "markdown_in").bind_enabled_from(state, "running", lambda x: not x).classes(
                 "w-full"
-            ).props('input-class="h-96 w-full"')
-        with ui.row():
-            ui.button("Submit").on_click(handle_submit).bind_enabled_from(state, "running", lambda x: not x)
+            ).props('input-class="h-64 w-full"')
+        with ui.row().classes("items-center"):
+            ui.button("Submit").on_click(handle_submit).bind_visibility_from(state, "running", lambda x: not x)
             # TODO: Clean up the display of the spinner
-            ui.spinner().bind_visibility_from(state, "running")
+            ui.spinner(type="cube", size="lg").bind_visibility_from(state, "running")
         with ui.row().classes("w-full").bind_visibility_from(state, "show_content"):
             with ui.tabs().classes("w-full") as tabs:
                 markdown = ui.tab("Markdown").bind_enabled_from(state, "markdown", bool)

@@ -11,17 +11,18 @@ from . import theme
 
 
 def login_page() -> None:
-    with theme.frame("Login"), ui.card().classes("fixed-center"):
-        ui.label(text="Login").classes("font-bold text-2xl")
+    ui.add_head_html('<link href="https://unpkg.com/eva-icons@1.1.3/style/eva-icons.css" rel="stylesheet" />')
+    with theme.frame("Login"), ui.card().classes("fixed-center w-1/4"):
+        ui.label(text="Login").classes("font-bold text-2xl centered")
         with ui.row().classes("w-full"):
-            # TODO: Add the github icon in here
             ui.button(
                 "Login with Github",
+                icon="eva-github",
                 on_click=lambda: ui.navigate.to(
                     target=f"{settings.github_authorize_url}?client_id={settings.github_client_id}",
                     new_tab=False,
                 ),
-            ).props("flat")
+            ).classes("w-full text-lg font-bold")
 
 
 @ui.page("/callback")
