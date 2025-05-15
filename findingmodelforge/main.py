@@ -39,7 +39,6 @@ def index() -> RedirectResponse | None:
 
 anvil_svg = (Path(__file__).parent / "anvil.svg").read_text()
 print(settings.model_dump_json(indent=2))
-print(anvil_svg)
 ui.run_with(
     FastAPI(),
     title="Finding Model Forge",
