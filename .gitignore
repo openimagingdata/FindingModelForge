@@ -125,7 +125,7 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env
+.env.*
 .venv
 env/
 venv/
@@ -165,5 +165,3 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 .infisical.json
-packages/findingmodelforge/.python-version
-packages/fmf-api/.python-version
