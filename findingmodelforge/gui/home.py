@@ -178,8 +178,9 @@ def home_page() -> None:
             with ui.row().classes("w-full"):
                 ui.input(label="Finding name", placeholder="start typing").bind_value(
                     state, "finding_name"
-                ).bind_enabled_from(state, "running", lambda x: not x).classes("w-1/2")
-                # .on("keydown.enter", handle_submit).on("blur", handle_submit)
+                ).bind_enabled_from(state, "running", lambda x: not x).classes("w-1/2").props(
+                    'input-style="font-size: 1.1rem; font-family: monospace;"'
+                )
             with (
                 ui.row()
                 .classes("w-full border rounded p-2")
