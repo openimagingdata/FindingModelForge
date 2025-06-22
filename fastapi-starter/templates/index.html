@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900">
+    <!-- Hero Section -->
+    <section class="px-4 py-20 mx-auto max-w-7xl">
+        <div class="text-center">
+            <div class="flex justify-center mb-8">
+                <div class="p-4 bg-primary-100 dark:bg-primary-900 rounded-full">
+                    <img src="/static/images/hammer.svg" alt="FastAPI Starter" class="w-16 h-16">
+                </div>
+            </div>
+            
+            <h1 class="mb-6 text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl dark:text-white">
+                FastAPI Starter
+            </h1>
+            
+            <p class="mb-8 text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+                Modern Python web application template with GitHub OAuth authentication, 
+                JWT tokens, Tailwind CSS, and Alpine.js. Built for rapid development.
+            </p>
+            
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                {% if user %}
+                    <a href="/dashboard" class="inline-flex items-center px-6 py-3 text-base font-medium text-white bg-primary-600 border border-transparent rounded-lg shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors">
+                        Go to Dashboard
+                        <svg class="w-5 h-5 ml-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                        </svg>
+                    </a>
+                {% else %}
+                    <a href="/auth/login" class="inline-flex items-center px-6 py-3 text-base font-medium text-white bg-primary-600 border border-transparent rounded-lg shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors">
+                        Get Started
+                        <svg class="w-5 h-5 ml-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                        </svg>
+                    </a>
+                {% endif %}
+                
+                <a href="https://github.com/openimagingdata/FindingModelForge" target="_blank" class="inline-flex items-center px-6 py-3 text-base font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700 transition-colors">
+                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 0C4.477 0 0 4.484 0 10.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0110 4.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.203 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.942.359.31.678.921.678 1.856 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0020 10.017C20 4.484 15.522 0 10 0z" clip-rule="evenodd"></path>
+                    </svg>
+                    View Source
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="px-4 py-16 mx-auto max-w-7xl">
+        <div class="text-center mb-16">
+            <h2 class="text-3xl font-bold text-gray-900 dark:text-white sm:text-4xl">
+                Everything You Need
+            </h2>
+            <p class="mt-4 text-xl text-gray-600 dark:text-gray-300">
+                Production-ready features for modern web development
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+            <!-- Authentication -->
+            <div class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                <div class="w-12 h-12 mb-4 bg-primary-100 dark:bg-primary-900 rounded-lg flex items-center justify-center">
+                    <svg class="w-6 h-6 text-primary-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clip-rule="evenodd"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                    GitHub OAuth
+                </h3>
+                <p class="text-gray-600 dark:text-gray-300">
+                    Secure authentication with GitHub OAuth and JWT tokens. HTTP-only cookies for XSS protection.
+                </p>
+            </div>
+
+            <!-- Modern Stack -->
+            <div class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                <div class="w-12 h-12 mb-4 bg-secondary-100 dark:bg-secondary-900 rounded-lg flex items-center justify-center">
+                    <svg class="w-6 h-6 text-secondary-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M12.316 3.051a1 1 0 01.633 1.265l-4 12a1 1 0 11-1.898-.632l4-12a1 1 0 011.265-.633zM5.707 6.293a1 1 0 010 1.414L3.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zm8.586 0a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 11-1.414-1.414L16.586 10l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                    Modern Stack
+                </h3>
+                <p class="text-gray-600 dark:text-gray-300">
+                    FastAPI, Tailwind CSS, Alpine.js, and Jinja2 templates. Fast development with hot reload.
+                </p>
+            </div>
+
+            <!-- Developer Tools -->
+            <div class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                <div class="w-12 h-12 mb-4 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
+                    <svg class="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                    Developer Tools
+                </h3>
+                <p class="text-gray-600 dark:text-gray-300">
+                    Ruff linting, MyPy type checking, pytest testing, and pre-commit hooks for code quality.
+                </p>
+            </div>
+
+            <!-- Docker Ready -->
+            <div class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                <div class="w-12 h-12 mb-4 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
+                    <svg class="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm1 3a1 1 0 000 2h12a1 1 0 100-2H4z" clip-rule="evenodd"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                    Docker Ready
+                </h3>
+                <p class="text-gray-600 dark:text-gray-300">
+                    Multi-stage Dockerfile and docker-compose for development and production deployments.
+                </p>
+            </div>
+
+            <!-- CI/CD -->
+            <div class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                <div class="w-12 h-12 mb-4 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
+                    <svg class="w-6 h-6 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                    CI/CD Pipeline
+                </h3>
+                <p class="text-gray-600 dark:text-gray-300">
+                    GitHub Actions workflow with automated testing, linting, and Docker image builds.
+                </p>
+            </div>
+
+            <!-- Health Monitoring -->
+            <div class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                <div class="w-12 h-12 mb-4 bg-red-100 dark:bg-red-900 rounded-lg flex items-center justify-center">
+                    <svg class="w-6 h-6 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 2L3 7v11a1 1 0 001 1h12a1 1 0 001-1V7l-7-5zM8 15a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" clip-rule="evenodd"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                    Health Monitoring
+                </h3>
+                <p class="text-gray-600 dark:text-gray-300">
+                    Production-ready health check endpoints for monitoring and Kubernetes deployments.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tech Stack -->
+    <section class="px-4 py-16 mx-auto max-w-7xl bg-white dark:bg-gray-800">
+        <div class="text-center mb-16">
+            <h2 class="text-3xl font-bold text-gray-900 dark:text-white sm:text-4xl">
+                Built With Modern Tools
+            </h2>
+        </div>
+
+        <div class="grid grid-cols-2 gap-8 md:grid-cols-4 lg:grid-cols-6">
+            <div class="text-center">
+                <div class="text-2xl font-bold text-primary-600 mb-2">FastAPI</div>
+                <p class="text-sm text-gray-600 dark:text-gray-300">Python Web Framework</p>
+            </div>
+            <div class="text-center">
+                <div class="text-2xl font-bold text-blue-600 mb-2">Tailwind</div>
+                <p class="text-sm text-gray-600 dark:text-gray-300">CSS Framework</p>
+            </div>
+            <div class="text-center">
+                <div class="text-2xl font-bold text-green-600 mb-2">Alpine.js</div>
+                <p class="text-sm text-gray-600 dark:text-gray-300">JavaScript Framework</p>
+            </div>
+            <div class="text-center">
+                <div class="text-2xl font-bold text-purple-600 mb-2">JWT</div>
+                <p class="text-sm text-gray-600 dark:text-gray-300">Authentication</p>
+            </div>
+            <div class="text-center">
+                <div class="text-2xl font-bold text-red-600 mb-2">Ruff</div>
+                <p class="text-sm text-gray-600 dark:text-gray-300">Python Linter</p>
+            </div>
+            <div class="text-center">
+                <div class="text-2xl font-bold text-blue-500 mb-2">Docker</div>
+                <p class="text-sm text-gray-600 dark:text-gray-300">Containerization</p>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}
