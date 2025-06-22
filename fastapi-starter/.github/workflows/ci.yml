@@ -1,0 +1,132 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'fastapi-starter/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'fastapi-starter/**'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/fastapi-starter
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./fastapi-starter
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v2
+      
+    - name: Set up Python
+      run: uv python install 3.13
+      
+    - name: Install dependencies
+      run: uv sync --all-extras --dev
+      
+    - name: Run linting
+      run: uv run ruff check .
+      
+    - name: Run formatting check
+      run: uv run ruff format --check .
+      
+    - name: Run type checking
+      run: uv run mypy .
+      
+    - name: Run tests
+      run: uv run pytest --cov=app --cov-report=xml
+      
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./fastapi-starter/coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+
+  security:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./fastapi-starter
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v2
+      
+    - name: Set up Python
+      run: uv python install 3.13
+      
+    - name: Install dependencies
+      run: uv sync --all-extras --dev
+      
+    - name: Run security checks
+      run: |
+        uv run pip install safety bandit
+        uv run safety check
+        uv run bandit -r app/
+
+  build:
+    needs: [test, security]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./fastapi-starter
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+    
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./fastapi-starter
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+    - name: Deploy to production
+      run: |
+        echo "Deployment step would go here"
+        echo "This could trigger deployment to cloud services"
+        echo "For example: Azure Container Instances, AWS ECS, Google Cloud Run, etc."
