@@ -13,7 +13,7 @@ def client() -> TestClient:
 
 
 @pytest.fixture
-def mock_github_user() -> dict:
+def mock_github_user() -> dict[str, str | int | bool]:
     """Mock GitHub user data."""
     return {
         "id": 12345,

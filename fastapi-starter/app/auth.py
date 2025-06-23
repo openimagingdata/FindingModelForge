@@ -2,38 +2,30 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
+import jwt
 from fastapi import HTTPException, Request, status
 from fastapi.security import HTTPBearer
-from jose import JWTError, jwt
-from passlib.context import CryptContext
 
-from .config import settings
+from .config import logger, settings
 from .models import GitHubTokenResponse, GitHubUser, TokenData, User
 
 # Security setup
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
 
 # In-memory user storage (replace with database in production)
 users_db: dict[int, User] = {}
 
 
-def create_access_token(
-    data: dict[str, Any], expires_delta: timedelta | None = None
-) -> str:
+def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> str:
     """Create a JWT access token."""
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.now(UTC) + expires_delta
     else:
-        expire = datetime.now(UTC) + timedelta(
-            minutes=settings.access_token_expire_minutes
-        )
+        expire = datetime.now(UTC) + timedelta(minutes=settings.access_token_expire_minutes)
 
     to_encode.update({"exp": expire, "type": "access"})
-    encoded_jwt = jwt.encode(
-        to_encode, settings.get_secret_key(), algorithm=settings.algorithm
-    )
+    encoded_jwt = jwt.encode(to_encode, settings.get_secret_key(), algorithm=settings.algorithm)
     return encoded_jwt
 
 
@@ -42,18 +34,14 @@ def create_refresh_token(data: dict[str, Any]) -> str:
     to_encode = data.copy()
     expire = datetime.now(UTC) + timedelta(days=settings.refresh_token_expire_days)
     to_encode.update({"exp": expire, "type": "refresh"})
-    encoded_jwt = jwt.encode(
-        to_encode, settings.get_secret_key(), algorithm=settings.algorithm
-    )
+    encoded_jwt = jwt.encode(to_encode, settings.get_secret_key(), algorithm=settings.algorithm)
     return encoded_jwt
 
 
 def verify_token(token: str, token_type: str = "access") -> TokenData | None:
     """Verify and decode a JWT token."""
     try:
-        payload = jwt.decode(
-            token, settings.get_secret_key(), algorithms=[settings.algorithm]
-        )
+        payload = jwt.decode(token, settings.get_secret_key(), algorithms=[settings.algorithm])
 
         # Check token type
         if payload.get("type") != token_type:
@@ -66,7 +54,7 @@ def verify_token(token: str, token_type: str = "access") -> TokenData | None:
             return None
 
         return TokenData(user_id=int(user_id), username=username)
-    except JWTError:
+    except jwt.InvalidTokenError:
         return None
 
 
@@ -87,9 +75,7 @@ async def get_github_access_token(code: str) -> str:
     headers = {"Accept": "application/json"}
 
     async with httpx.AsyncClient() as client:
-        response = await client.post(
-            settings.github_token_url, data=data, headers=headers
-        )
+        response = await client.post(settings.github_token_url, data=data, headers=headers)
 
     if response.status_code != 200:
         raise HTTPException(
@@ -120,6 +106,7 @@ async def get_github_user(access_token: str) -> GitHubUser:
 def get_or_create_user(github_user: GitHubUser) -> User:
     """Get or create user from GitHub user data."""
     # Check if user exists
+    logger.info(f"Checking if user exists in database {github_user.id}")
     for user in users_db.values():
         if user.github_id == github_user.id:
             return user
@@ -171,10 +158,8 @@ async def get_current_user(request: Request) -> User:
 
     user = users_db.get(token_data.user_id)
     if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-        )
-
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    logger.info(f"Current user: {user.login} (ID: {user.id})")
     return user
 
 
@@ -182,5 +167,6 @@ async def get_optional_user(request: Request) -> User | None:
     """Get current user if authenticated, otherwise return None."""
     try:
         return await get_current_user(request)
-    except HTTPException:
+    except HTTPException as e:
+        logger.warning(f"No authenticated user found, returning None ({e})")
         return None

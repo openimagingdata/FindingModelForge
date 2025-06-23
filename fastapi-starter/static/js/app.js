@@ -242,7 +242,7 @@ document.addEventListener('keydown', (e) => {
 
 // Console welcome message
 console.log(
-    '%cWelcome to FastAPI Starter! 🚀',
+    '%cWelcome to Finding Model Forge! 🚀',
     'color: #3b82f6; font-size: 16px; font-weight: bold;'
 );
 console.log(
