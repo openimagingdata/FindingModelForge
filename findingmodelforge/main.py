@@ -2,10 +2,9 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
-from loguru import logger
 from nicegui import App, app, ui
 
-from .common.config import settings
+from .common.config import logger, settings
 from .gui import theme
 from .gui.home import home_page
 from .gui.login import login_page
