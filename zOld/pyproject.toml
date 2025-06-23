@@ -1,0 +1,58 @@
+[project]
+name = "findingmodelforge"
+version = "0.0.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi[standard]>=0.115.12",
+    "findingmodel>=0.1.4",
+    "loguru>=0.7.3",
+    "nicegui>=2.16.1",
+    "pydantic-settings>=2.9.1",
+]
+
+[dependency-groups]
+dev = [
+    "go-task-bin>=3.43.3",
+    "mypy>=1.15.0",
+    "ruff>=0.11.9",
+]
+
+[tool.ruff]
+line-length = 120
+extend-exclude = ["__pycache__", ".venv", "dist"]
+preview = true
+target-version = "py312"
+
+[tool.ruff.lint]
+extend-select = [
+    "B", # flake8-bugbear
+    "C", # flake8-comprehensions
+    "I", # isort
+    "ANN", # type annotations
+    "SIM", # flake8-simplify
+    "TID", # flake8-tidy-imports
+    "RUF", # ruff
+]
+fixable = ["ALL"]
+unfixable = []
+
+# [tool.pytest.ini_options]
+# asyncio_mode = "auto"
+# asyncio_default_fixture_loop_scope = "function"
+# markers = [
+#     "needs_db: Marks tests as needing a database connection",
+#     "asyncio: Marks tests as needing asyncio",
+# ]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_return_any = true
+# Only check file sin the src directory
+files = [
+    "findingmodelforge",
+]
