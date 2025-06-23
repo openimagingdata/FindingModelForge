@@ -1,58 +1,90 @@
 [project]
 name = "findingmodelforge"
-version = "0.0.0"
-description = "Add your description here"
+version = "0.1.0"
+description = "Finding Model Forge application for managing and Open Imaging Finding Models."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "fastapi[standard]>=0.115.12",
-    "findingmodel>=0.1.4",
-    "loguru>=0.7.3",
-    "nicegui>=2.16.1",
-    "pydantic-settings>=2.9.1",
+    "fastapi[standard]>=0.115.0",
+    "jinja2>=3.1.4",
+    "python-multipart>=0.0.9",
+    "httpx>=0.27.0",
+    "pydantic-settings>=2.5.2",
+    "loguru>=0.7.2",
+    "pyjwt[crypto]>=2.10.1",
 ]
 
 [dependency-groups]
 dev = [
-    "go-task-bin>=3.43.3",
-    "mypy>=1.15.0",
-    "ruff>=0.11.9",
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=5.0.0",
+    "ruff>=0.7.0",
+    "mypy>=1.11.0",
+    "pre-commit>=3.8.0",
 ]
 
 [tool.ruff]
 line-length = 120
-extend-exclude = ["__pycache__", ".venv", "dist"]
-preview = true
 target-version = "py312"
+extend-exclude = ["__pycache__", ".venv", "dist", "build", "zOld"]
 
 [tool.ruff.lint]
+ignore = [
+    "ANN401", # any-type
+]
 extend-select = [
-    "B", # flake8-bugbear
-    "C", # flake8-comprehensions
-    "I", # isort
-    "ANN", # type annotations
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "ANN", # flake8-annotations
     "SIM", # flake8-simplify
     "TID", # flake8-tidy-imports
-    "RUF", # ruff
 ]
-fixable = ["ALL"]
-unfixable = []
 
-# [tool.pytest.ini_options]
-# asyncio_mode = "auto"
-# asyncio_default_fixture_loop_scope = "function"
-# markers = [
-#     "needs_db: Marks tests as needing a database connection",
-#     "asyncio: Marks tests as needing asyncio",
-# ]
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ANN"]
 
 [tool.mypy]
+exclude = ["zOld"]
 python_version = "3.12"
 strict = true
-ignore_missing_imports = true
-warn_unused_ignores = true
 warn_return_any = true
-# Only check file sin the src directory
-files = [
-    "findingmodelforge",
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q --cov=app --cov-report=term-missing"
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
 ]
