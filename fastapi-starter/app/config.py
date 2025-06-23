@@ -1,5 +1,6 @@
 import secrets
 
+from loguru import logger as logger
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -7,12 +8,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Application settings with environment variable support."""
 
-    model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", case_sensitive=False, extra="ignore"
-    )
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=False, extra="ignore")
 
     # App Configuration
-    app_name: str = "FastAPI Starter"
+    app_name: str = "Finding Model Forge"
     app_version: str = "0.1.0"
     debug: bool = False
     environment: str = "development"
@@ -22,9 +21,7 @@ class Settings(BaseSettings):
     port: int = 8000
 
     # Security
-    secret_key: SecretStr = Field(
-        default_factory=lambda: SecretStr(secrets.token_hex(32))
-    )
+    secret_key: SecretStr = Field(default_factory=lambda: SecretStr(secrets.token_hex(32)))
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
@@ -38,7 +35,6 @@ class Settings(BaseSettings):
 
     # Application URLs
     base_url: str = "http://localhost:8000"
-    frontend_url: str = "http://localhost:3000"
 
     @property
     def github_redirect_uri(self) -> str:

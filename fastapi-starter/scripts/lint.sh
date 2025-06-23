@@ -3,7 +3,7 @@
 
 set -e
 
-echo "🎨 Formatting and linting FastAPI Starter code..."
+echo "🎨 Formatting and linting Finding Model Forge code..."
 
 # Install dependencies if needed
 if [ ! -d ".venv" ]; then

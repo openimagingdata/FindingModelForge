@@ -3,17 +3,17 @@
 
 set -e
 
-echo "🐳 Building FastAPI Starter Docker image..."
+echo "🐳 Building Finding Model Forge Docker image..."
 
 # Build the production image
-docker build -t fastapi-starter:latest -t fastapi-starter:$(date +%Y%m%d) .
+docker build -t findingmodelforge:latest -t findingmodelforge:$(date +%Y%m%d) .
 
 echo "📊 Image sizes:"
-docker images fastapi-starter --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}"
+docker images findingmodelforge --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}"
 
 echo "✅ Docker build complete!"
 
 # Optional: Push to registry
 # echo "📤 Pushing to registry..."
-# docker push fastapi-starter:latest
-# docker push fastapi-starter:$(date +%Y%m%d)
+# docker push findingmodelforge:latest
+# docker push findingmodelforge:$(date +%Y%m%d)

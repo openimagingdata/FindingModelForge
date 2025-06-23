@@ -8,7 +8,7 @@ def test_index_page(client: TestClient) -> None:
     response = client.get("/")
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
-    assert "FastAPI Starter" in response.text
+    assert "Finding Model Forge" in response.text
 
 
 def test_login_page(client: TestClient) -> None:

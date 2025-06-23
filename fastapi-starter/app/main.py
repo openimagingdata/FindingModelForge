@@ -2,11 +2,9 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from loguru import logger
 
-from .config import settings
+from .config import logger, settings
 from .health import router as health_router
 from .routers import auth, pages
 
@@ -37,15 +35,6 @@ def create_app() -> FastAPI:
         description="Modern FastAPI starter template with GitHub OAuth and JWT authentication",
         debug=settings.debug,
         lifespan=lifespan,
-    )
-
-    # CORS middleware
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["http://localhost:3000", settings.frontend_url],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
     )
 
     # Static files

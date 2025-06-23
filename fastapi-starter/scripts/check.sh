@@ -3,7 +3,7 @@
 
 set -e
 
-echo "🔍 Running FastAPI Starter quality checks..."
+echo "🔍 Running Finding Model Forge quality checks..."
 
 # Install dependencies if needed
 if [ ! -d ".venv" ]; then

@@ -1,3 +1,4 @@
+# mypy: disable-error-code="prop-decorator"
 from datetime import datetime
 
 from fastapi import APIRouter
@@ -39,6 +40,4 @@ async def readiness_check() -> JSONResponse:
 @router.get("/health/live")
 async def liveness_check() -> JSONResponse:
     """Liveness check for Kubernetes deployments."""
-    return JSONResponse(
-        content={"status": "alive", "timestamp": datetime.now().isoformat()}
-    )
+    return JSONResponse(content={"status": "alive", "timestamp": datetime.now().isoformat()})

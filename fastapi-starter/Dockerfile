@@ -1,4 +1,4 @@
-# Multi-stage Dockerfile for FastAPI Starter
+# Multi-stage Dockerfile for Finding Model Forge
 
 # Build stage
 FROM python:3.13-slim as builder

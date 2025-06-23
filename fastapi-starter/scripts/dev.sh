@@ -3,7 +3,7 @@
 
 set -e
 
-echo "🚀 Starting FastAPI Starter development server..."
+echo "🚀 Starting Finding Model Forge development server..."
 
 # Check if .env file exists
 if [ ! -f ".env" ]; then

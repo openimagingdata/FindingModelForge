@@ -3,7 +3,7 @@
 
 set -e
 
-echo "🧪 Running FastAPI Starter tests..."
+echo "🧪 Running Finding Model Forge tests..."
 
 # Install dependencies if needed
 if [ ! -d ".venv" ]; then
