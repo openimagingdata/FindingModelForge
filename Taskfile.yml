@@ -1,0 +1,151 @@
+# https://taskfile.dev
+
+version: "3"
+
+vars:
+  CONTAINER_NAME: ghcr.io/openimagingdata/findingmodelforge:latest
+  DATE_TAG: "{{now | date \"20060102\"}}"
+
+tasks:
+  default:
+    desc: "Show available tasks"
+    cmds:
+      - task -l
+    silent: true
+
+  install:
+    desc: "Install dependencies and setup environment"
+    cmds:
+      - echo "📦 Installing dependencies..."
+      - uv sync --all-extras --dev
+      - echo "✅ Dependencies installed!"
+    silent: true
+
+  setup:
+    desc: "Setup development environment (install deps + create .env)"
+    cmds:
+      - task: install
+      - |
+        if [ ! -f ".env" ]; then
+          echo "📝 Creating .env file from template..."
+          cp .env.example .env
+          echo "⚠️  Please edit .env file with your GitHub OAuth credentials"
+        else
+          echo "✅ .env file already exists"
+        fi
+    silent: true
+
+  # Development tasks
+  dev:
+    desc: "Start development server"
+    cmds:
+      - echo "🚀 Starting Finding Model Forge development server..."
+      - task: setup
+      - echo "🌐 Starting server on http://localhost:8000"
+      - uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    silent: true
+
+  run:
+    desc: "Run the app (alias for dev)"
+    cmds:
+      - task: dev
+
+  # Code quality tasks
+  format:
+    desc: "Format code (fixes formatting issues)"
+    cmds:
+      - echo "🎨 Formatting Finding Model Forge code..."
+      - uv run ruff format .
+      - echo "✅ Code formatting complete!"
+    silent: true
+
+  lint:
+    desc: "Lint and fix code issues"
+    cmds:
+      - echo "🎨 Formatting and linting Finding Model Forge code..."
+      - uv run ruff format .
+      - echo "🔍 Fixing linting issues..."
+      - uv run ruff check --fix .
+      - echo "🔎 Running type checking..."
+      - uv run mypy .
+      - echo "✅ Code formatting and linting complete!"
+    silent: true
+
+  check:
+    desc: "Run quality checks (read-only, for CI)"
+    cmds:
+      - echo "🔍 Running Finding Model Forge quality checks..."
+      - echo "🔍 Checking linting..."
+      - uv run ruff check .
+      - echo "🎨 Checking code formatting..."
+      - uv run ruff format --check .
+      - echo "🔎 Running type checking..."
+      - uv run mypy .
+      - echo "✅ All quality checks passed!"
+    silent: true
+
+  # Testing tasks
+  test:
+    desc: "Run tests with coverage"
+    cmds:
+      - echo "🧪 Running Finding Model Forge tests..."
+      - echo "📋 Running tests with coverage..."
+      - uv run pytest --cov=app --cov-report=term-missing --cov-report=html
+      - echo "✅ All tests passed!"
+    silent: true
+
+  test-full:
+    desc: "Run full test suite with quality checks"
+    cmds:
+      - task: check
+      - task: test
+    silent: true
+
+  # Docker tasks
+  build:
+    desc: "Build Docker image"
+    cmds:
+      - echo "🐳 Building Finding Model Forge Docker image..."
+      - docker build -t findingmodelforge:latest -t findingmodelforge:{{.DATE_TAG}} .
+      - echo "📊 Image sizes:"
+      - docker images findingmodelforge --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}"
+      - echo "✅ Docker build complete!"
+    silent: true
+
+  build-prod:
+    desc: "Build production Docker image with registry tags"
+    cmds:
+      - echo "🐳 Building production Docker image..."
+      - docker build --platform linux/amd64 -t {{.CONTAINER_NAME}} -t findingmodelforge:{{.DATE_TAG}} .
+      - echo "📊 Image sizes:"
+      - docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}" | grep -E "(findingmodelforge|ghcr.io)"
+      - echo "✅ Production build complete!"
+    silent: true
+
+  run-container:
+    desc: "Run the app in a Docker container"
+    cmds:
+      - echo "🐳 Running FindingModelForge container..."
+      - docker run --name findingmodelforge --platform linux/amd64 -d --env-file .env -p 8000:8000 --rm findingmodelforge:latest
+      - echo "🌐 Container running on http://localhost:8000"
+      - echo "💡 Use 'docker logs findingmodelforge' to see logs"
+      - echo "💡 Use 'docker stop findingmodelforge' to stop"
+    silent: true
+
+  # Utility tasks
+  clean:
+    desc: "Clean up build artifacts and caches"
+    cmds:
+      - echo "🧹 Cleaning up..."
+      - rm -rf .pytest_cache/ .mypy_cache/ .ruff_cache/ htmlcov/ .coverage
+      - echo "✅ Cleanup complete!"
+    silent: true
+
+  pre-commit:
+    desc: "Install and run pre-commit hooks"
+    cmds:
+      - echo "🔗 Setting up pre-commit..."
+      - uv run pre-commit install
+      - echo "🔍 Running pre-commit on all files..."
+      - uv run pre-commit run --all-files
+    silent: true

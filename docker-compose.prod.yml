@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   app:
-    build: 
+    build:
       context: .
       target: production
     ports:
@@ -18,14 +18,14 @@ services:
     depends_on:
       - redis
       - db
-    
+
   redis:
     image: redis:7-alpine
     restart: unless-stopped
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes
-    
+
   db:
     image: postgres:15
     environment:
@@ -35,7 +35,7 @@ services:
     restart: unless-stopped
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    
+
   nginx:
     image: nginx:alpine
     ports:

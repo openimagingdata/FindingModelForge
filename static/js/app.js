@@ -4,13 +4,13 @@
 document.addEventListener('alpine:init', () => {
     Alpine.data('app', () => ({
         isDark: false,
-        
+
         init() {
             // Initialize dark mode from localStorage or system preference
-            this.isDark = localStorage.getItem('darkMode') === 'true' || 
+            this.isDark = localStorage.getItem('darkMode') === 'true' ||
                          (!localStorage.getItem('darkMode') && window.matchMedia('(prefers-color-scheme: dark)').matches);
             this.updateDarkMode();
-            
+
             // Listen for system theme changes
             window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
                 if (!localStorage.getItem('darkMode')) {
@@ -19,13 +19,13 @@ document.addEventListener('alpine:init', () => {
                 }
             });
         },
-        
+
         toggleDarkMode() {
             this.isDark = !this.isDark;
             localStorage.setItem('darkMode', this.isDark.toString());
             this.updateDarkMode();
         },
-        
+
         updateDarkMode() {
             if (this.isDark) {
                 document.documentElement.classList.add('dark');
@@ -50,9 +50,9 @@ window.toggleDarkMode = function() {
 
 // Initialize dark mode on page load
 (function() {
-    const isDark = localStorage.getItem('darkMode') === 'true' || 
+    const isDark = localStorage.getItem('darkMode') === 'true' ||
                   (!localStorage.getItem('darkMode') && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    
+
     if (isDark) {
         document.documentElement.classList.add('dark');
     }
@@ -70,7 +70,7 @@ window.utils = {
             this.showNotification('Failed to copy text', 'error');
         }
     },
-    
+
     // Show notification (you can integrate with a notification library)
     showNotification(message, type = 'info') {
         // Simple notification implementation
@@ -82,9 +82,9 @@ window.utils = {
             'bg-blue-500 text-white'
         }`;
         notification.textContent = message;
-        
+
         document.body.appendChild(notification);
-        
+
         // Fade in
         notification.style.opacity = '0';
         notification.style.transform = 'translateX(100%)';
@@ -93,7 +93,7 @@ window.utils = {
             notification.style.opacity = '1';
             notification.style.transform = 'translateX(0)';
         }, 10);
-        
+
         // Remove after 3 seconds
         setTimeout(() => {
             notification.style.opacity = '0';
@@ -103,7 +103,7 @@ window.utils = {
             }, 300);
         }, 3000);
     },
-    
+
     // Format date
     formatDate(dateString) {
         const date = new Date(dateString);
@@ -113,7 +113,7 @@ window.utils = {
             day: 'numeric'
         });
     },
-    
+
     // Format relative time
     formatRelativeTime(dateString) {
         const date = new Date(dateString);
@@ -122,15 +122,15 @@ window.utils = {
         const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
         const diffInHours = Math.floor(diffInMinutes / 60);
         const diffInDays = Math.floor(diffInHours / 24);
-        
+
         if (diffInMinutes < 1) return 'just now';
         if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
         if (diffInHours < 24) return `${diffInHours}h ago`;
         if (diffInDays < 7) return `${diffInDays}d ago`;
-        
+
         return this.formatDate(dateString);
     },
-    
+
     // Debounce function
     debounce(func, wait) {
         let timeout;
@@ -143,7 +143,7 @@ window.utils = {
             timeout = setTimeout(later, wait);
         };
     },
-    
+
     // Throttle function
     throttle(func, limit) {
         let inThrottle;
@@ -163,12 +163,12 @@ window.utils = {
 window.api = {
     // Base API URL
     baseURL: '/api',
-    
+
     // Default headers
     defaultHeaders: {
         'Content-Type': 'application/json',
     },
-    
+
     // Make API request
     async request(endpoint, options = {}) {
         const url = endpoint.startsWith('http') ? endpoint : `${this.baseURL}${endpoint}`;
@@ -176,31 +176,31 @@ window.api = {
             headers: { ...this.defaultHeaders, ...options.headers },
             ...options
         };
-        
+
         try {
             const response = await fetch(url, config);
-            
+
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            
+
             const contentType = response.headers.get('content-type');
             if (contentType && contentType.includes('application/json')) {
                 return await response.json();
             }
-            
+
             return await response.text();
         } catch (error) {
             console.error('API request failed:', error);
             throw error;
         }
     },
-    
+
     // GET request
     async get(endpoint) {
         return this.request(endpoint, { method: 'GET' });
     },
-    
+
     // POST request
     async post(endpoint, data) {
         return this.request(endpoint, {
@@ -208,7 +208,7 @@ window.api = {
             body: JSON.stringify(data)
         });
     },
-    
+
     // PUT request
     async put(endpoint, data) {
         return this.request(endpoint, {
@@ -216,7 +216,7 @@ window.api = {
             body: JSON.stringify(data)
         });
     },
-    
+
     // DELETE request
     async delete(endpoint) {
         return this.request(endpoint, { method: 'DELETE' });
@@ -231,7 +231,7 @@ document.addEventListener('keydown', (e) => {
         // Implement search functionality
         console.log('Search shortcut pressed');
     }
-    
+
     // Ctrl/Cmd + / for help (if implemented)
     if ((e.ctrlKey || e.metaKey) && e.key === '/') {
         e.preventDefault();

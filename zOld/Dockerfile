@@ -12,7 +12,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 # Run uv sync, using the local packages directory for the findingmodelforge package
-RUN uv sync --frozen --no-cache 
+RUN uv sync --frozen --no-cache
 
 EXPOSE 8000
 

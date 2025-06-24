@@ -159,7 +159,7 @@ body.navbar-fixed {
     .no-print {
         display: none !important;
     }
-    
+
     body {
         @apply text-black bg-white;
     }
