@@ -6,10 +6,8 @@ document.addEventListener('alpine:init', () => {
         isDark: false,
 
         init() {
-            // Initialize dark mode from localStorage or system preference
-            this.isDark = localStorage.getItem('darkMode') === 'true' ||
-                         (!localStorage.getItem('darkMode') && window.matchMedia('(prefers-color-scheme: dark)').matches);
-            this.updateDarkMode();
+            // Get current state from DOM (already set by head script)
+            this.isDark = document.documentElement.classList.contains('dark');
 
             // Listen for system theme changes
             window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
@@ -36,7 +34,7 @@ document.addEventListener('alpine:init', () => {
     }));
 });
 
-// Global Alpine.js functions
+// Global Alpine.js functions (for navbar compatibility)
 window.toggleDarkMode = function() {
     const isDark = document.documentElement.classList.contains('dark');
     if (isDark) {
@@ -45,6 +43,14 @@ window.toggleDarkMode = function() {
     } else {
         document.documentElement.classList.add('dark');
         localStorage.setItem('darkMode', 'true');
+    }
+
+    // Update Alpine.js state if available
+    if (window.Alpine && window.Alpine.store) {
+        // Trigger any Alpine components to update their isDark state
+        document.dispatchEvent(new CustomEvent('dark-mode-changed', {
+            detail: { isDark: !isDark }
+        }));
     }
 };
 

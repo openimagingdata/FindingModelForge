@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     # Application URLs
     base_url: str = "http://localhost:8000"
 
+    # MongoDB Configuration
+    mongodb_uri: str = "mongodb://localhost:27017"
+    mongodb_db: str = "findingmodels"
+
     @property
     def github_redirect_uri(self) -> str:
         """GitHub OAuth redirect URI."""

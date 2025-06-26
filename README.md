@@ -76,12 +76,15 @@ production environments.
     - Exports JSON schemas
     - Used for structured data extraction
   - [`motor`](https://github.com/mongodb/motor) - Asynchronous MongoDB operations and queries
+
 - **Web**
   - [`fastapi`](https://github.com/tiangolo/fastapi) - REST API development and endpoint handling
   - [`uvicorn`](https://github.com/encode/uvicorn) - ASGI server implementation for application hosting
   - [`nicegui`](https://github.com/zauberzeug/nicegui/) - Python and browser based front-end
+
 - **Logging**
   - [`loguru`](https://github.com/Delgan/loguru) - Application logging and debugging infrastructure
+
 - **Utility**
   - [`case-switcher`](https://github.com/fields8/case-switcher) - String case format standardization and conversion
   - `platformtools`

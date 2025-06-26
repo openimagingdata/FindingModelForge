@@ -5,8 +5,9 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from .config import logger, settings
+from .database import Database
 from .health import router as health_router
-from .routers import auth, pages
+from .routers import auth, pages, users
 
 
 @asynccontextmanager
@@ -17,6 +18,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info(f"Environment: {settings.environment}")
     logger.info(f"Debug mode: {settings.debug}")
 
+    # Create and connect to MongoDB
+    database = Database()
+    try:
+        await database.connect()
+        logger.info("Connected to MongoDB")
+
+        # Store database in app state for dependency injection
+        app.state.database = database
+
+    except Exception as e:
+        logger.error(f"Failed to connect to MongoDB: {e}")
+        raise
+
     if not settings.github_client_id:
         logger.warning("GitHub OAuth not configured - authentication will not work")
 
@@ -24,6 +38,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Shutdown
     logger.info("Shutting down application")
+    await database.disconnect()
+    logger.info("Disconnected from MongoDB")
 
 
 def create_app() -> FastAPI:
@@ -43,6 +59,7 @@ def create_app() -> FastAPI:
     # Include routers
     app.include_router(health_router, prefix="/api", tags=["health"])
     app.include_router(auth.router, prefix="/auth", tags=["authentication"])
+    app.include_router(users.router, prefix="/api/users", tags=["users"])
     app.include_router(pages.router, tags=["pages"])
 
     return app

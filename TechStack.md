@@ -5,12 +5,14 @@ A modern, production-ready FastAPI application template with GitHub OAuth authen
 ## ✨ Features
 
 ### 🔐 Authentication & Security
+
 - **GitHub OAuth Integration**: Secure login using GitHub OAuth
 - **JWT Token Management**: Access and refresh tokens with HTTP-only cookies
 - **XSS Protection**: Secure token storage preventing client-side access
 - **Environment-based Configuration**: Proper secrets management
 
 ### 🎨 Modern Frontend
+
 - **Tailwind CSS**: Utility-first CSS framework with custom dark theme
 - **Alpine.js**: Lightweight JavaScript framework for interactivity
 - **Jinja2 Templates**: Server-side rendering with template inheritance
@@ -19,6 +21,7 @@ A modern, production-ready FastAPI application template with GitHub OAuth authen
 - **Dark Mode Support**: System preference detection with manual toggle
 
 ### 🔧 Developer Experience
+
 - **uv Package Management**: Fast, modern Python package manager
 - **Ruff Linting & Formatting**: Lightning-fast code quality tools
 - **MyPy Type Checking**: Static type analysis for Python
@@ -26,6 +29,7 @@ A modern, production-ready FastAPI application template with GitHub OAuth authen
 - **Hot Reload**: Fast development feedback loop
 
 ### 🐳 Production Ready
+
 - **Docker Support**: Multi-stage builds for development and production
 - **Health Check Endpoints**: Kubernetes-ready monitoring endpoints
 - **GitHub Actions CI/CD**: Automated testing and Docker builds
@@ -43,37 +47,43 @@ A modern, production-ready FastAPI application template with GitHub OAuth authen
 ### Installation
 
 1. **Clone and setup the project:**
+
    ```bash
    git clone https://github.com/openimagingdata/FindingModelForge.git
    cd FindingModelForge/fastapi-starter
    ```
 
 2. **Install uv (if not already installed):**
+
    ```bash
    curl -LsSf https://astral.sh/uv/install.sh | sh
    ```
 
 3. **Install dependencies:**
+
    ```bash
    uv sync --all-extras --dev
    ```
 
 4. **Configure environment:**
+
    ```bash
    cp .env.example .env
    # Edit .env with your GitHub OAuth credentials
    ```
 
 5. **Run the development server:**
+
    ```bash
    ./scripts/dev.sh
    # Or manually: uv run uvicorn app.main:app --reload
    ```
 
 6. **Visit the application:**
-   - Web Interface: http://localhost:8000
-   - API Documentation: http://localhost:8000/docs
-   - Health Check: http://localhost:8000/api/health
+
+   - Web Interface: <http://localhost:8000>
+   - API Documentation: <http://localhost:8000/docs>
+   - Health Check: <http://localhost:8000/api/health>
 
 ### GitHub OAuth Setup
 
@@ -83,6 +93,7 @@ A modern, production-ready FastAPI application template with GitHub OAuth authen
    - **Homepage URL**: `http://localhost:8000`
    - **Authorization callback URL**: `http://localhost:8000/auth/callback`
 3. Copy the Client ID and Client Secret to your `.env` file:
+
    ```env
    GITHUB_CLIENT_ID=your_client_id_here
    GITHUB_CLIENT_SECRET=your_client_secret_here
@@ -90,7 +101,7 @@ A modern, production-ready FastAPI application template with GitHub OAuth authen
 
 ## 📁 Project Structure
 
-```
+```text
 fastapi-starter/
 ├── app/                    # FastAPI application
 │   ├── main.py            # Main application entry point
@@ -136,21 +147,25 @@ fastapi-starter/
 ### Development Workflow
 
 1. **Start the development server:**
+
    ```bash
    ./scripts/dev.sh
    ```
 
 2. **Run tests:**
+
    ```bash
    ./scripts/test.sh
    ```
 
 3. **Format and lint code:**
+
    ```bash
    ./scripts/lint.sh
    ```
 
 4. **Install pre-commit hooks:**
+
    ```bash
    uv run pre-commit install
    ```
@@ -303,8 +318,8 @@ The template uses in-memory storage by default. To add database support:
 
 ### Interactive Documentation
 
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
+- **Swagger UI**: <http://localhost:8000/docs>
+- **ReDoc**: <http://localhost:8000/redoc>
 
 ### Key Endpoints
 
@@ -354,4 +369,4 @@ This project is licensed under the MIT License - see the [LICENSE](../LICENSE) f
 
 ---
 
-**Happy coding! 🎉**
+## Happy coding! 🎉

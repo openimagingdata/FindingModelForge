@@ -1,14 +1,26 @@
 """Test configuration and fixtures."""
 
+from unittest.mock import MagicMock
+
 import pytest
 from fastapi.testclient import TestClient
 
+from app.database import Database, UserRepo
 from app.main import app
 
 
 @pytest.fixture
 def client() -> TestClient:
     """Create a test client."""
+    # Mock database for tests
+    mock_database = Database()
+
+    # Create a mock UserRepo
+    mock_user_repo = MagicMock(spec=UserRepo)
+    mock_database.user_repo = mock_user_repo
+
+    app.state.database = mock_database
+
     return TestClient(app)
 
 

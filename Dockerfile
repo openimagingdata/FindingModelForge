@@ -1,13 +1,12 @@
 # Multi-stage Dockerfile for Finding Model Forge
 
 # Build stage
-FROM python:3.13-slim as builder
+FROM python:3.13-slim-bullseye AS builder
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+# Ensure all security updates are applied
+RUN apt-get update && apt-get upgrade -y \
+    && apt-get install -y build-essential curl \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
@@ -22,7 +21,13 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-cache --no-dev
 
 # Production stage
-FROM python:3.13-slim as production
+FROM python:3.13-slim-bullseye AS production
+
+# Update package lists and install security updates
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # Install system dependencies for runtime
 RUN apt-get update && apt-get install -y \

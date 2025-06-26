@@ -1,27 +1,24 @@
-<nav class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 fixed top-0 w-full z-50" x-data="{ open: false }">
+<nav class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 fixed top-0 w-full z-50" x-data="{ open: false, isDark: document.documentElement.classList.contains('dark') }">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
             <div class="flex items-center">
                 <!-- Logo -->
                 <div class="flex-shrink-0 flex items-center">
                     <a href="/" class="flex items-center">
-                        <img src="/static/images/hammer.svg" alt="Finding Model Forge" class="w-8 h-8 mr-3">
+                        <div class="p-2 bg-primary-50 dark:bg-primary-800 rounded-full mr-3">
+                            <img src="/static/images/hammer.svg" alt="Finding Model Forge" class="w-8 h-8">
+                        </div>
                         <span class="text-xl font-bold text-gray-900 dark:text-white">Finding Model Forge</span>
                     </a>
                 </div>
 
                 <!-- Desktop Navigation -->
                 <div class="hidden md:ml-6 md:flex md:space-x-8">
-                    <a href="/" class="text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400 px-3 py-2 text-sm font-medium transition-colors">
+                    <a href="/" class="inline-flex items-center text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400 px-3 py-2 text-sm font-medium transition-colors">
+                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="m19.707 9.293-2-2-7-7a1 1 0 0 0-1.414 0l-7 7-2 2a1 1 0 0 0 1.414 1.414L2 10.414V18a2 2 0 0 0 2 2h3a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h3a2 2 0 0 0 2-2v-7.586l.293.293a1 1 0 0 0 1.414-1.414Z"/>
+                        </svg>
                         Home
-                    </a>
-                    {% if user %}
-                    <a href="/dashboard" class="text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400 px-3 py-2 text-sm font-medium transition-colors">
-                        Dashboard
-                    </a>
-                    {% endif %}
-                    <a href="/api/health" target="_blank" class="text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400 px-3 py-2 text-sm font-medium transition-colors">
-                        API
                     </a>
                 </div>
             </div>
@@ -29,7 +26,7 @@
             <!-- Right side -->
             <div class="flex items-center space-x-4">
                 <!-- Theme toggle -->
-                <button @click="toggleDarkMode()"
+                <button @click="toggleDarkMode(); isDark = !isDark"
                         class="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
                     <svg x-show="!isDark" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
@@ -44,12 +41,16 @@
                 <div class="relative" x-data="{ open: false }">
                     <button @click="open = !open" class="flex items-center space-x-3 text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
                         {% if user.avatar_url %}
-                        <img class="h-8 w-8 rounded-full" src="{{ user.avatar_url }}" alt="{{ user.login }}">
+                        <div class="p-1 bg-gray-100 dark:bg-gray-700 rounded-full">
+                            <img class="h-8 w-8 rounded-full" src="{{ user.avatar_url }}" alt="{{ user.login }}">
+                        </div>
                         {% else %}
-                        <div class="h-8 w-8 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
-                            <svg class="h-5 w-5 text-gray-600 dark:text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clip-rule="evenodd"></path>
-                            </svg>
+                        <div class="p-1 bg-gray-100 dark:bg-gray-700 rounded-full">
+                            <div class="h-8 w-8 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
+                                <svg class="h-5 w-5 text-gray-600 dark:text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clip-rule="evenodd"></path>
+                                </svg>
+                            </div>
                         </div>
                         {% endif %}
                         <span class="hidden md:block text-gray-700 dark:text-gray-300">{{ user.name or user.login }}</span>
@@ -66,8 +67,8 @@
                          x-transition:leave-start="transform opacity-100 scale-100"
                          x-transition:leave-end="transform opacity-0 scale-95"
                          class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 border border-gray-200 dark:border-gray-700 z-50">
-                        <a href="/dashboard" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
-                            Dashboard
+                        <a href="/profile" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                            Profile
                         </a>
                         <a href="{{ user.html_url }}" target="_blank" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                             GitHub Profile
@@ -101,13 +102,13 @@
     <!-- Mobile menu -->
     <div x-show="open" x-transition class="md:hidden border-t border-gray-200 dark:border-gray-700">
         <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white dark:bg-gray-800">
-            <a href="/" class="block px-3 py-2 text-base font-medium text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400">
+            <a href="/" class="flex items-center px-3 py-2 text-base font-medium text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400">
+                <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="m19.707 9.293-2-2-7-7a1 1 0 0 0-1.414 0l-7 7-2 2a1 1 0 0 0 1.414 1.414L2 10.414V18a2 2 0 0 0 2 2h3a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h3a2 2 0 0 0 2-2v-7.586l.293.293a1 1 0 0 0 1.414-1.414Z"/>
+                </svg>
                 Home
             </a>
             {% if user %}
-            <a href="/dashboard" class="block px-3 py-2 text-base font-medium text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400">
-                Dashboard
-            </a>
             <a href="/auth/logout" class="block px-3 py-2 text-base font-medium text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400">
                 Sign out
             </a>
@@ -116,9 +117,6 @@
                 Sign in
             </a>
             {% endif %}
-            <a href="/api/health" target="_blank" class="block px-3 py-2 text-base font-medium text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400">
-                API
-            </a>
         </div>
     </div>
 </nav>

@@ -1,5 +1,6 @@
 # mypy: disable-error-code="prop-decorator"
 # mypy: disable-error-code="arg-type"
+from typing import Annotated
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -15,6 +16,8 @@ from app.auth import (
     verify_token,
 )
 from app.config import logger, settings
+from app.database import UserRepo
+from app.dependencies import get_user_repo
 from app.models import Token, User
 
 router = APIRouter()
@@ -47,7 +50,7 @@ async def login() -> RedirectResponse:
 
 
 @router.get("/callback")
-async def auth_callback(code: str) -> RedirectResponse:
+async def auth_callback(code: str, user_repo: Annotated[UserRepo, Depends(get_user_repo)]) -> RedirectResponse:
     """Handle GitHub OAuth callback."""
     try:
         # Exchange code for access token
@@ -58,8 +61,8 @@ async def auth_callback(code: str) -> RedirectResponse:
 
         logger.info(f"GitHub user info: {github_user}")
         # Get or create user in our database
-        user = get_or_create_user(github_user)
-        logger.info(f"User info: {user}")
+        user, is_new_user = await get_or_create_user(github_user, user_repo)
+        logger.info(f"User info: {user}, is_new_user: {is_new_user}")
 
         # Create JWT tokens
         access_token = create_access_token(data={"sub": str(user.id), "username": user.login})
@@ -67,7 +70,10 @@ async def auth_callback(code: str) -> RedirectResponse:
         logger.info(f"Access token: {access_token}")
         logger.info(f"Refresh token: {refresh_token}")
 
-        response = RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+        # Determine redirect URL based on whether user is new
+        redirect_url = "/profile?welcome=true" if is_new_user else "/profile"
+
+        response = RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
         # Set secure HTTP-only cookies
         response.set_cookie(
             key="access_token",
@@ -131,7 +137,13 @@ async def refresh_token(request: Request) -> Token:
     )
 
 
+# Dependency wrapper for get_current_user
+async def get_current_user_dependency(request: Request, user_repo: Annotated[UserRepo, Depends(get_user_repo)]) -> User:
+    """Dependency wrapper for get_current_user."""
+    return await get_current_user(request, user_repo)
+
+
 @router.get("/me", response_model=User)
-async def get_me(current_user: User = Depends(get_current_user)) -> User:  # noqa: B008
+async def get_me(current_user: Annotated[User, Depends(get_current_user_dependency)]) -> User:
     """Get current user information."""
     return current_user

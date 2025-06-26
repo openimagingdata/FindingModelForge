@@ -4,7 +4,9 @@
             <!-- Logo and description -->
             <div class="col-span-1 md:col-span-2">
                 <div class="flex items-center mb-4">
-                    <img src="/static/images/hammer.svg" alt="Finding Model Forge" class="w-8 h-8 mr-3">
+                    <div class="p-2 bg-primary-50 dark:bg-primary-800 rounded-full mr-3">
+                        <img src="/static/images/hammer.svg" alt="Finding Model Forge" class="w-8 h-8">
+                    </div>
                     <span class="text-xl font-bold text-gray-900 dark:text-white">Finding Model Forge</span>
                 </div>
                 <p class="text-gray-600 dark:text-gray-400 max-w-md">
@@ -36,8 +38,8 @@
                     </li>
                     {% if user %}
                     <li>
-                        <a href="/dashboard" class="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
-                            Dashboard
+                        <a href="/profile" class="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+                            Profile
                         </a>
                     </li>
                     {% endif %}

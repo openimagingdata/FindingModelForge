@@ -1,19 +1,33 @@
 # ruff: noqa: B008
 # mypy: disable-error-code="prop-decorator"
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.auth import get_optional_user
 from app.config import logger
+from app.database import UserRepo
+from app.dependencies import get_user_repo
 from app.models import User
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 
 
+# Dependency wrapper for get_optional_user
+async def get_optional_user_dependency(
+    request: Request, user_repo: Annotated[UserRepo, Depends(get_user_repo)]
+) -> User | None:
+    """Dependency wrapper for get_optional_user."""
+    return await get_optional_user(request, user_repo)
+
+
 @router.get("/", response_class=HTMLResponse)
-async def index(request: Request, current_user: User | None = Depends(get_optional_user)) -> HTMLResponse:
+async def index(
+    request: Request, current_user: Annotated[User | None, Depends(get_optional_user_dependency)]
+) -> HTMLResponse:
     """Home page."""
     return templates.TemplateResponse(
         request=request,
@@ -28,22 +42,28 @@ async def login_page(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(request=request, name="login.html", context={"title": "Login"})
 
 
-@router.get("/dashboard", response_class=HTMLResponse)
-async def dashboard(request: Request, current_user: User = Depends(get_optional_user)) -> HTMLResponse:
-    """Protected dashboard page."""
-    logger.info(f"Accessing dashboard for user: {current_user.login if current_user else 'Guest'}")
+@router.get("/profile", response_class=HTMLResponse)
+async def profile(request: Request, current_user: User = Depends(get_optional_user_dependency)) -> HTMLResponse:
+    """Protected profile page."""
+    logger.info(f"Accessing profile for user: {current_user.login if current_user else 'Guest'}")
     if not current_user:
         return templates.TemplateResponse(
             request=request,
             name="login.html",
             context={
                 "title": "Login Required",
-                "message": "Please log in to access the dashboard.",
+                "message": "Please log in to access your profile.",
             },
         )
 
     return templates.TemplateResponse(
         request=request,
-        name="dashboard.html",
-        context={"user": current_user, "title": "Dashboard"},
+        name="profile.html",
+        context={"user": current_user, "title": "Profile"},
     )
+
+
+@router.get("/dashboard", response_class=RedirectResponse)
+async def dashboard_redirect() -> RedirectResponse:
+    """Redirect old dashboard route to profile."""
+    return RedirectResponse(url="/profile", status_code=301)

@@ -7,6 +7,17 @@
 
     <title>{% if title %}{{ title }} - {% endif %}Finding Model Forge</title>
 
+    <!-- Dark mode script - must run before any content renders to prevent flash -->
+    <script>
+        (function() {
+            const isDark = localStorage.getItem('darkMode') === 'true' ||
+                          (!localStorage.getItem('darkMode') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            if (isDark) {
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>

@@ -19,9 +19,9 @@ def test_login_page(client: TestClient) -> None:
     assert "Sign in to your account" in response.text
 
 
-def test_dashboard_page_requires_auth(client: TestClient) -> None:
-    """Test dashboard page requires authentication."""
-    response = client.get("/dashboard")
+def test_profile_page_requires_auth(client: TestClient) -> None:
+    """Test profile page requires authentication."""
+    response = client.get("/profile")
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
     # Should show login form when not authenticated

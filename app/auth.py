@@ -7,13 +7,11 @@ from fastapi import HTTPException, Request, status
 from fastapi.security import HTTPBearer
 
 from .config import logger, settings
-from .models import GitHubTokenResponse, GitHubUser, TokenData, User
+from .database import UserRepo
+from .models import GitHubTokenResponse, GitHubUser, TokenData, User, UserCreate
 
 # Security setup
 security = HTTPBearer()
-
-# In-memory user storage (replace with database in production)
-users_db: dict[int, User] = {}
 
 
 def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> str:
@@ -103,34 +101,34 @@ async def get_github_user(access_token: str) -> GitHubUser:
     return GitHubUser(**response.json())
 
 
-def get_or_create_user(github_user: GitHubUser) -> User:
-    """Get or create user from GitHub user data."""
+async def get_or_create_user(github_user: GitHubUser, user_repo: UserRepo) -> tuple[User, bool]:
+    """Get or create user from GitHub user data.
+
+    Returns:
+        tuple[User, bool]: (user, is_new_user)
+    """
     # Check if user exists
     logger.info(f"Checking if user exists in database {github_user.id}")
-    for user in users_db.values():
-        if user.github_id == github_user.id:
-            return user
+    existing_user = await user_repo.get_user(github_user.id)
+
+    if existing_user:
+        return existing_user, False
 
     # Create new user
-    now = datetime.now(UTC)
-    user = User(
-        id=len(users_db) + 1,
-        github_id=github_user.id,
+    user_create = UserCreate(
+        id=github_user.id,
         login=github_user.login,
         name=github_user.name,
         email=github_user.email,
         avatar_url=github_user.avatar_url,
         html_url=github_user.html_url,
-        is_active=True,
-        created_at=now,
-        updated_at=now,
     )
 
-    users_db[user.id] = user
-    return user
+    user = await user_repo.create_user(user_create)
+    return user, True
 
 
-async def get_current_user(request: Request) -> User:
+async def get_current_user(request: Request, user_repo: UserRepo) -> User:
     """Get current authenticated user from JWT token."""
     # Try to get token from cookie first
     token = request.cookies.get("access_token")
@@ -156,17 +154,19 @@ async def get_current_user(request: Request) -> User:
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    user = users_db.get(token_data.user_id)
+    user = await user_repo.get_user(token_data.user_id)
+
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
     logger.info(f"Current user: {user.login} (ID: {user.id})")
     return user
 
 
-async def get_optional_user(request: Request) -> User | None:
+async def get_optional_user(request: Request, user_repo: UserRepo) -> User | None:
     """Get current user if authenticated, otherwise return None."""
     try:
-        return await get_current_user(request)
+        return await get_current_user(request, user_repo)
     except HTTPException as e:
         logger.warning(f"No authenticated user found, returning None ({e})")
         return None

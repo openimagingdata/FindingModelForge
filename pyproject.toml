@@ -13,6 +13,7 @@ dependencies = [
     "loguru>=0.7.2",
     "pyjwt[crypto]>=2.10.1",
     "go-task-bin>=3.44.0",
+    "motor>=3.6.0",
 ]
 
 [dependency-groups]
@@ -65,6 +66,10 @@ warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = true
 strict_equality = true
+
+[[tool.mypy.overrides]]
+module = ["motor.*", "pymongo.*"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 minversion = "6.0"

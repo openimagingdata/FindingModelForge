@@ -6,17 +6,18 @@ from pydantic import BaseModel, Field
 class UserBase(BaseModel):
     """Base user model."""
 
-    login: str
+    login: str  # GitHub username
     name: str | None = None
     email: str | None = None
     avatar_url: str | None = None
     html_url: str | None = None
+    organizations: list[str] | None = None
 
 
 class UserCreate(UserBase):
     """User creation model."""
 
-    github_id: int
+    id: int  # GitHub ID becomes the primary ID
 
 
 class UserUpdate(BaseModel):
@@ -25,13 +26,14 @@ class UserUpdate(BaseModel):
     name: str | None = None
     email: str | None = None
     avatar_url: str | None = None
+    html_url: str | None = None
+    organizations: list[str] | None = None
 
 
 class User(UserBase):
     """User model with database fields."""
 
-    id: int
-    github_id: int
+    id: int  # GitHub ID as primary key
     is_active: bool = True
     created_at: datetime
     updated_at: datetime
@@ -52,6 +54,14 @@ class GitHubUser(BaseModel):
     site_admin: bool = False
 
 
+class Organization(BaseModel):
+    """Organization model."""
+
+    code: str = Field(min_length=3, max_length=4, pattern=r"^[A-Z]+$")  # 3-4 uppercase letters
+    name: str
+    url: str | None = None
+
+
 class Token(BaseModel):
     """JWT token response."""
 
@@ -64,7 +74,7 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     """Token payload data."""
 
-    user_id: int | None = None
+    user_id: int | None = None  # GitHub ID
     username: str | None = None
 
 
