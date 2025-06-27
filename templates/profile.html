@@ -15,7 +15,7 @@
                     </p>
                 </div>
                 <!-- Save/Cancel buttons -->
-                <div x-show="isEditing" class="flex space-x-3">
+                <div x-show="isEditing" x-cloak class="flex space-x-3">
                     <button @click="cancelEdit()"
                             class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
                         Cancel
@@ -35,6 +35,7 @@
 
         <!-- Welcome message for new users -->
         <div x-show="showWelcome"
+             x-cloak
              x-transition:enter="transition ease-out duration-300"
              x-transition:enter-start="opacity-0 transform scale-95"
              x-transition:enter-end="opacity-100 transform scale-100"
@@ -65,6 +66,7 @@
 
         <!-- Alert for success/error messages -->
         <div x-show="alert.show"
+             x-cloak
              x-transition:enter="transition ease-out duration-300"
              x-transition:enter-start="opacity-0 transform scale-95"
              x-transition:enter-end="opacity-100 transform scale-100"
@@ -110,7 +112,7 @@
                             Your personal details and GitHub information
                         </p>
                     </div>
-                    <button x-show="!isEditing" @click="startEdit()"
+                    <button x-show="!isEditing" x-cloak @click="startEdit()"
                             class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
                         <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -129,7 +131,7 @@
                             <img class="h-16 w-16 rounded-full object-cover border-2 border-gray-200 dark:border-gray-700"
                                  :src="profile.avatar_url || '/static/images/default-avatar.svg'"
                                  :alt="profile.login">
-                            <div x-show="isEditing" class="flex-1">
+                            <div x-show="isEditing" x-cloak class="flex-1">
                                 <label for="avatar_url" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Avatar URL</label>
                                 <input type="url"
                                        id="avatar_url"
@@ -165,7 +167,7 @@
                             <div x-show="!isEditing">
                                 <span class="text-sm text-gray-900 dark:text-white" x-text="profile.name || 'Not provided'"></span>
                             </div>
-                            <div x-show="isEditing">
+                            <div x-show="isEditing" x-cloak>
                                 <input type="text"
                                        x-model="profile.name"
                                        class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white sm:text-sm"
@@ -181,7 +183,7 @@
                             <div x-show="!isEditing">
                                 <span class="text-sm text-gray-900 dark:text-white" x-text="profile.email || 'Not provided'"></span>
                             </div>
-                            <div x-show="isEditing">
+                            <div x-show="isEditing" x-cloak>
                                 <input type="email"
                                        x-model="profile.email"
                                        class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white sm:text-sm"
@@ -209,7 +211,7 @@
                     <div class="sm:col-span-2">
                         <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Organizations</dt>
                         <dd>
-                            <div x-show="!isEditing">
+                            <div x-show="!isEditing" x-cloak>
                                 <div x-show="profile.organizations && profile.organizations.length > 0" class="flex flex-wrap gap-2">
                                     <template x-for="org in profile.organizations" :key="org">
                                         <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-100" x-text="org"></span>
@@ -217,7 +219,7 @@
                                 </div>
                                 <span x-show="!profile.organizations || profile.organizations.length === 0" class="text-sm text-gray-500 dark:text-gray-400">No organizations</span>
                             </div>
-                            <div x-show="isEditing">
+                            <div x-show="isEditing" x-cloak>
                                 <div class="space-y-3">
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

@@ -4,9 +4,9 @@
             <div class="flex items-center">
                 <!-- Logo -->
                 <div class="flex-shrink-0 flex items-center">
-                    <a href="/" class="flex items-center">
+                    <a href="{{ url_for('index') }}" class="flex items-center">
                         <div class="p-2 bg-primary-50 dark:bg-primary-800 rounded-full mr-3">
-                            <img src="/static/images/hammer.svg" alt="Finding Model Forge" class="w-8 h-8">
+                            <img src="{{ url_for('static', path='images/hammer.svg') }}" alt="Finding Model Forge" class="w-8 h-8">
                         </div>
                         <span class="text-xl font-bold text-gray-900 dark:text-white">Finding Model Forge</span>
                     </a>
@@ -14,7 +14,7 @@
 
                 <!-- Desktop Navigation -->
                 <div class="hidden md:ml-6 md:flex md:space-x-8">
-                    <a href="/" class="inline-flex items-center text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400 px-3 py-2 text-sm font-medium transition-colors">
+                    <a href="{{ url_for('index') }}" class="inline-flex items-center text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400 px-3 py-2 text-sm font-medium transition-colors">
                         <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                             <path d="m19.707 9.293-2-2-7-7a1 1 0 0 0-1.414 0l-7 7-2 2a1 1 0 0 0 1.414 1.414L2 10.414V18a2 2 0 0 0 2 2h3a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h3a2 2 0 0 0 2-2v-7.586l.293.293a1 1 0 0 0 1.414-1.414Z"/>
                         </svg>
@@ -59,7 +59,7 @@
                         </svg>
                     </button>
 
-                    <div x-show="open" @click.away="open = false"
+                    <div x-cloak x-show="open" @click.away="open = false"
                          x-transition:enter="transition ease-out duration-200"
                          x-transition:enter-start="transform opacity-0 scale-95"
                          x-transition:enter-end="transform opacity-100 scale-100"
@@ -67,21 +67,21 @@
                          x-transition:leave-start="transform opacity-100 scale-100"
                          x-transition:leave-end="transform opacity-0 scale-95"
                          class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 border border-gray-200 dark:border-gray-700 z-50">
-                        <a href="/profile" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                        <a href="{{ url_for('profile') }}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                             Profile
                         </a>
                         <a href="{{ user.html_url }}" target="_blank" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                             GitHub Profile
                         </a>
                         <div class="border-t border-gray-200 dark:border-gray-700"></div>
-                        <a href="/auth/logout" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                        <a href="{{ url_for('logout') }}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                             Sign out
                         </a>
                     </div>
                 </div>
                 {% else %}
                 <!-- Sign in button -->
-                <a href="/auth/login" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors">
+                <a href="{{ url_for('login') }}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors">
                     Sign in
                 </a>
                 {% endif %}
@@ -102,18 +102,18 @@
     <!-- Mobile menu -->
     <div x-show="open" x-transition class="md:hidden border-t border-gray-200 dark:border-gray-700">
         <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white dark:bg-gray-800">
-            <a href="/" class="flex items-center px-3 py-2 text-base font-medium text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400">
+            <a href="{{ url_for('index') }}" class="flex items-center px-3 py-2 text-base font-medium text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400">
                 <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                     <path d="m19.707 9.293-2-2-7-7a1 1 0 0 0-1.414 0l-7 7-2 2a1 1 0 0 0 1.414 1.414L2 10.414V18a2 2 0 0 0 2 2h3a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h3a2 2 0 0 0 2-2v-7.586l.293.293a1 1 0 0 0 1.414-1.414Z"/>
                 </svg>
                 Home
             </a>
             {% if user %}
-            <a href="/auth/logout" class="block px-3 py-2 text-base font-medium text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400">
+            <a href="{{ url_for('logout') }}" class="block px-3 py-2 text-base font-medium text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400">
                 Sign out
             </a>
             {% else %}
-            <a href="/auth/login" class="block px-3 py-2 text-base font-medium text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400">
+            <a href="{{ url_for('login') }}" class="block px-3 py-2 text-base font-medium text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400">
                 Sign in
             </a>
             {% endif %}

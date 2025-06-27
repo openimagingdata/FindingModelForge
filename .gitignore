@@ -117,3 +117,9 @@ secrets/
 # Temporary folders
 tmp/
 temp/
+node_modules/
+
+# Build artifacts (generated files)
+static/css/output.css
+static/js/alpine.min.js
+static/js/flowbite.min.js

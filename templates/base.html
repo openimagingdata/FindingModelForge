@@ -18,52 +18,23 @@
         })();
     </script>
 
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        primary: {
-                            50: '#eff6ff',
-                            100: '#dbeafe',
-                            500: '#3b82f6',
-                            600: '#2563eb',
-                            700: '#1d4ed8',
-                            800: '#1e40af',
-                            900: '#1e3a8a',
-                        },
-                        secondary: {
-                            50: '#faf5ff',
-                            100: '#f3e8ff',
-                            500: '#8b5cf6',
-                            600: '#7c3aed',
-                            700: '#6d28d9',
-                            800: '#5b21b6',
-                            900: '#4c1d95',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
+    <!-- Local Tailwind CSS build with Flowbite -->
+    <link href="{{ url_for('static', path='css/output.css') }}" rel="stylesheet">
+
+    <!-- Custom styles -->
+    <style>
+        /* Alpine.js cloak - must be inline to prevent FOUC */
+        [x-cloak] { display: none !important; }
+    </style>
 
     <!-- Alpine.js -->
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-
-    <!-- Flowbite -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.1/flowbite.min.css" rel="stylesheet" />
-
-    <!-- Custom CSS -->
-    <link href="/static/css/style.css" rel="stylesheet">
+    <script src="{{ url_for('static', path='js/alpine.min.js') }}" defer></script>
 
     <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="/static/images/hammer.svg">
-    <link rel="alternate icon" href="/static/images/favicon.ico">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', path='images/hammer.svg') }}">
+    <link rel="alternate icon" href="{{ url_for('static', path='images/favicon.ico') }}">
 </head>
-<body class="h-full bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+<body class="h-full bg-gray-50 dark:bg-gray-900">
     <!-- Navigation -->
     {% include 'components/navbar.html' %}
 
@@ -76,9 +47,9 @@
     {% include 'components/footer.html' %}
 
     <!-- Alpine.js and custom JavaScript -->
-    <script src="/static/js/app.js"></script>
+    <script src="{{ url_for('static', path='js/app.js') }}"></script>
 
-    <!-- Flowbite JS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.1/flowbite.min.js"></script>
+    <!-- Flowbite JS (local) -->
+    <script src="{{ url_for('static', path='js/flowbite.min.js') }}"></script>
 </body>
 </html>

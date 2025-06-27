@@ -34,6 +34,7 @@
     "editor.formatOnPaste": true
   },
   "files.associations": {
-    "*.html": "jinja-html"
+    "*.html": "jinja-html",
+    "*.css": "tailwindcss"
   }
 }

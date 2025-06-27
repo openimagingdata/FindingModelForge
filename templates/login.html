@@ -5,7 +5,9 @@
     <div class="max-w-md w-full space-y-8">
         <div>
             <div class="flex justify-center">
-                <img src="/static/images/hammer.svg" alt="Finding Model Forge" class="w-16 h-16">
+                <div class="p-4 bg-primary-50 dark:bg-primary-800 rounded-full">
+                    <img src="http://localhost:8000/static/images/hammer.svg" alt="Finding Model Forge" class="w-16 h-16">
+                </div>
             </div>
             <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
                 Sign in to your account
@@ -23,7 +25,7 @@
         <div class="mt-8 space-y-6">
             <div class="rounded-md shadow-sm -space-y-px">
                 <div class="relative">
-                    <a href="/auth/login"
+                    <a href="{{ url_for('login') }}"
                        class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-gray-800 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors duration-200">
                         <span class="absolute left-0 inset-y-0 flex items-center pl-3">
                             <svg class="h-5 w-5 text-gray-300 group-hover:text-white" fill="currentColor" viewBox="0 0 20 20">
