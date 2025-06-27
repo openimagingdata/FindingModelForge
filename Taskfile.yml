@@ -16,13 +16,15 @@ tasks:
   install:
     desc: "Install dependencies and setup environment"
     cmds:
-      - echo "📦 Installing dependencies..."
+      - echo "📦 Installing Python dependencies..."
       - uv sync --all-extras --dev
+      - echo "📦 Installing Node.js dependencies..."
+      - npm install
       - echo "✅ Dependencies installed!"
     silent: true
 
   setup:
-    desc: "Setup development environment (install deps + create .env)"
+    desc: "Setup development environment (install deps + create .env + build assets)"
     cmds:
       - task: install
       - |
@@ -33,6 +35,9 @@ tasks:
         else
           echo "✅ .env file already exists"
         fi
+      - echo "🎨 Building frontend assets..."
+      - npm run build
+      - echo "✅ Setup complete!"
     silent: true
 
   # Development tasks
@@ -45,10 +50,54 @@ tasks:
       - uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     silent: true
 
+  dev-watch:
+    desc: "Start development server with CSS watch mode"
+    cmds:
+      - echo "🚀 Starting Finding Model Forge with CSS watching..."
+      - task: setup
+      - echo "👀 Starting CSS watch mode in background..."
+      - npm run watch:css &
+      - echo "🌐 Starting server on http://localhost:8000"
+      - echo "💡 CSS changes will auto-rebuild. Press Ctrl+C to stop both processes."
+      - uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    silent: true
+
   run:
     desc: "Run the app (alias for dev)"
     cmds:
       - task: dev
+
+  # Frontend tasks
+  build-css:
+    desc: "Build CSS from Tailwind sources"
+    cmds:
+      - echo "🎨 Building CSS..."
+      - npm run build:css
+      - echo "✅ CSS build complete!"
+    silent: true
+
+  watch-css:
+    desc: "Watch and rebuild CSS on changes"
+    cmds:
+      - echo "👀 Watching CSS for changes..."
+      - npm run watch:css
+    silent: true
+
+  download-libs:
+    desc: "Download JavaScript libraries"
+    cmds:
+      - echo "📥 Downloading JavaScript libraries..."
+      - npm run download:libs
+      - echo "✅ Libraries downloaded!"
+    silent: true
+
+  build-frontend:
+    desc: "Build all frontend assets"
+    cmds:
+      - echo "🎨 Building frontend assets..."
+      - npm run build
+      - echo "✅ Frontend build complete!"
+    silent: true
 
   # Code quality tasks
   format:
@@ -106,6 +155,8 @@ tasks:
     desc: "Build Docker image"
     cmds:
       - echo "🐳 Building Finding Model Forge Docker image..."
+      - echo "🎨 Building frontend assets first..."
+      - npm run build
       - docker build -t findingmodelforge:latest -t findingmodelforge:{{.DATE_TAG}} .
       - echo "📊 Image sizes:"
       - docker images findingmodelforge --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}"
@@ -116,6 +167,8 @@ tasks:
     desc: "Build production Docker image with registry tags"
     cmds:
       - echo "🐳 Building production Docker image..."
+      - echo "🎨 Building frontend assets for production..."
+      - npm run build
       - docker build --platform linux/amd64 -t {{.CONTAINER_NAME}} -t findingmodelforge:{{.DATE_TAG}} .
       - echo "📊 Image sizes:"
       - docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}" | grep -E "(findingmodelforge|ghcr.io)"
@@ -136,8 +189,12 @@ tasks:
   clean:
     desc: "Clean up build artifacts and caches"
     cmds:
-      - echo "🧹 Cleaning up..."
+      - echo "🧹 Cleaning up Python artifacts..."
       - rm -rf .pytest_cache/ .mypy_cache/ .ruff_cache/ htmlcov/ .coverage
+      - echo "🧹 Cleaning up frontend build artifacts..."
+      - rm -f static/css/output.css static/js/alpine.min.js static/js/flowbite.min.js
+      - echo "🧹 Cleaning up Node.js artifacts..."
+      - rm -rf node_modules/
       - echo "✅ Cleanup complete!"
     silent: true
 
