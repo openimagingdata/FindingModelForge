@@ -8,8 +8,9 @@
     "build:css": "npx @tailwindcss/cli -i ./src/input.css -o ./static/css/output.css",
     "watch:css": "npx @tailwindcss/cli -i ./src/input.css -o ./static/css/output.css --watch",
     "download:flowbite": "curl -o static/js/flowbite.min.js https://cdnjs.cloudflare.com/ajax/libs/flowbite/3.1.2/flowbite.min.js",
+    "download:flowbite-map": "curl -o static/js/flowbite.min.js.map https://cdnjs.cloudflare.com/ajax/libs/flowbite/3.1.2/flowbite.min.js.map",
     "download:alpine": "curl -o static/js/alpine.min.js https://unpkg.com/alpinejs@3.13.7/dist/cdn.min.js",
-    "download:libs": "npm run download:flowbite && npm run download:alpine",
+    "download:libs": "npm run download:flowbite && npm run download:flowbite-map && npm run download:alpine",
     "build": "npm run build:css && npm run download:libs",
     "setup": "npm install && npm run build"
   },

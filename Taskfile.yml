@@ -192,7 +192,7 @@ tasks:
       - echo "🧹 Cleaning up Python artifacts..."
       - rm -rf .pytest_cache/ .mypy_cache/ .ruff_cache/ htmlcov/ .coverage
       - echo "🧹 Cleaning up frontend build artifacts..."
-      - rm -f static/css/output.css static/js/alpine.min.js static/js/flowbite.min.js
+      - rm -f static/css/output.css static/js/alpine.min.js static/js/flowbite.min.js static/js/flowbite.min.js.map
       - echo "🧹 Cleaning up Node.js artifacts..."
       - rm -rf node_modules/
       - echo "✅ Cleanup complete!"
