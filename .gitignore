@@ -58,7 +58,8 @@ __pypackages__/
 # Virtual environments
 .env
 .env.*
-!.env.[s|ex]ample
+!.env.sample
+!.env.example
 .venv
 env/
 venv/
