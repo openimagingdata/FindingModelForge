@@ -78,4 +78,6 @@ if __name__ == "__main__":
         port=settings.port,
         reload=settings.debug,
         log_level="info" if not settings.debug else "debug",
+        proxy_headers=True,
+        forwarded_allow_ips=settings.forwarded_allow_ips,
     )

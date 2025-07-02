@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     # Application URLs
     base_url: str = "http://localhost:8000"
 
+    # Proxy Configuration
+    # Set to specific IPs for security (e.g., "172.18.0.1,10.0.0.1") or "*" to trust all
+    forwarded_allow_ips: str = "*"
+
     # MongoDB Configuration
     mongodb_uri: str = "mongodb://localhost:27017"
     mongodb_db: str = "findingmodels"

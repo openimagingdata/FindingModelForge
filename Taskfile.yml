@@ -47,7 +47,7 @@ tasks:
       - echo "🚀 Starting Finding Model Forge development server..."
       - task: setup
       - echo "🌐 Starting server on http://localhost:8000"
-      - uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      - uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --proxy-headers --forwarded-allow-ips "*"
     silent: true
 
   dev-watch:
@@ -59,7 +59,7 @@ tasks:
       - npm run watch:css &
       - echo "🌐 Starting server on http://localhost:8000"
       - echo "💡 CSS changes will auto-rebuild. Press Ctrl+C to stop both processes."
-      - uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      - uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --proxy-headers --forwarded-allow-ips "*"
     silent: true
 
   run:
@@ -151,16 +151,41 @@ tasks:
     silent: true
 
   # Docker tasks
-  build:
-    desc: "Build Docker image"
+  build-docker-only:
+    desc: "Build Docker image (assumes frontend assets already built)"
     cmds:
       - echo "🐳 Building Finding Model Forge Docker image..."
-      - echo "🎨 Building frontend assets first..."
-      - npm run build
       - docker build -t findingmodelforge:latest -t findingmodelforge:{{.DATE_TAG}} .
       - echo "📊 Image sizes:"
       - docker images findingmodelforge --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}"
       - echo "✅ Docker build complete!"
+    silent: true
+
+  build:
+    desc: "Build Docker image with fresh frontend assets"
+    cmds:
+      - echo "🐳 Building Finding Model Forge Docker image..."
+      - echo "🎨 Building frontend assets first..."
+      - npm run build
+      - task: build-docker-only
+    silent: true
+
+  build-check:
+    desc: "Build Docker image with frontend asset validation"
+    cmds:
+      - echo "🔍 Checking for frontend assets..."
+      - |
+        if [ ! -f "static/css/output.css" ]; then
+          echo "❌ Frontend CSS not built. Run 'task build-frontend' first."
+          exit 1
+        fi
+      - |
+        if [ ! -f "static/js/alpine.min.js" ]; then
+          echo "❌ Frontend JS libraries not downloaded. Run 'task build-frontend' first."
+          exit 1
+        fi
+      - echo "✅ Frontend assets found"
+      - task: build-docker-only
     silent: true
 
   build-prod:
@@ -175,6 +200,27 @@ tasks:
       - echo "✅ Production build complete!"
     silent: true
 
+  build-ci:
+    desc: "Build for CI/production (validates frontend assets exist)"
+    cmds:
+      - echo "🔍 Checking for required frontend assets..."
+      - |
+        if [ ! -f "static/css/output.css" ]; then
+          echo "❌ Frontend CSS not built. Building now..."
+          npm run build:css
+        fi
+      - |
+        if [ ! -f "static/js/alpine.min.js" ]; then
+          echo "❌ Frontend JS libraries not downloaded. Downloading now..."
+          npm run download:libs
+        fi
+      - echo "✅ Frontend assets ready"
+      - docker build --platform linux/amd64 -t {{.CONTAINER_NAME}} -t findingmodelforge:{{.DATE_TAG}} .
+      - echo "📊 Image sizes:"
+      - docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}" | grep -E "(findingmodelforge|ghcr.io)"
+      - echo "✅ CI build complete!"
+    silent: true
+
   run-container:
     desc: "Run the app in a Docker container"
     cmds:
@@ -183,6 +229,7 @@ tasks:
       - echo "🌐 Container running on http://localhost:8000"
       - echo "💡 Use 'docker logs findingmodelforge' to see logs"
       - echo "💡 Use 'docker stop findingmodelforge' to stop"
+      - echo "✅ Container automatically handles proxy headers (X-Forwarded-Proto, etc.)"
     silent: true
 
   # Utility tasks
