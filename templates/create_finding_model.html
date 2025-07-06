@@ -1,0 +1,675 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 pb-16 max-w-4xl" x-data="findingModelCreator()">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Create Finding Model</h1>
+        <p class="text-gray-600 dark:text-gray-400">Build a new finding model through our guided workflow</p>
+    </div>
+
+    <!-- Progress Indicator -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div class="flex space-x-4">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium"
+                         :class="step >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400'">
+                        1
+                    </div>
+                    <span class="ml-2 text-sm font-medium"
+                          :class="step >= 1 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'">
+                        Name
+                    </span>
+                </div>
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium"
+                         :class="step >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400'">
+                        2
+                    </div>
+                    <span class="ml-2 text-sm font-medium"
+                          :class="step >= 2 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'">
+                        Edit Description
+                    </span>
+                </div>
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium"
+                         :class="step >= 3 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400'">
+                        3
+                    </div>
+                    <span class="ml-2 text-sm font-medium"
+                          :class="step >= 3 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'">
+                        Review Similar
+                    </span>
+                </div>
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium"
+                         :class="step >= 4 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400'">
+                        4
+                    </div>
+                    <span class="ml-2 text-sm font-medium"
+                          :class="step >= 4 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'">
+                        Edit Attributes
+                    </span>
+                </div>
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium"
+                         :class="step >= 5 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400'">
+                        5
+                    </div>
+                    <span class="ml-2 text-sm font-medium"
+                          :class="step >= 5 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'">
+                        Generate & Download
+                    </span>
+                </div>
+            </div>
+        </div>
+        <div class="mt-4">
+            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                <div class="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                     :style="`width: ${((step - 1) / 4) * 100}%`"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 1: Name Only -->
+    <div x-show="step === 1" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform translate-x-4" x-transition:enter-end="opacity-100 transform translate-x-0">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Finding Model Name</h2>
+            <p class="text-gray-600 dark:text-gray-400 mb-6">Enter a unique name for your finding model. We'll generate a description for you to review and edit.</p>
+
+            <div class="space-y-4">
+                <div>
+                    <label for="finding-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Finding Name
+                    </label>
+                    <input type="text"
+                           id="finding-name"
+                           x-model="formData.name"
+                           @input="checkNameAvailability"
+                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                           placeholder="e.g., pulmonary-nodule, brain-aneurysm, liver-lesion">
+
+                    <!-- Name validation feedback -->
+                    <div x-show="nameCheckResult.checked && nameCheckResult.available"
+                         class="mt-2 text-sm text-green-600 dark:text-green-400 flex items-center">
+                        <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                        </svg>
+                        Name is available
+                    </div>
+
+                    <div x-show="nameCheckResult.checked && !nameCheckResult.available"
+                         class="mt-2 text-sm text-red-600 dark:text-red-400 flex items-center">
+                        <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span x-text="nameCheckResult.message"></span>
+                    </div>
+                </div>
+
+                <div class="flex justify-end pt-4">
+                    <button type="button"
+                            @click="generateFindingInfo"
+                            :disabled="!canProceedToStep2"
+                            :class="canProceedToStep2 ? 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500' : 'bg-gray-300 dark:bg-gray-600 cursor-not-allowed'"
+                            class="px-4 py-2 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors">
+                        <span x-show="!loading">Generate Description</span>
+                        <span x-show="loading" class="flex items-center">
+                            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Generating...
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 2: Edit Generated Description -->
+    <div x-show="step === 2" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform translate-x-4" x-transition:enter-end="opacity-100 transform translate-x-0">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Edit Description</h2>
+            <p class="text-gray-600 dark:text-gray-400 mb-6">Review and edit the AI-generated description for your finding model.</p>
+
+            <div class="space-y-4">
+                <div>
+                    <label for="finding-name-readonly" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Finding Name
+                    </label>
+                    <input type="text"
+                           id="finding-name-readonly"
+                           x-model="formData.name"
+                           readonly
+                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-gray-50 dark:bg-gray-600 text-gray-500 dark:text-gray-400">
+                </div>
+
+                <div>
+                    <label for="description-edit" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Description
+                    </label>
+                    <textarea id="description-edit"
+                              x-model="formData.description"
+                              rows="6"
+                              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                              placeholder="AI-generated description will appear here..."></textarea>
+                </div>
+
+                <div class="space-y-3">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Synonyms
+                        <span class="text-xs text-gray-500 dark:text-gray-400 font-normal">(Click to remove)</span>
+                    </label>
+                    <div x-show="formData.synonyms && formData.synonyms.length > 0" class="flex flex-wrap gap-2">
+                        <template x-for="(synonym, index) in formData.synonyms" :key="synonym">
+                            <button type="button"
+                                    @click="formData.synonyms.splice(index, 1)"
+                                    class="inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 transition-colors dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800 dark:hover:bg-blue-900/30">
+                                <span x-text="synonym"></span>
+                                <svg class="ml-1.5 h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </template>
+                    </div>
+
+                    <!-- Add new synonym input -->
+                    <div class="flex gap-2">
+                        <input type="text"
+                               x-model="newSynonym"
+                               @keyup.enter="addSynonym"
+                               placeholder="Add a synonym..."
+                               class="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+                        <button type="button"
+                                @click="addSynonym"
+                                :disabled="!newSynonym || !newSynonym.trim()"
+                                :class="newSynonym && newSynonym.trim() ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed'"
+                                class="px-3 py-2 text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                            Add
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex justify-between pt-4">
+                    <button type="button"
+                            @click="step = 1"
+                            class="px-4 py-2 text-gray-600 dark:text-gray-400 font-medium hover:text-gray-800 dark:hover:text-gray-200 transition-colors">
+                        ← Back
+                    </button>
+                    <button type="button"
+                            @click="findSimilarModels"
+                            :disabled="!formData.description || loading"
+                            :class="formData.description && !loading ? 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500' : 'bg-gray-300 dark:bg-gray-600 cursor-not-allowed'"
+                            class="px-4 py-2 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors">
+                        <span x-show="!loading">Check for Similar</span>
+                        <span x-show="loading" class="flex items-center">
+                            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Checking... <span class="ml-2 text-xs text-gray-200" x-text="timer + 's'"></span>
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 3: Review Similar Models -->
+    <div x-show="step === 3" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform translate-x-4" x-transition:enter-end="opacity-100 transform translate-x-0">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Review Similar Models</h2>
+            <p class="text-gray-600 dark:text-gray-400 mb-6">We found some existing models that might be similar to yours. Review them to ensure your model is unique.</p>
+
+            <div x-show="similarModels.length > 0" class="space-y-4 mb-6">
+                <template x-for="model in similarModels" :key="model.name">
+                    <div class="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="font-medium text-gray-900 dark:text-white" x-text="model.name"></h3>
+                            <span class="text-sm text-blue-600 dark:text-blue-400 font-medium"
+                                  x-text="`${Math.round(model.similarity * 100)}% similar`"></span>
+                        </div>
+                        <p class="text-gray-600 dark:text-gray-400 text-sm" x-text="model.description"></p>
+                        <div class="mt-2 flex flex-wrap gap-2">
+                            <template x-for="tag in model.tags" :key="tag">
+                                <span class="inline-block bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300 text-xs px-2 py-1 rounded" x-text="tag"></span>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <div x-show="similarModels.length === 0" class="text-center py-8">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No similar models found</h3>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Your finding model appears to be unique!</p>
+            </div>
+
+            <div class="flex justify-between pt-4">
+                <button type="button"
+                        @click="step = 2"
+                        class="px-4 py-2 text-gray-600 dark:text-gray-400 font-medium rounded-md border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                    ← Back
+                </button>
+                <button type="button"
+                        @click="generateStubMarkdown"
+                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                    <span x-show="!loading">Continue to Edit Attributes</span>
+                    <span x-show="loading" class="flex items-center">
+                        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Generating... <span class="ml-2 text-xs text-gray-200" x-text="timer + 's'"></span>
+                    </span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 4: Edit Attributes -->
+    <div x-show="step === 4" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform translate-x-4" x-transition:enter-end="opacity-100 transform translate-x-0">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Edit Attributes</h2>
+            <p class="text-gray-600 dark:text-gray-400 mb-6">Customize the attributes for your finding model. The basic attributes (presence and change from prior) are included, and you can add additional specific attributes.</p>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Finding Name</label>
+                    <input type="text" x-model="formData.name" readonly class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-gray-50 dark:bg-gray-600 text-gray-500 dark:text-gray-400">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description</label>
+                    <textarea x-model="formData.description" rows="4" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"></textarea>
+                </div>
+                <div class="space-y-3">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Synonyms
+                        <span class="text-xs text-gray-500 dark:text-gray-400 font-normal">(Click to remove)</span>
+                    </label>
+                    <div x-show="formData.synonyms && formData.synonyms.length > 0" class="flex flex-wrap gap-2">
+                        <template x-for="(synonym, index) in formData.synonyms" :key="synonym">
+                            <button type="button"
+                                    @click="formData.synonyms.splice(index, 1)"
+                                    class="inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 transition-colors dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800 dark:hover:bg-blue-900/30">
+                                <span x-text="synonym"></span>
+                                <svg class="ml-1.5 h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </template>
+                    </div>
+                    <div class="flex gap-2">
+                        <input type="text" x-model="newSynonym" @keyup.enter="addSynonym" placeholder="Add a synonym..." class="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+                        <button type="button" @click="addSynonym" :disabled="!newSynonym || !newSynonym.trim()" :class="newSynonym && newSynonym.trim() ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed'" class="px-3 py-2 text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">Add</button>
+                    </div>
+                </div>
+
+                <div>
+                    <label for="attributes-markdown" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Attributes Markdown
+                    </label>
+                    <textarea id="attributes-markdown"
+                              x-model="attributesMarkdown"
+                              rows="20"
+                              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white font-mono text-sm"
+                              placeholder="Attributes markdown will be loaded here..."></textarea>
+                </div>
+
+                <div class="flex justify-between pt-4">
+                    <button type="button"
+                            @click="step = 3"
+                            class="px-4 py-2 text-gray-600 dark:text-gray-400 font-medium rounded-md border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                        ← Back
+                    </button>
+                    <button type="button"
+                            @click="generateFinalModel"
+                            :disabled="!attributesMarkdown || loading"
+                            :class="attributesMarkdown && !loading ? 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500' : 'bg-gray-300 dark:bg-gray-600 cursor-not-allowed'"
+                            class="px-4 py-2 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors">
+                        <span x-show="!loading">Generate Final Model</span>
+                        <span x-show="loading" class="flex items-center">
+                            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Generating... <span class="ml-2 text-xs text-gray-200" x-text="timer + 's'"></span>
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 5: Download Generated Model -->
+    <div x-show="step === 5" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform translate-x-4" x-transition:enter-end="opacity-100 transform translate-x-0">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Your Finding Model is Ready!</h2>
+            <p class="text-gray-600 dark:text-gray-400 mb-6">Your finding model has been generated successfully. Download the markdown file to get started.</p>
+
+            <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-6">
+                <h3 class="font-medium text-gray-900 dark:text-white mb-2">Generated Content Preview:</h3>
+                <div class="bg-white dark:bg-gray-800 rounded border p-3 max-h-64 overflow-y-auto">
+                    <pre x-text="generatedMarkdown" class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap"></pre>
+                </div>
+            </div>
+
+            <div class="flex justify-between">
+                <button type="button"
+                        @click="step = 4"
+                        class="px-4 py-2 text-gray-600 dark:text-gray-400 font-medium rounded-md border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                    ← Back
+                </button>
+                <div class="space-x-2">
+                    <button type="button"
+                            @click="downloadMarkdown"
+                            class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
+                        Download Markdown
+                    </button>
+                    <button type="button"
+                            @click="startOver"
+                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                        Create Another
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Display -->
+    <div x-show="error"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 transform translate-y-2"
+         x-transition:enter-end="opacity-100 transform translate-y-0"
+         class="mt-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-md p-4">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                </svg>
+            </div>
+            <div class="ml-3">
+                <h3 class="text-sm font-medium text-red-800 dark:text-red-200">Error</h3>
+                <p class="mt-1 text-sm text-red-700 dark:text-red-300" x-text="error"></p>
+            </div>
+            <div class="ml-auto pl-3">
+                <button @click="error = null" class="text-red-400 hover:text-red-600">
+                    <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function findingModelCreator() {
+    return {
+        step: 1,
+        loading: false,
+        error: null,
+        timer: 0,
+        timerInterval: null,
+        formData: {
+            name: '',
+            description: '',
+            synonyms: []
+        },
+        newSynonym: '',
+        nameCheckResult: {
+            checked: false,
+            available: false,
+            message: ''
+        },
+        findingInfo: null,
+        similarModels: [],
+        attributesMarkdown: '',
+        generatedMarkdown: '',
+        finalModel: null,
+        nameCheckTimeout: null,
+
+        get canProceedToStep2() {
+            return this.formData.name.trim() &&
+                   this.nameCheckResult.checked &&
+                   this.nameCheckResult.available;
+        },
+
+        checkNameAvailability() {
+            // Clear previous timeout
+            if (this.nameCheckTimeout) {
+                clearTimeout(this.nameCheckTimeout);
+            }
+
+            // Reset check result
+            this.nameCheckResult = {
+                checked: false,
+                available: false,
+                message: ''
+            };
+
+            const name = this.formData.name.trim();
+            if (!name) return;
+
+            // Debounce the API call
+            this.nameCheckTimeout = setTimeout(async () => {
+                try {
+                    const response = await fetch('/api/finding-models/check-name', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ name: name })
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        this.nameCheckResult = {
+                            checked: true,
+                            available: result.available,
+                            message: result.message || ''
+                        };
+                    } else {
+                        this.error = result.detail || 'Failed to check name availability';
+                    }
+                } catch (err) {
+                    this.error = 'Network error checking name availability';
+                }
+            }, 500);
+        },
+
+        addSynonym() {
+            const synonym = this.newSynonym.trim();
+            if (synonym && !this.formData.synonyms.includes(synonym)) {
+                this.formData.synonyms.push(synonym);
+                this.newSynonym = '';
+            }
+        },
+
+        async generateFindingInfo() {
+            this.loading = true;
+            this.error = null;
+
+            try {
+                const response = await fetch('/api/finding-models/create-info', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        name: this.formData.name
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    // Set the AI-generated description and synonyms
+                    this.formData.description = result.description;
+                    this.formData.synonyms = result.synonyms || [];
+                    this.findingInfo = result;
+
+                    // Move to step 2 to edit the description
+                    this.step = 2;
+                } else {
+                    this.error = result.detail || 'Failed to generate finding info';
+                }
+            } catch (err) {
+                this.error = 'Network error generating finding info';
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async findSimilarModels() {
+            this.loading = true;
+            this.error = null;
+            this.timer = 0;
+            if (this.timerInterval) clearInterval(this.timerInterval);
+            this.timerInterval = setInterval(() => { this.timer += 1; }, 1000);
+            try {
+                const response = await fetch('/api/finding-models/find-similar', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        name: this.formData.name,
+                        description: this.formData.description,
+                        synonyms: this.formData.synonyms
+                    })
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    this.similarModels = result.similar_models || [];
+                    if (this.similarModels.length === 0) {
+                        // Skip review, go straight to Edit Attributes
+                        await this.generateStubMarkdown();
+                    } else {
+                        this.step = 3;
+                    }
+                } else {
+                    this.error = result.detail || 'Failed to find similar models';
+                }
+            } catch (err) {
+                this.error = 'Network error finding similar models';
+            } finally {
+                this.loading = false;
+                clearInterval(this.timerInterval);
+                this.timerInterval = null;
+            }
+        },
+
+        async generateStubMarkdown() {
+            this.loading = true;
+            this.error = null;
+            this.timer = 0;
+            if (this.timerInterval) clearInterval(this.timerInterval);
+            this.timerInterval = setInterval(() => { this.timer += 1; }, 1000);
+            try {
+                const response = await fetch('/api/finding-models/generate-stub', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        name: this.formData.name,
+                        description: this.formData.description,
+                        synonyms: this.formData.synonyms
+                    })
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    this.attributesMarkdown = result.markdown;
+                    this.step = 4;
+                } else {
+                    this.error = result.detail || 'Failed to generate attributes markdown';
+                }
+            } catch (err) {
+                this.error = 'Network error generating attributes markdown';
+            } finally {
+                this.loading = false;
+                clearInterval(this.timerInterval);
+                this.timerInterval = null;
+            }
+        },
+
+        async generateFinalModel() {
+            this.loading = true;
+            this.error = null;
+            this.timer = 0;
+            if (this.timerInterval) clearInterval(this.timerInterval);
+            this.timerInterval = setInterval(() => { this.timer += 1; }, 1000);
+            try {
+                const response = await fetch('/api/finding-models/generate-model', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        name: this.formData.name,
+                        description: this.formData.description,
+                        synonyms: this.formData.synonyms,
+                        attributes_markdown: this.attributesMarkdown
+                    })
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    this.finalModel = result.model;
+                    this.generatedMarkdown = result.markdown;
+                    this.step = 5;
+                } else {
+                    this.error = result.detail || 'Failed to generate final model';
+                }
+            } catch (err) {
+                this.error = 'Network error generating final model';
+            } finally {
+                this.loading = false;
+                clearInterval(this.timerInterval);
+                this.timerInterval = null;
+            }
+        },
+
+        downloadMarkdown() {
+            const blob = new Blob([this.generatedMarkdown], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${this.formData.name.replace(/\s+/g, '_').toLowerCase()}_finding_model.md`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        },
+
+        startOver() {
+            this.step = 1;
+            this.loading = false;
+            this.error = null;
+            this.formData = {
+                name: '',
+                description: '',
+                synonyms: []
+            };
+            this.nameCheckResult = {
+                checked: false,
+                available: false,
+                message: ''
+            };
+            this.findingInfo = null;
+            this.similarModels = [];
+            this.attributesMarkdown = '';
+            this.generatedMarkdown = '';
+            this.finalModel = null;
+            this.newSynonym = '';
+        }
+    };
+}
+</script>
+{% endblock %}

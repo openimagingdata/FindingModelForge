@@ -1,13 +1,14 @@
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Annotated, Any
 
 import httpx
 import jwt
-from fastapi import HTTPException, Request, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer
 
 from .config import logger, settings
 from .database import UserRepo
+from .dependencies import get_user_repo
 from .models import GitHubTokenResponse, GitHubUser, TokenData, User, UserCreate
 
 # Security setup
@@ -128,7 +129,7 @@ async def get_or_create_user(github_user: GitHubUser, user_repo: UserRepo) -> tu
     return user, True
 
 
-async def get_current_user(request: Request, user_repo: UserRepo) -> User:
+async def get_current_user(request: Request, user_repo: Annotated[UserRepo, Depends(get_user_repo)]) -> User:
     """Get current authenticated user from JWT token."""
     # Try to get token from cookie first
     token = request.cookies.get("access_token")
@@ -163,7 +164,7 @@ async def get_current_user(request: Request, user_repo: UserRepo) -> User:
     return user
 
 
-async def get_optional_user(request: Request, user_repo: UserRepo) -> User | None:
+async def get_optional_user(request: Request, user_repo: Annotated[UserRepo, Depends(get_user_repo)]) -> User | None:
     """Get current user if authenticated, otherwise return None."""
     try:
         return await get_current_user(request, user_repo)

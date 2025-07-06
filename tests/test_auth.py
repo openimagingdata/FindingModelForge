@@ -50,3 +50,16 @@ def test_logout_clears_cookies(client: TestClient) -> None:
 
     # Check redirect location
     assert response.headers["location"] == "/"
+
+
+def test_optional_user_endpoints_work_without_auth(client: TestClient) -> None:
+    """Test that endpoints using get_optional_user work without authentication."""
+    # Test index page (uses get_optional_user)
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+
+    # Test create finding model page (uses get_optional_user)
+    response = client.get("/create-finding-model")
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]

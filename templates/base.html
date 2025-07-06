@@ -34,12 +34,12 @@
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', path='images/hammer.svg') }}">
     <link rel="alternate icon" href="{{ url_for('static', path='images/favicon.ico') }}">
 </head>
-<body class="h-full bg-gray-50 dark:bg-gray-900">
+<body class="h-full bg-gray-50 dark:bg-gray-900 flex flex-col">
     <!-- Navigation -->
     {% include 'components/navbar.html' %}
 
     <!-- Main Content -->
-    <main class="{% if user %}pt-16{% else %}pt-16{% endif %}">
+    <main class="{% if user %}pt-16{% else %}pt-16{% endif %} flex-1">
         {% block content %}{% endblock %}
     </main>
 

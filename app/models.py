@@ -93,3 +93,105 @@ class HealthCheck(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.now)
     version: str
     environment: str
+
+
+# Finding Model Creation Models
+
+
+class FindingNameCheck(BaseModel):
+    """Request to check if a finding name exists."""
+
+    name: str = Field(min_length=2, max_length=200)
+
+
+class FindingInfoRequest(BaseModel):
+    """Request to create finding information from just a name."""
+
+    name: str = Field(min_length=2, max_length=200)
+
+
+class FindingInfoEditRequest(BaseModel):
+    """Request for the user to edit finding information before proceeding."""
+
+    name: str = Field(min_length=2, max_length=200)
+    description: str = Field(min_length=10, max_length=2000)
+    synonyms: list[str] | None = Field(default=None, max_length=20)
+
+
+class SimilarModelsRequest(BaseModel):
+    """Request to find similar models."""
+
+    name: str = Field(min_length=2, max_length=200)
+    description: str = Field(min_length=10, max_length=2000)
+    synonyms: list[str] | None = Field(default=None, max_length=20)
+
+
+class NameAvailabilityResponse(BaseModel):
+    """Response for name availability check."""
+
+    available: bool
+    message: str = ""
+
+
+class IndexEntryResponse(BaseModel):
+    """Response containing index entry information."""
+
+    oifm_id: str
+    name: str
+    filename: str
+    description: str | None = None
+    synonyms: list[str] | None = None
+    tags: list[str] | None = None
+
+
+class FindingInfoResponse(BaseModel):
+    """Response containing basic finding information."""
+
+    name: str
+    description: str
+    synonyms: list[str] | None = None
+
+
+class SimilarModelResponse(BaseModel):
+    """Response containing similar model information."""
+
+    oifm_id: str
+    name: str
+    description: str | None = None
+    synonyms: list[str] | None = None
+
+
+class SimilarModelsAnalysis(BaseModel):
+    """Analysis of similar models."""
+
+    similar_models: list[SimilarModelResponse]
+    recommendation: str  # "edit_existing" or "create_new"
+    confidence: float
+
+
+class FindingModelRequest(BaseModel):
+    """Request to create a full finding model."""
+
+    finding_name: str = Field(min_length=2, max_length=200)
+    description: str = Field(min_length=10, max_length=2000)
+    synonyms: list[str] | None = Field(default=None, max_length=20)
+    tags: list[str] | None = Field(default=None, max_length=20)
+    attributes_markdown: str = Field(min_length=10, max_length=10000)
+
+
+class GenerateModelRequest(BaseModel):
+    """Request to generate the final finding model from FindingInfo and attributes markdown."""
+
+    name: str = Field(min_length=2, max_length=200)
+    description: str = Field(min_length=10, max_length=2000)
+    synonyms: list[str] | None = Field(default=None, max_length=20)
+    attributes_markdown: str = Field(min_length=10, max_length=10000)
+
+
+class FindingModelCreationStep(BaseModel):
+    """Represents the current step in finding model creation."""
+
+    step: int
+    step_name: str
+    completed: bool = False
+    data: dict[str, str] = Field(default_factory=dict)
