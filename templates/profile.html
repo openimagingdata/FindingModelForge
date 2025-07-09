@@ -128,9 +128,19 @@
                     <div class="sm:col-span-2">
                         <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Avatar</dt>
                         <dd class="mt-1 flex items-center space-x-4">
-                            <img class="h-16 w-16 rounded-full object-cover border-2 border-gray-200 dark:border-gray-700"
-                                 :src="profile.avatar_url || '/static/images/default-avatar.svg'"
-                                 :alt="profile.login">
+                            <!-- Use avatar if available, otherwise show initials -->
+                            <div class="h-16 w-16 rounded-full border-2 border-gray-200 dark:border-gray-700 flex-shrink-0">
+                                <img x-show="profile.avatar_url"
+                                     class="h-full w-full rounded-full object-cover"
+                                     :src="profile.avatar_url"
+                                     :alt="profile.login">
+                                <div x-show="!profile.avatar_url"
+                                     class="h-full w-full rounded-full bg-primary-600 flex items-center justify-center">
+                                    <span class="text-white font-medium text-lg"
+                                          x-text="(profile.name || profile.login || 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)">
+                                    </span>
+                                </div>
+                            </div>
                             <div x-show="isEditing" x-cloak class="flex-1">
                                 <label for="avatar_url" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Avatar URL</label>
                                 <input type="url"
