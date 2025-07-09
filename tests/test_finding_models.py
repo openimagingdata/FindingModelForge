@@ -23,6 +23,10 @@ def client() -> TestClient:
     mock_user_repo = MagicMock(spec=UserRepo)
     mock_database.user_repo = mock_user_repo
 
+    # Create a mock finding_index
+    mock_finding_index = MagicMock(spec=Index)
+    mock_database.finding_index = mock_finding_index
+
     app.state.database = mock_database
 
     return TestClient(app)
@@ -42,9 +46,9 @@ def authenticated_client(mock_finding_index: MagicMock) -> Generator[TestClient,
     mock_database = Database()
     mock_user_repo = MagicMock(spec=UserRepo)
     mock_database.user_repo = mock_user_repo
+    mock_database.finding_index = mock_finding_index
 
     app.state.database = mock_database
-    app.state.finding_index = mock_finding_index
 
     def mock_get_current_user() -> User:
         return User(

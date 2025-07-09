@@ -20,6 +20,8 @@ def get_user_repo(database: Annotated[Database, Depends(get_database)]) -> UserR
     return database.user_repo
 
 
-def get_finding_index(request: Request) -> Index:
-    """Get FindingModel Index instance from FastAPI app state."""
-    return request.app.state.finding_index  # type: ignore[no-any-return]
+def get_finding_index(database: Annotated[Database, Depends(get_database)]) -> Index:
+    """Get FindingModel Index instance from the database."""
+    if database.finding_index is None:
+        raise RuntimeError("Database not initialized or FindingModel Index not available")
+    return database.finding_index

@@ -26,13 +26,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
         # Store database in app state for dependency injection
         app.state.database = database
-
-        # Initialize FindingModel Index with the same database connection
-        from findingmodel.index import Index
-
-        index = Index(client=database.client, db_name=settings.mongodb_db)
-        await index.setup_indexes()
-        app.state.finding_index = index
         logger.info("FindingModel Index initialized")
 
     except Exception as e:

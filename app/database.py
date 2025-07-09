@@ -3,8 +3,8 @@
 from datetime import UTC, datetime
 from typing import Any
 
+from findingmodel.index import Index
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
-from pymongo import ASCENDING
 from pymongo.errors import DuplicateKeyError
 
 from .config import settings
@@ -18,6 +18,7 @@ class Database:
         self.client: AsyncIOMotorClient[Any] | None = None
         self.db: AsyncIOMotorDatabase[Any] | None = None
         self.user_repo: UserRepo | None = None
+        self.finding_index: Index | None = None
 
     async def connect(self) -> None:
         """Connect to MongoDB."""
@@ -25,15 +26,15 @@ class Database:
         self.db = self.client[settings.mongodb_db]
         self.user_repo = UserRepo(self.db)
 
-        # Create indexes
-        await self.db.users.create_index([("id", ASCENDING)], unique=True)
-        await self.db.users.create_index([("login", ASCENDING)], unique=True)
+        # Initialize finding index with the same database client
+        self.finding_index = Index(client=self.client, db_name=settings.mongodb_db)
 
     async def disconnect(self) -> None:
         """Disconnect from MongoDB."""
         if self.client:
             self.client.close()
         self.user_repo = None
+        self.finding_index = None
 
 
 class UserRepo:

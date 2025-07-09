@@ -90,11 +90,9 @@ async def test_lifespan_startup_success() -> None:
         async with lifespan(app):
             # Verify startup calls
             mock_database.connect.assert_called_once()
-            mock_index.setup_indexes.assert_called_once()
 
             # Verify app state is set
             assert hasattr(app.state, "database")
-            assert hasattr(app.state, "finding_index")
 
         # Verify shutdown calls
         mock_database.disconnect.assert_called_once()
@@ -137,12 +135,8 @@ async def test_lifespan_warns_when_github_not_configured() -> None:
     mock_database.disconnect = AsyncMock()
     mock_database.client = MagicMock()
 
-    mock_index = AsyncMock()
-    mock_index.setup_indexes = AsyncMock()
-
     with (
         patch("app.main.Database", return_value=mock_database),
-        patch("findingmodel.index.Index", return_value=mock_index),
         patch("app.main.settings") as mock_settings,
         patch("app.main.logger") as mock_logger,
     ):
@@ -151,7 +145,6 @@ async def test_lifespan_warns_when_github_not_configured() -> None:
         mock_settings.environment = "test"
         mock_settings.debug = False
         mock_settings.github_client_id = None  # Not configured
-        mock_settings.mongodb_db = "test_db"
 
         from app.main import lifespan
 
