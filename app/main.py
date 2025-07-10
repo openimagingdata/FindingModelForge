@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from .config import logger, settings
 from .database import Database
 from .health import router as health_router
-from .routers import auth, pages, users
+from .routers import auth, pages, static, users
 
 
 @asynccontextmanager
@@ -61,6 +61,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router, prefix="/api", tags=["health"])
     app.include_router(auth.router, prefix="/auth", tags=["authentication"])
     app.include_router(users.router, prefix="/api/users", tags=["users"])
+    app.include_router(static.router, tags=["static"])
     app.include_router(pages.router, tags=["pages"])
 
     # Import and include finding models router
