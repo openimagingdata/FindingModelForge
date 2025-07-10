@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     # Application URLs
     base_url: str = "http://localhost:8000"
 
+    # Finding Models Source
+    finding_models_github_base_url: str = (
+        "https://raw.githubusercontent.com/openimagingdata/findingmodels/refs/heads/main/defs/"
+    )
+
     # Proxy Configuration
     # Set to specific IPs for security (e.g., "172.18.0.1,10.0.0.1") or "*" to trust all
     forwarded_allow_ips: str = "*"
