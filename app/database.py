@@ -3,7 +3,9 @@
 from datetime import UTC, datetime
 from typing import Any
 
+from findingmodel.contributor import Person
 from findingmodel.index import Index
+from loguru import logger
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from pymongo.errors import DuplicateKeyError
 
@@ -44,6 +46,7 @@ class UserRepo:
         self.db = db
         self.collection = db.users
         self.org_collection = db.organizations_main
+        self.people_collection = db.people_main
         self._organizations: list[Organization] = []
 
     async def create_user(self, user_data: UserCreate) -> User:
@@ -132,3 +135,12 @@ class UserRepo:
             user_dict.pop("_id", None)
             users.append(User(**user_dict))
         return users
+
+    async def get_person_by_github_username(self, username: str) -> Person | None:
+        """Get a person by their GitHub username."""
+        person_dict = await self.people_collection.find_one({"github_username": username})
+        logger.info(f"Fetching person by GitHub username: {username}, found: {person_dict}")
+        if not person_dict:
+            return None
+        person_dict.pop("_id", None)
+        return Person.model_validate(person_dict)

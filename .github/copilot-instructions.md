@@ -22,7 +22,7 @@ We always strive to use updated libraries and frameworks, with a focus on type s
 - **Jinja2 Templates** - Server-side rendering with template inheritance
 - **Tailwind CSS** - Utility-first CSS framework with custom dark theme support
 - **Alpine.js** - Lightweight JavaScript framework for interactivity
-- **Flowbite Components** - Pre-built UI components
+- **Flowbite Components** - Pre-built UI components with data attribute-based functionality
 
 ### Development Tools
 
@@ -85,6 +85,33 @@ We always strive to use updated libraries and frameworks, with a focus on type s
 - `task watch-css` - Watch for CSS changes
 - Use Tailwind utility classes with custom dark theme
 - Alpine.js for progressive enhancement
+
+#### Flowbite Component Guidelines
+
+**CRITICAL: Always use Flowbite's built-in functionality instead of custom implementations**
+
+1. **Use Data Attributes**: All Flowbite components work via data attributes (e.g., `data-accordion="collapse"`, `data-modal-target`)
+2. **Follow Official Patterns**: Reference Flowbite documentation and existing working components in the codebase
+3. **Avoid Custom JavaScript**: Never create custom `toggleAccordion()`, `showModal()`, etc. - use Flowbite's API
+4. **Use Context7 Documentation**: Always check Context7 for up-to-date Flowbite patterns before implementing
+5. **Initialize Properly**: Use `initFlowbite()` for dynamically injected content, not custom initialization
+6. **Copy Working Examples**: Look at existing components like `finding_model_display.html` accordion for proven patterns
+
+**Example of CORRECT Flowbite usage:**
+```html
+<!-- ✅ CORRECT: Uses Flowbite data attributes -->
+<div data-accordion="collapse">
+  <button data-accordion-target="#content" aria-expanded="false">Toggle</button>
+  <div id="content" class="hidden">Content</div>
+</div>
+```
+
+**Example of INCORRECT custom implementation:**
+```html
+<!-- ❌ WRONG: Custom JavaScript -->
+<button onclick="toggleCustom()">Toggle</button>
+<script>function toggleCustom() { /* custom code */ }</script>
+```
 
 ### Docker & Deployment
 
@@ -229,14 +256,16 @@ DATABASE_NAME="findingmodelforge"
 4. **Use Pydantic models** for all data structures
 5. **Include proper error handling** and logging
 6. **Write comprehensive docstrings** for functions and classes
+7. **ALWAYS use Flowbite components properly** - Never create custom implementations when Flowbite provides the functionality
 
 ### When Suggesting Changes
 
 1. **Consider the entire request/response cycle** (auth, validation, business logic, response)
 2. **Maintain consistency** with existing code patterns
-3. **Include appropriate tests** when adding functionality
-4. **Update related documentation** if needed
-5. **Consider security implications** especially for auth-related changes
+3. **Use Context7 to check Flowbite documentation** before implementing UI components
+4. **Include appropriate tests** when adding functionality
+5. **Update related documentation** if needed
+6. **Consider security implications** especially for auth-related changes
 
 ### When Troubleshooting
 
@@ -245,6 +274,7 @@ DATABASE_NAME="findingmodelforge"
 3. **Run quality checks** with `task check`
 4. **Test changes** with `task test`
 5. **Consider async/await patterns** for any hanging or timing issues
+6. **For UI issues, check if Flowbite components are properly initialized** with `initFlowbite()`
 
 ## Project-Specific Considerations
 

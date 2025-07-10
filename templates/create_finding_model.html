@@ -3,7 +3,7 @@
 {% block title %}{{ title }}{% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-8 pb-16 max-w-4xl" x-data="findingModelCreator()">
+<div class="container mx-auto px-4 py-8 pb-16 max-w-5xl" x-data="findingModelCreator()">
     <div class="mb-8">
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Create Finding Model</h1>
         <p class="text-gray-600 dark:text-gray-400">Build a new finding model through our guided workflow</p>
@@ -153,7 +153,7 @@
                     </label>
                     <textarea id="description-edit"
                               x-model="formData.description"
-                              rows="6"
+                              rows="3"
                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
                               placeholder="AI-generated description will appear here..."></textarea>
                 </div>
@@ -346,30 +346,18 @@
         </div>
     </div>
 
-    <!-- Step 5: Download Generated Model -->
+    <!-- Step 5: View Generated Model -->
     <div x-show="step === 5" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform translate-x-4" x-transition:enter-end="opacity-100 transform translate-x-0">
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
-            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Your Finding Model is Ready!</h2>
-            <p class="text-gray-600 dark:text-gray-400 mb-6">Your finding model has been generated successfully. Download the markdown file to get started.</p>
+        <div class="space-y-6">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Your Finding Model is Ready!</h2>
+                <p class="text-gray-600 dark:text-gray-400 mb-6">Your finding model has been generated successfully. Review the details below and download the JSON file.</p>
 
-            <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-6">
-                <h3 class="font-medium text-gray-900 dark:text-white mb-2">Generated Content Preview:</h3>
-                <div class="bg-white dark:bg-gray-800 rounded border p-3 max-h-64 overflow-y-auto">
-                    <pre x-text="generatedMarkdown" class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap"></pre>
-                </div>
-            </div>
-
-            <div class="flex justify-between">
-                <button type="button"
-                        @click="step = 4"
-                        class="px-4 py-2 text-gray-600 dark:text-gray-400 font-medium rounded-md border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
-                    ← Back
-                </button>
-                <div class="space-x-2">
+                <div class="flex justify-between mb-6">
                     <button type="button"
-                            @click="downloadMarkdown"
-                            class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
-                        Download Markdown
+                            @click="step = 4"
+                            class="px-4 py-2 text-gray-600 dark:text-gray-400 font-medium rounded-md border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                        ← Back
                     </button>
                     <button type="button"
                             @click="startOver"
@@ -377,6 +365,11 @@
                         Create Another
                     </button>
                 </div>
+            </div>
+
+            <!-- Generated Model Display -->
+            <div id="generated-model-display" x-html="generatedModelDisplay">
+                <!-- Generated finding model display will be inserted here -->
             </div>
         </div>
     </div>
@@ -430,7 +423,7 @@ function findingModelCreator() {
         findingInfo: null,
         similarModels: [],
         attributesMarkdown: '',
-        generatedMarkdown: '',
+        generatedModelDisplay: '',
         finalModel: null,
         nameCheckTimeout: null,
 
@@ -454,7 +447,17 @@ function findingModelCreator() {
             };
 
             const name = this.formData.name.trim();
-            if (!name) return;
+            if (!name || name.length < 2) {
+                // Don't make API calls for names that are too short
+                if (name.length > 0 && name.length < 2) {
+                    this.nameCheckResult = {
+                        checked: true,
+                        available: false,
+                        message: 'Name must be at least 2 characters long'
+                    };
+                }
+                return;
+            }
 
             // Debounce the API call
             this.nameCheckTimeout = setTimeout(async () => {
@@ -474,6 +477,16 @@ function findingModelCreator() {
                             checked: true,
                             available: result.available,
                             message: result.message || ''
+                        };
+                    } else if (response.status === 401) {
+                        // User not authenticated - redirect to login
+                        window.location.href = '/login';
+                    } else if (response.status === 422) {
+                        // Validation error - likely name too short
+                        this.nameCheckResult = {
+                            checked: true,
+                            available: false,
+                            message: 'Name must be at least 2 characters long'
                         };
                     } else {
                         this.error = result.detail || 'Failed to check name availability';
@@ -622,8 +635,21 @@ function findingModelCreator() {
                 const result = await response.json();
                 if (response.ok) {
                     this.finalModel = result.model;
-                    this.generatedMarkdown = result.markdown;
+                    this.generatedModelDisplay = result.display_html;
                     this.step = 5;
+
+                    // Initialize Flowbite components after DOM update
+                    this.$nextTick(() => {
+                        // Use the official initFlowbite function to initialize all components
+                        // based on their data attributes
+                        if (typeof initFlowbite === 'function') {
+                            initFlowbite();
+                        } else if (window.initFlowbite) {
+                            window.initFlowbite();
+                        } else {
+                            console.warn('initFlowbite function not found');
+                        }
+                    });
                 } else {
                     this.error = result.detail || 'Failed to generate final model';
                 }
@@ -634,18 +660,6 @@ function findingModelCreator() {
                 clearInterval(this.timerInterval);
                 this.timerInterval = null;
             }
-        },
-
-        downloadMarkdown() {
-            const blob = new Blob([this.generatedMarkdown], { type: 'text/markdown' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${this.formData.name.replace(/\s+/g, '_').toLowerCase()}_finding_model.md`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
         },
 
         startOver() {
@@ -665,7 +679,7 @@ function findingModelCreator() {
             this.findingInfo = null;
             this.similarModels = [];
             this.attributesMarkdown = '';
-            this.generatedMarkdown = '';
+            this.generatedModelDisplay = '';
             this.finalModel = null;
             this.newSynonym = '';
         }

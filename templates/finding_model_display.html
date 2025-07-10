@@ -1,26 +1,6 @@
-<!-- filepath: /Users/talkasab/Repos/FindingModelForge/templates/finding_model_d              <div class="bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-300 dark:border-gray-600" style="max-height: 400px; overflow-y: auto;">
-                <pre class="p-4 text-sm font-mono leading-relaxed whitespace-pre-wrap text-gray-800 dark:text-gray-200"><code>{{ finding_model_json | tojson(indent=2) }}</code></pre>
-              </div>
-              <div class="flex justify-end space-x-2 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <button type="button"
-                        onclick="downloadJSON()"
-                        class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                    </svg>
-                    Download
-                </button>
-                <button type="button"
-                        onclick="copyToClipboard()"
-                        class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-                    </svg>
-                    Copy
-                </button>
-              </div>lay.html -->
-{% extends "base.html" %} {% block title %}{{ title }}{% endblock %} {% block
-content %}
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
   <div class="container mx-auto px-4 py-8 max-w-6xl">
     <!-- Breadcrumb -->
@@ -103,7 +83,7 @@ content %}
               </div>
               <div class="flex justify-end space-x-2 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                 <button type="button"
-                        onclick="downloadJSON()"
+                        onclick="downloadJSON(`{{ finding_model_json|replace('`', '\\`') }}`, '{{ filename }}')"
                         class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
@@ -111,7 +91,7 @@ content %}
                     Download
                 </button>
                 <button type="button"
-                        onclick="copyToClipboard()"
+                        onclick="copyToClipboard(`{{ finding_model_json|replace('`', '\\`') }}`)"
                         class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
@@ -126,42 +106,4 @@ content %}
     </div>
   </div>
 </div>
-
-<!-- JavaScript for actions -->
-<script>
-  // Download JSON function
-  function downloadJSON() {
-      const dataStr = {{ finding_model_json | safe }};
-      const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-
-      const exportFileDefaultName = `{{ filename }}`;
-
-      const linkElement = document.createElement('a');
-      linkElement.setAttribute('href', dataUri);
-      linkElement.setAttribute('download', exportFileDefaultName);
-      linkElement.click();
-  }
-
-  // Copy JSON to clipboard
-  function copyToClipboard() {
-      const dataStr = {{ finding_model_json | safe }};
-
-      navigator.clipboard.writeText(dataStr).then(() => {
-          showToast('JSON copied to clipboard!');
-      });
-  }
-
-  // Toast notification
-  function showToast(message) {
-      const toast = document.createElement('div');
-      toast.className = 'fixed bottom-4 right-4 bg-gray-900 text-white px-4 py-2 rounded-lg shadow-lg z-50';
-      toast.textContent = message;
-      document.body.appendChild(toast);
-
-      setTimeout(() => {
-          toast.remove();
-      }, 3000);
-  }
-</script>
-
 {% endblock %}

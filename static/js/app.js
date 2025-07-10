@@ -246,6 +246,38 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+// Global functions for finding model components
+window.downloadJSON = function(jsonData, filename) {
+    const dataStr = typeof jsonData === 'string' ? jsonData : JSON.stringify(jsonData, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', filename);
+    linkElement.click();
+};
+
+window.copyToClipboard = function(jsonData) {
+    const dataStr = typeof jsonData === 'string' ? jsonData : JSON.stringify(jsonData, null, 2);
+
+    navigator.clipboard.writeText(dataStr).then(() => {
+        showToast('JSON copied to clipboard!');
+    }).catch(() => {
+        showToast('Failed to copy to clipboard');
+    });
+};
+
+window.showToast = function(message) {
+    const toast = document.createElement('div');
+    toast.className = 'fixed bottom-4 right-4 bg-gray-900 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
+};
+
 // Console welcome message
 console.log(
     '%cWelcome to Finding Model Forge! 🚀',

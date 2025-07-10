@@ -3,15 +3,23 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
+from fastapi.templating import Jinja2Templates
 from findingmodel import FindingInfo
 from findingmodel.index import Index
-from findingmodel.tools import create_info_from_name, create_model_from_markdown, find_similar_models
+from findingmodel.tools import (
+    add_ids_to_model,
+    add_standard_codes_to_model,
+    create_info_from_name,
+    create_model_from_markdown,
+    find_similar_models,
+)
 
 from app.auth import get_current_user
 from app.config import logger
-from app.dependencies import get_finding_index
+from app.database import Database
+from app.dependencies import get_database, get_finding_index
 from app.models import (
     FindingInfoEditRequest,
     FindingInfoRequest,
@@ -25,6 +33,7 @@ from app.models import (
 )
 
 router = APIRouter()
+templates = Jinja2Templates(directory="templates")
 
 
 @router.post("/check-name", response_model=NameAvailabilityResponse)
@@ -136,42 +145,30 @@ async def generate_stub_markdown(
     """Generate basic attributes markdown stub for editing."""
     try:
         # Generate a basic attributes markdown template for the user to edit
-        stub_markdown = """## Attributes
+        stub_markdown = f"""## Attributes
 
 ### presence
-Whether the finding is visible on the imaging study
-- **absent**: Finding is not visible
-- **present**: Finding is clearly visible
-- **indeterminate**: Presence cannot be determined
-- **unknown**: Presence is unknown
 
-### change_from_prior
-How the finding has changed compared to prior imaging
-- **stable**: No change from prior
-- **new**: New finding not seen on prior imaging
-- **increased**: Finding has increased in size/extent
-- **decreased**: Finding has decreased in size/extent
-- **resolved**: Previously seen finding is no longer visible
+Whether {request.name} is visible on the imaging study
 
-## Additional Attributes
+- absent: {request.name.capitalize()} is not visible
+- present: {request.name.capitalize()} is clearly visible
+- indeterminate: Presence of {request.name} cannot be determined
+- unknown: Presence of {request.name} is unknown
 
-Add additional attributes specific to this finding below. Each attribute should include:
-- Clear name and description
-- List of possible values with descriptions
-- Whether the attribute is required or optional
+### change from prior
 
-### [attribute_name]
-Description of the attribute
-- **value1**: Description of value1
-- **value2**: Description of value2
+How the {request.name} has changed compared to prior imaging
 
-### [numeric_attribute_name]
-Description of numeric measurement
-- **Unit**: cm, mm, degrees, etc.
-- **Range**: minimum to maximum values
-- **Required**: yes/no
+- unchanged: {request.name.capitalize()} is unchanged from prior imaging
+- stable: {request.name.capitalize()} is stable
+- new: New {request.name.capitalize()} not seen on prior imaging
+- resolved: {request.name.capitalize()} seen on a prior exam has resolved
+- increased: {request.name.capitalize()} has increased
+- decreased: {request.name.capitalize()} has decreased
+- larger: {request.name.capitalize()} is larger
+- smaller: {request.name.capitalize()} is smaller
 """
-
         return JSONResponse(content={"markdown": stub_markdown})
 
     except Exception as e:
@@ -182,32 +179,67 @@ Description of numeric measurement
 
 @router.post("/generate-model")
 async def generate_model(
-    request: GenerateModelRequest,
+    request: Request,
+    model_request: GenerateModelRequest,
     current_user: Annotated[User, Depends(get_current_user)],
+    database: Annotated[Database, Depends(get_database)],
 ) -> JSONResponse:
     """Generate the final finding model from FindingInfo and attributes markdown."""
     try:
         # Create a FindingInfo object from the request
         finding_info = FindingInfo(
-            name=request.name,
-            description=request.description,
-            synonyms=request.synonyms or [],
+            name=model_request.name,
+            description=model_request.description,
+            synonyms=model_request.synonyms or [],
         )
 
         # Combine the FindingInfo with the attributes markdown to create complete markdown
-        complete_markdown = f"""# {request.name}
+        complete_markdown = f"""# {model_request.name}
 
 ## Description
-{request.description}
+{model_request.description}
 
-{request.attributes_markdown}
+{model_request.attributes_markdown}
 """
 
         # Generate the final FindingModel using findingmodel tools
-        finding_model = await create_model_from_markdown(finding_info, markdown_text=complete_markdown)
+        finding_model_generated = await create_model_from_markdown(finding_info, markdown_text=complete_markdown)
+
+        assert database.user_repo, "UserRepo must be initialized in the database"
+        author = await database.user_repo.get_person_by_github_username(current_user.login)
+        logger.info(f"Generating finding model for user: {current_user.login}, author: {author}")
+        # Add IDs and standard codes to the model
+        if author:
+            source = author.organization_code
+        elif current_user.organizations:
+            source = current_user.organizations[0]
+        else:
+            source = "OIDM"
+        finding_model = add_ids_to_model(finding_model_generated, source=source)
+        add_standard_codes_to_model(finding_model)
+        if author:
+            finding_model.contributors = [author]
+
+        # Generate JSON for the model
+        finding_model_json = finding_model.model_dump_json(indent=2, exclude_none=True)
+
+        # Generate filename for downloads
+        filename = f"{model_request.name.replace(' ', '_').lower()}.fm.json"
+
+        # Render the HTML component
+        display_html = templates.get_template("components/finding_model_full_display.html").render(
+            finding_model=finding_model,
+            finding_model_json=finding_model_json,
+            finding_model_filename=filename,
+        )
 
         return JSONResponse(
-            content={"model": finding_model.model_dump(), "markdown": complete_markdown, "success": True}
+            content={
+                "model": finding_model.model_dump(mode="json", exclude_none=True),
+                "display_html": display_html,
+                "filename": filename,
+                "success": True,
+            }
         )
 
     except Exception as e:

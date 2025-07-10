@@ -59,6 +59,7 @@ def authenticated_client(mock_finding_index: MagicMock) -> Generator[TestClient,
             avatar_url="https://example.com/avatar.png",
             created_at=datetime(2024, 1, 1),
             updated_at=datetime(2024, 1, 1),
+            organizations=["test-org"],
         )
 
     # Override only the auth dependency
@@ -274,7 +275,7 @@ class TestGenerateStubMarkdown:
         assert "markdown" in data
         assert "## Attributes" in data["markdown"]
         assert "### presence" in data["markdown"]
-        assert "### change_from_prior" in data["markdown"]
+        assert "### change from prior" in data["markdown"]
 
     def test_generate_stub_invalid_input(self, authenticated_client: TestClient) -> None:
         """Test with invalid input."""
@@ -302,13 +303,37 @@ class TestGenerateStubMarkdown:
 class TestGenerateModel:
     """Test the /generate-model endpoint."""
 
+    @patch("app.routers.finding_models.add_standard_codes_to_model")
+    @patch("app.routers.finding_models.add_ids_to_model")
     @patch("app.routers.finding_models.create_model_from_markdown")
-    def test_generate_model_success(self, mock_create_model: AsyncMock, authenticated_client: TestClient) -> None:
+    def test_generate_model_success(
+        self,
+        mock_create_model: AsyncMock,
+        mock_add_ids: MagicMock,
+        mock_add_codes: MagicMock,
+        authenticated_client: TestClient,
+    ) -> None:
         """Test successful model generation."""
         # Mock the create_model_from_markdown function
         mock_model = MagicMock()
-        mock_model.model_dump.return_value = {"name": "test-finding", "description": "A test finding", "attributes": {}}
+        mock_model.model_dump.return_value = {"name": "test-finding", "description": "A test finding", "attributes": []}
+        mock_model.model_dump_json.return_value = '{"name": "test-finding", "description": "A test finding"}'
+        mock_model.name = "test-finding"
+        mock_model.description = "A test finding"
+        mock_model.synonyms = ["test"]
+        mock_model.attributes = []
+        mock_model.tags = []
+        mock_model.contributors = []
+        mock_model.oifm_id = "OIFM_TEST_123456"
+        mock_model.created_date = None
+        mock_model.last_modified = None
+        mock_model.version = None
         mock_create_model.return_value = mock_model
+
+        # Mock the add_ids_to_model to return the same model
+        mock_add_ids.return_value = mock_model
+        # Mock add_standard_codes_to_model (returns None)
+        mock_add_codes.return_value = None
 
         response = authenticated_client.post(
             "/api/finding-models/generate-model",
@@ -320,12 +345,12 @@ class TestGenerateModel:
             },
         )
 
-        assert response.status_code == 200
+        assert response.status_code == 200, f"Response: {response.status_code}, Body: {response.text}"
         data = response.json()
         assert data["success"] is True
         assert "model" in data
-        assert "markdown" in data
-        assert "test-finding" in data["markdown"]
+        assert "display_html" in data
+        assert "filename" in data
 
     @patch("app.routers.finding_models.create_model_from_markdown")
     def test_generate_model_error(self, mock_create_model: AsyncMock, authenticated_client: TestClient) -> None:
