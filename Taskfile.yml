@@ -196,9 +196,8 @@ tasks:
       - npm run build
       - docker build --platform linux/amd64 -t {{.CONTAINER_NAME}} -t findingmodelforge:{{.DATE_TAG}} .
       - echo "📊 Image sizes:"
-      - docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}" | grep -E "(findingmodelforge|ghcr.io)"
+      - sh -c 'docker images --format "table {{`{{.Repository}}`}}\t{{`{{.Tag}}`}}\t{{`{{.Size}}`}}" | grep -E "(REPOSITORY|findingmodelforge|ghcr.io)" | head -6' || echo "No images found"
       - echo "✅ Production build complete!"
-    silent: true
 
   build-ci:
     desc: "Build for CI/production (validates frontend assets exist)"
@@ -217,9 +216,8 @@ tasks:
       - echo "✅ Frontend assets ready"
       - docker build --platform linux/amd64 -t {{.CONTAINER_NAME}} -t findingmodelforge:{{.DATE_TAG}} .
       - echo "📊 Image sizes:"
-      - docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}" | grep -E "(findingmodelforge|ghcr.io)"
+      - sh -c 'docker images --format "table {{`{{.Repository}}`}}\t{{`{{.Tag}}`}}\t{{`{{.Size}}`}}" | grep -E "(REPOSITORY|findingmodelforge|ghcr.io)" | head -6' || echo "No images found"
       - echo "✅ CI build complete!"
-    silent: true
 
   run-container:
     desc: "Run the app in a Docker container"
