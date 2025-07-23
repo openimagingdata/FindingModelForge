@@ -1,0 +1,300 @@
+{# =============================================================================
+   FLOWBITE CORE COMPONENTS
+
+   This file contains the fundamental Flowbite UI components that are used
+   throughout the application. These are generic, reusable components.
+   ============================================================================= #}
+
+{# ===== BUTTONS ===== #}
+
+{# Flowbite Button with Icon #}
+{% macro flowbite_button(text, href="#", type="primary", size="default", icon=none, icon_position="left", disabled=false, target_blank=false) -%}
+    {% set base_classes = "inline-flex items-center font-medium rounded-lg text-center transition-colors" %}
+
+    {% set size_classes = {
+        "xs": "px-3 py-2 text-xs",
+        "sm": "px-3 py-2 text-sm",
+        "default": "px-5 py-2.5 text-sm",
+        "lg": "px-8 py-4 text-lg"
+    } %}
+
+    {% set type_classes = {
+        "primary": "text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800",
+        "secondary": "text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-600 dark:focus:ring-gray-700",
+        "success": "text-white bg-green-700 hover:bg-green-800 focus:ring-4 focus:outline-none focus:ring-green-300 dark:bg-green-600 dark:hover:bg-green-700 dark:focus:ring-green-800",
+        "warning": "text-gray-800 bg-yellow-200 border border-yellow-300 hover:bg-yellow-300 focus:ring-4 focus:outline-none focus:ring-yellow-500 dark:bg-yellow-600 dark:text-white dark:border-yellow-700 dark:hover:bg-yellow-700",
+        "danger": "text-white bg-red-700 hover:bg-red-800 focus:ring-4 focus:outline-none focus:ring-red-300 dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-800",
+        "dark": "text-white bg-gray-900 border border-gray-800 hover:bg-gray-800 focus:ring-4 focus:outline-none focus:ring-gray-500 dark:bg-gray-700 dark:border-gray-600 dark:hover:bg-gray-600"
+    } %}
+
+    {% set disabled_classes = "cursor-not-allowed opacity-50" if disabled else "" %}
+    {% set classes = [base_classes, size_classes[size], type_classes[type], disabled_classes]|join(" ") %}
+
+    <a href="{{ href }}"
+       class="{{ classes }}"
+       {% if target_blank %}target="_blank" rel="noopener noreferrer"{% endif %}
+       {% if disabled %}aria-disabled="true"{% endif %}>
+
+        {% if icon and icon_position == "left" %}
+            {{ icon|safe }}
+        {% endif %}
+
+        {{ text }}
+
+        {% if icon and icon_position == "right" %}
+            {{ icon|safe }}
+        {% endif %}
+    </a>
+{%- endmacro %}
+
+{# ===== BADGES ===== #}
+
+{# Standard Flowbite badge with proper styling #}
+{% macro flowbite_badge(text, color="default", size="default", pill=false, href=none) -%}
+    {% set base_classes = "inline-flex items-center font-medium" %}
+    {% set size_classes = {
+        "xs": "px-2.5 py-0.5 text-xs",
+        "sm": "px-2.5 py-0.5 text-sm",
+        "default": "px-2.5 py-0.5 text-sm"
+    } %}
+    {% set color_classes = {
+        "default": "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
+        "gray": "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300",
+        "red": "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300",
+        "green": "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
+        "yellow": "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
+        "indigo": "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300",
+        "purple": "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
+        "pink": "bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-300",
+        "blue": "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
+    } %}
+    {% set rounded_classes = "rounded-full" if pill else "rounded" %}
+
+    {% set classes = [base_classes, size_classes[size], color_classes[color], rounded_classes]|join(" ") %}
+
+    {% if href %}
+        <a href="{{ href }}" class="{{ classes }}">{{ text }}</a>
+    {% else %}
+        <span class="{{ classes }}">{{ text }}</span>
+    {% endif %}
+{%- endmacro %}
+
+{# ===== CARDS ===== #}
+
+{# Flowbite Card Component #}
+{% macro flowbite_card(title, content, href=none, cta_text=none, cta_href=none, icon=none, shadow="sm") -%}
+    {% set shadow_classes = {
+        "none": "",
+        "sm": "shadow-sm",
+        "default": "shadow",
+        "md": "shadow-md",
+        "lg": "shadow-lg"
+    } %}
+
+    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 lg:p-8 h-full {{ shadow_classes[shadow] }}">
+        {% if icon %}
+            <div class="mb-6">
+                {{ icon|safe }}
+            </div>
+        {% endif %}
+
+        {% if href %}
+            <a href="{{ href }}">
+                <h2 class="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white mb-4 lg:mb-6 hover:underline">
+                    {{ title }}
+                </h2>
+            </a>
+        {% else %}
+            <h2 class="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white mb-4 lg:mb-6">
+                {{ title }}
+            </h2>
+        {% endif %}
+
+        <div class="text-gray-600 dark:text-gray-300 leading-relaxed">
+            {{ content|safe }}
+        </div>
+
+        {% if cta_text and cta_href %}
+            <div class="mt-6">
+                <a href="{{ cta_href }}" class="inline-flex font-medium items-center text-blue-600 hover:underline">
+                    {{ cta_text }}
+                    <svg class="w-3 h-3 ms-2.5 rtl:rotate-[270deg]" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 18 18">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11v4.833A1.166 1.166 0 0 1 13.833 17H2.167A1.167 1.167 0 0 1 1 15.833V4.167A1.166 1.166 0 0 1 2.167 3h4.618m4.447-2H17v5.768M9.111 8.889l7.778-7.778"/>
+                    </svg>
+                </a>
+            </div>
+        {% endif %}
+    </div>
+{%- endmacro %}
+
+{# ===== LISTS ===== #}
+
+{# Flowbite Icon List Component #}
+{% macro flowbite_icon_list(items, icon=none) -%}
+    {% set default_icon %}
+        <svg class="w-3 h-3 text-primary-500 mt-2 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"/>
+        </svg>
+    {% endset %}
+
+    <ul class="space-y-3 text-gray-600 dark:text-gray-300">
+        {% for item in items %}
+            <li class="flex items-start">
+                {{ (icon if icon else default_icon)|safe }}
+                <span>{{ item }}</span>
+            </li>
+        {% endfor %}
+    </ul>
+{%- endmacro %}
+
+{# ===== ALERTS ===== #}
+
+{# Alert Component #}
+{% macro alert(message, type="info", dismissible=false) -%}
+    {% set type_classes = {
+        "info": "bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900 dark:border-blue-700 dark:text-blue-300",
+        "success": "bg-green-50 border-green-200 text-green-800 dark:bg-green-900 dark:border-green-700 dark:text-green-300",
+        "warning": "bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900 dark:border-yellow-700 dark:text-yellow-300",
+        "error": "bg-red-50 border-red-200 text-red-800 dark:bg-red-900 dark:border-red-700 dark:text-red-300"
+    } %}
+
+    <div class="border rounded-lg p-4 {{ type_classes[type] }}" {% if dismissible %}x-data="{ show: true }" x-show="show"{% endif %}>
+        <div class="flex items-center justify-between">
+            <div class="flex">
+                {% if type == "success" %}
+                    <svg class="w-5 h-5 mr-2 text-green-500 dark:text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z"/>
+                    </svg>
+                {% elif type == "warning" %}
+                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                    </svg>
+                {% elif type == "error" %}
+                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                    </svg>
+                {% else %}
+                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                    </svg>
+                {% endif %}
+                <span>{{ message }}</span>
+            </div>
+            {% if dismissible %}
+                <button @click="show = false" class="ml-auto text-current opacity-70 hover:opacity-100">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                    </svg>
+                </button>
+            {% endif %}
+        </div>
+    </div>
+{%- endmacro %}
+
+{# ===== NAVIGATION ===== #}
+
+{# Navigation Link Component #}
+{% macro nav_link(text, href, icon=none, active=false) -%}
+    {% set base_classes = "inline-flex items-center px-3 py-2 text-sm font-medium transition-colors" %}
+    {% set active_classes = "text-primary-600 dark:text-primary-400" if active else "text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400" %}
+
+    <a href="{{ href }}" class="{{ base_classes }} {{ active_classes }}">
+        {% if icon %}
+            {{ icon|safe }}
+        {% endif %}
+        {{ text }}
+    </a>
+{%- endmacro %}
+
+{# User Avatar Component #}
+{% macro user_avatar(user, size="default", show_name=false) -%}
+    {% set size_classes = {
+        "sm": "h-6 w-6",
+        "default": "h-8 w-8",
+        "lg": "h-12 w-12"
+    } %}
+
+    {% if show_name %}
+        <div class="flex items-center space-x-3">
+            <div class="flex-shrink-0">
+    {% endif %}
+
+    {% if user.avatar_url %}
+        <div class="p-1 bg-gray-100 dark:bg-gray-700 rounded-full">
+            <img class="{{ size_classes[size] }} rounded-full" src="{{ user.avatar_url }}" alt="{{ user.login }}">
+        </div>
+    {% else %}
+        <div class="p-1 bg-gray-100 dark:bg-gray-700 rounded-full">
+            <div class="{{ size_classes[size] }} rounded-full bg-purple-600 flex items-center justify-center">
+                <span class="text-white text-sm font-medium">
+                    {{ (user.name or user.login or user.email or "U")[:2].upper() }}
+                </span>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if show_name %}
+            </div>
+            <div>
+                <p class="text-sm font-medium text-gray-900 dark:text-white">
+                    {{ user.name or user.login or user.email or "Unknown" }}
+                </p>
+                {% if user.email and user.name %}
+                <p class="text-xs text-gray-500 dark:text-gray-400">{{ user.email }}</p>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+{%- endmacro %}
+
+{# Dropdown Menu Component #}
+{% macro dropdown_menu(items, trigger_content) -%}
+    <div class="relative" x-data="{ open: false }">
+        <button @click="open = !open" class="focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+            {{ trigger_content|safe }}
+        </button>
+
+        <div x-cloak x-show="open" @click.away="open = false"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="transform opacity-0 scale-95"
+             x-transition:enter-end="transform opacity-100 scale-100"
+             x-transition:leave="transition ease-in duration-75"
+             x-transition:leave-start="transform opacity-100 scale-100"
+             x-transition:leave-end="transform opacity-0 scale-95"
+             class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 border border-gray-200 dark:border-gray-700 z-50">
+            {% for item in items %}
+                {% if item.divider %}
+                    <div class="border-t border-gray-200 dark:border-gray-700"></div>
+                {% else %}
+                    <a href="{{ item.href }}"
+                       {% if item.target %}target="{{ item.target }}"{% endif %}
+                       class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                        {{ item.text }}
+                    </a>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+{%- endmacro %}
+
+{# ===== PROGRESS INDICATORS ===== #}
+
+{# Progress Indicator Component #}
+{% macro progress_indicator(steps, current_step=1) -%}
+    <div class="flex items-center justify-between">
+        <div class="flex space-x-4">
+            {% for step in steps %}
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium"
+                         class="{{ 'bg-blue-600 text-white' if loop.index <= current_step else 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400' }}">
+                        {{ loop.index }}
+                    </div>
+                    <span class="ml-2 text-sm font-medium"
+                          class="{{ 'text-blue-600 dark:text-blue-400' if loop.index <= current_step else 'text-gray-500 dark:text-gray-400' }}">
+                        {{ step }}
+                    </span>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+{%- endmacro %}

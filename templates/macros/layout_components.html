@@ -1,0 +1,104 @@
+{# =============================================================================
+   LAYOUT COMPONENTS
+
+   This file contains layout and section components that structure pages.
+   These components combine multiple Flowbite components into larger layouts.
+   ============================================================================= #}
+
+{# ===== SECTIONS ===== #}
+
+{# Hero Section Component #}
+{% macro hero_section(title, subtitle, description, cta_button, image_src=none, image_alt="", icon_src=none) -%}
+    <section class="px-4 py-20 mx-auto max-w-7xl">
+        <div class="flex flex-col lg:flex-row items-center gap-12">
+            <!-- Left Side - Text Content -->
+            <div class="flex-1 text-left">
+                <div class="flex items-center mb-8">
+                    {% if icon_src %}
+                    <div class="p-3 bg-blue-100 dark:bg-primary-800 rounded-full mr-4 border border-blue-200 dark:border-primary-700">
+                        <img src="{{ icon_src }}" alt="Finding Model Forge" class="w-12 h-12">
+                    </div>
+                    {% endif %}
+                    <h1 class="text-4xl font-bold tracking-tight text-gray-900 dark:text-white">
+                        {{ title }}
+                    </h1>
+                </div>
+
+                <div class="space-y-6 mb-8">
+                    <p class="text-lg text-gray-600 dark:text-gray-300 leading-relaxed">
+                        {{ subtitle }}
+                    </p>
+
+                    {% if description %}
+                        <div class="flex items-center space-x-4 text-gray-400 dark:text-gray-500">
+                            <div class="flex-1 h-px bg-gray-300 dark:bg-gray-600"></div>
+                            <span class="text-sm font-medium">or</span>
+                            <div class="flex-1 h-px bg-gray-300 dark:bg-gray-600"></div>
+                        </div>
+
+                        <p class="text-lg text-gray-600 dark:text-gray-300 leading-relaxed">
+                            {{ description }}
+                        </p>
+                    {% endif %}
+                </div>
+
+                <!-- CTA Button -->
+                <div class="mb-12">
+                    {{ cta_button|safe }}
+                </div>
+            </div>
+
+            <!-- Right Side - Image -->
+            {% if image_src %}
+            <div class="flex-1 max-w-2xl">
+                <div class="p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+                    <img src="{{ image_src }}" alt="{{ image_alt }}" class="w-full h-auto rounded">
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+{%- endmacro %}
+
+{# Content Section Layout #}
+{% macro content_section(cards, max_width="6xl") -%}
+    <section class="px-4 py-12 mx-auto max-w-{{ max_width }}">
+        <div class="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-12 max-w-4xl mx-auto">
+            {% for card in cards %}
+                <div class="max-w-md mx-auto lg:max-w-lg">
+                    {{ card|safe }}
+                </div>
+            {% endfor %}
+        </div>
+    </section>
+{%- endmacro %}
+
+{# Two Column Layout #}
+{% macro two_column_layout(left_content, right_content, left_width="1/2", right_width="1/2") -%}
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div class="lg:col-span-1">
+            {{ left_content|safe }}
+        </div>
+        <div class="lg:col-span-1">
+            {{ right_content|safe }}
+        </div>
+    </div>
+{%- endmacro %}
+
+{# Three Column Layout #}
+{% macro three_column_layout(columns) -%}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {% for column in columns %}
+            <div>
+                {{ column|safe }}
+            </div>
+        {% endfor %}
+    </div>
+{%- endmacro %}
+
+{# Container with optional max width #}
+{% macro container(content, max_width="7xl", padding="px-4 py-8") -%}
+    <div class="mx-auto max-w-{{ max_width }} {{ padding }}">
+        {{ content|safe }}
+    </div>
+{%- endmacro %}

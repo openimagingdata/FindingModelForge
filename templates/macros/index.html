@@ -1,0 +1,127 @@
+{# =============================================================================
+   MACRO INDEX
+
+   This file re-exports all macros from component files for easy import.
+   Import from this file to get access to all available macros.
+   ============================================================================= #}
+
+{# Import from component files with aliasing to avoid name conflicts #}
+{% from 'macros/flowbite_components.html' import
+    flowbite_button as _flowbite_button,
+    flowbite_badge as _flowbite_badge,
+    flowbite_card as _flowbite_card,
+    flowbite_icon_list as _flowbite_icon_list,
+    alert as _alert,
+    nav_link as _nav_link,
+    user_avatar as _user_avatar,
+    dropdown_menu as _dropdown_menu,
+    progress_indicator as _progress_indicator
+%}
+
+{% from 'macros/layout_components.html' import
+    hero_section as _hero_section,
+    content_section as _content_section,
+    two_column_layout as _two_column_layout,
+    three_column_layout as _three_column_layout,
+    container as _container
+%}
+
+{% from 'macros/app_components.html' import
+    required_badge as _required_badge,
+    id_badge as _id_badge,
+    type_badge as _type_badge,
+    attribute_value as _attribute_value,
+    contributor_avatar as _contributor_avatar,
+    github_icon as _github_icon,
+    checkmark_icon as _checkmark_icon,
+    arrow_right_icon as _arrow_right_icon
+%}
+
+{# Re-export all macros #}
+{% macro flowbite_button(text, href="#", type="primary", size="default", icon=none, icon_position="left", disabled=false, target_blank=false) -%}
+{{ _flowbite_button(text, href, type, size, icon, icon_position, disabled, target_blank) }}
+{%- endmacro %}
+
+{% macro flowbite_badge(text, color="default", size="default", pill=false, href=none) -%}
+{{ _flowbite_badge(text, color, size, pill, href) }}
+{%- endmacro %}
+
+{% macro flowbite_card(title, content, href=none, cta_text=none, cta_href=none, icon=none, shadow="sm") -%}
+{{ _flowbite_card(title, content, href, cta_text, cta_href, icon, shadow) }}
+{%- endmacro %}
+
+{% macro flowbite_icon_list(items, icon=none) -%}
+{{ _flowbite_icon_list(items, icon) }}
+{%- endmacro %}
+
+{% macro hero_section(title, subtitle, description, cta_button, image_src=none, image_alt="", icon_src=none) -%}
+{{ _hero_section(title, subtitle, description, cta_button, image_src, image_alt, icon_src) }}
+{%- endmacro %}
+
+{% macro content_section(cards, max_width="6xl") -%}
+{{ _content_section(cards, max_width) }}
+{%- endmacro %}
+
+{% macro github_icon(classes="w-5 h-5") -%}
+{{ _github_icon(classes) }}
+{%- endmacro %}
+
+{% macro required_badge() -%}
+{{ _required_badge() }}
+{%- endmacro %}
+
+{% macro id_badge(id_value="") -%}
+{{ _id_badge(id_value) }}
+{%- endmacro %}
+
+{% macro type_badge(type_value) -%}
+{{ _type_badge(type_value) }}
+{%- endmacro %}
+
+{% macro attribute_value(value) -%}
+{{ _attribute_value(value) }}
+{%- endmacro %}
+
+{% macro user_avatar(user, size="md", classes="") -%}
+{{ _user_avatar(user, size, classes) }}
+{%- endmacro %}
+
+{% macro alert(message, type="info", dismissible=true, icon=none) -%}
+{{ _alert(message, type, dismissible, icon) }}
+{%- endmacro %}
+
+{% macro nav_link(text, url, current=false, classes="") -%}
+{{ _nav_link(text, url, current, classes) }}
+{%- endmacro %}
+
+{% macro dropdown_menu(items, button_text="Menu", classes="") -%}
+{{ _dropdown_menu(items, button_text, classes) }}
+{%- endmacro %}
+
+{% macro progress_indicator(value, max=100, classes="") -%}
+{{ _progress_indicator(value, max, classes) }}
+{%- endmacro %}
+
+{% macro two_column_layout(left_content, right_content, left_width="1/2", right_width="1/2") -%}
+{{ _two_column_layout(left_content, right_content, left_width, right_width) }}
+{%- endmacro %}
+
+{% macro three_column_layout(columns) -%}
+{{ _three_column_layout(columns) }}
+{%- endmacro %}
+
+{% macro container(content, max_width="7xl", padding="px-4 py-8") -%}
+{{ _container(content, max_width, padding) }}
+{%- endmacro %}
+
+{% macro contributor_avatar(contributor, size="md", classes="") -%}
+{{ _contributor_avatar(contributor, size, classes) }}
+{%- endmacro %}
+
+{% macro checkmark_icon(classes="w-5 h-5") -%}
+{{ _checkmark_icon(classes) }}
+{%- endmacro %}
+
+{% macro arrow_right_icon(classes="w-5 h-5") -%}
+{{ _arrow_right_icon(classes) }}
+{%- endmacro %}

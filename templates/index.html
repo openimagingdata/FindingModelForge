@@ -1,137 +1,73 @@
 {% extends "base.html" %}
+{% from 'macros/index.html' import flowbite_button, flowbite_card, flowbite_icon_list, github_icon, hero_section, content_section %}
 
 {% block content %}
 <div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900">
     <!-- Hero Section -->
-    <section class="px-4 py-20 mx-auto max-w-7xl">
-        <div class="flex flex-col lg:flex-row items-center gap-12">
-            <!-- Left Side - Text Content -->
-            <div class="flex-1 text-left">
-                <div class="flex items-center mb-8">
-                    <div class="p-3 bg-primary-50 dark:bg-primary-800 rounded-full mr-4">
-                        <img src="{{ url_for('static', path='images/hammer.svg') }}" alt="Finding Model Forge" class="w-12 h-12">
-                    </div>
-                    <h1 class="text-4xl font-bold tracking-tight text-gray-900 dark:text-white">
-                        Finding Model Forge
-                    </h1>
-                </div>
+    {% set cta_button %}
+        {% if user %}
+            {{ flowbite_button("Create a Model!", url_for('create_finding_model_page'), "warning", "lg") }}
+        {% else %}
+            {{ flowbite_button("Login with GitHub", url_for('login_page'), "dark", "lg", github_icon("w-5 h-5 mr-3")) }}
+        {% endif %}
+    {% endset %}
 
-                <div class="space-y-6 mb-8">
-                    <p class="text-lg text-gray-600 dark:text-gray-300 leading-relaxed">
-                        Crafting the data model for imaging results so we can turn unstructured radiology text into useful structured information
-                    </p>
-
-                    <div class="flex items-center space-x-4 text-gray-400 dark:text-gray-500">
-                        <div class="flex-1 h-px bg-gray-300 dark:bg-gray-600"></div>
-                        <span class="text-sm font-medium">or</span>
-                        <div class="flex-1 h-px bg-gray-300 dark:bg-gray-600"></div>
-                    </div>
-
-                    <p class="text-lg text-gray-600 dark:text-gray-300 leading-relaxed">
-                        Writing the dictionary to translate from radiologist language to computer language and back.
-                    </p>
-                </div>
-
-                <!-- Create a Model Button -->
-                <div class="mb-12">
-                    {% if user %}
-                        <a href="{{ url_for('create_finding_model_page') }}" class="inline-flex items-center px-8 py-4 text-lg font-medium text-gray-800 bg-yellow-200 border border-yellow-300 rounded-lg shadow-sm hover:bg-yellow-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors dark:bg-yellow-600 dark:text-white dark:border-yellow-700 dark:hover:bg-yellow-700">
-                            Create a Model!
-                        </a>
-                    {% else %}
-                        <a href="{{ url_for('login_page') }}" class="inline-flex items-center px-8 py-4 text-lg font-medium text-white bg-gray-900 border border-gray-800 rounded-lg shadow-sm hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors dark:bg-gray-700 dark:border-gray-600 dark:hover:bg-gray-600">
-                            <svg class="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 0C4.477 0 0 4.484 0 10.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0110 4.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.203 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.942.359.31.678.921.678 1.856 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0020 10.017C20 4.484 15.522 0 10 0z" clip-rule="evenodd"></path>
-                            </svg>
-                            Login with GitHub
-                        </a>
-                    {% endif %}
-                </div>
-            </div>
-
-            <!-- Right Side - Image -->
-            <div class="flex-1 max-w-2xl">
-                <div class="p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
-                    <img src="{{ url_for('static', path='images/acute_aortic_syndrom_diagram.png') }}" alt="Acute Aortic Syndrome Example" class="w-full h-auto rounded">
-                </div>
-            </div>
-        </div>
-    </section>
+    {{ hero_section(
+        "Finding Model Forge",
+        "Crafting the data model for imaging results so we can turn unstructured radiology text into useful structured information",
+        "Writing the dictionary to translate from radiologist language to computer language and back.",
+        cta_button,
+        url_for('static', path='images/acute_aortic_syndrom_diagram.png'),
+        "Acute Aortic Syndrome Example",
+        url_for('static', path='images/hammer.svg')
+    ) }}
 
     <!-- Information Sections -->
-    <section class="px-4 py-12 mx-auto max-w-7xl">
-        <div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
-            <!-- What is a Finding Model? -->
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-8">
-                <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-                    What is a Finding Model?
-                </h2>
-                <div class="text-gray-600 dark:text-gray-300">
-                    <p class="mb-4">
-                        A finding model describes a finding seen on an imaging exam, such as might be described by a radiologist or detected by an AI tool. The finding model specifies what the attributes of that finding are, and gives the finding itself and the attributes standardized names, so they can be referred to in a standard way—like the above.
-                    </p>
-                    <p class="mb-4">
-                        Essentially, finding models define formats for structured descriptions of the results of radiological exams, enabling the interoperable, AI-driven medical care system of the future.
-                    </p>
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mt-6 mb-3">
-                        Why do we need finding models?
-                    </h3>
-                    <p>
-                        Finding models can empower large language models (LLMs) and other AI tools to bridge the gap between free text radiology reports into structured, actionable data. By bridging the gap between narrative content and standardized output, FMF accelerates clinical insight, research, and workflow integration for every stakeholder.
-                    </p>
-                </div>
-            </div>
+    <div class="max-w-7xl mx-auto px-4">
+        {% set card1_content %}
+            <p class="mb-4">
+                A finding model describes a finding seen on an imaging exam, such as might be described by a radiologist or detected by an AI tool. The finding model specifies what the attributes of that finding are, and gives the finding itself and the attributes standardized names, so they can be referred to in a standard way—like the above.
+            </p>
+            <p class="mb-4">
+                Essentially, finding models define formats for structured descriptions of the results of radiological exams, enabling the interoperable, AI-driven medical care system of the future.
+            </p>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mt-6 mb-3">
+                Why do we need finding models?
+            </h3>
+            <p>
+                Finding models can empower large language models (LLMs) and other AI tools to bridge the gap between free text radiology reports into structured, actionable data. By bridging the gap between narrative content and standardized output, FMF accelerates clinical insight, research, and workflow integration for every stakeholder.
+            </p>
+        {% endset %}
 
-            <!-- What is Finding Model Forge? -->
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-8">
-                <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-                    What is Finding Model Forge?
-                </h2>
-                <div class="text-gray-600 dark:text-gray-300">
-                    <p class="mb-4">
-                        Finding Model Forge (FMF) empowers experts to create new finding models and improve existing ones.
-                    </p>
-                    <p class="mb-4">
-                        FMF offers multiple workflows to combine the insight of experts with the power of artificial intelligence to create a complete system for representing all the details of the findings seen on imaging exams.
-                    </p>
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mt-6 mb-3">
-                        Workflows:
-                    </h3>
-                    <ul class="space-y-3 text-gray-600 dark:text-gray-300">
-                        <li class="flex items-start">
-                            <svg class="w-3 h-3 text-primary-500 mt-2 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"/>
-                            </svg>
-                            <span>Import existing information (ontologies, ACR/RSNA common data elements)</span>
-                        </li>
-                        <li class="flex items-start">
-                            <svg class="w-3 h-3 text-primary-500 mt-2 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"/>
-                            </svg>
-                            <span>Experts can update using text-based tools</span>
-                        </li>
-                        <li class="flex items-start">
-                            <svg class="w-3 h-3 text-primary-500 mt-2 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"/>
-                            </svg>
-                            <span>LLMs can use references to update (with expert review)</span>
-                        </li>
-                        <li class="flex items-start">
-                            <svg class="w-3 h-3 text-primary-500 mt-2 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"/>
-                            </svg>
-                            <span>LLMs can scan report text for examples to use to update (with expert review)</span>
-                        </li>
-                        <li class="flex items-start">
-                            <svg class="w-3 h-3 text-primary-500 mt-2 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"/>
-                            </svg>
-                            <span>Experts can review and indicate approval of a version of a finding model</span>
-                        </li>
-                    </ul>
-                </div>
+        {% set workflows_list = [
+            "Import existing information (ontologies, ACR/RSNA common data elements)",
+            "Experts can update using text-based tools",
+            "LLMs can use references to update (with expert review)",
+            "LLMs can scan report text for examples to use to update (with expert review)",
+            "Experts can review and indicate approval of a version of a finding model"
+        ] %}
+
+        {% set card2_content %}
+            <p class="mb-4">
+                Finding Model Forge (FMF) empowers experts to create new finding models and improve existing ones.
+            </p>
+            <p class="mb-4">
+                FMF offers multiple workflows to combine the insight of experts with the power of artificial intelligence to create a complete system for representing all the details of the findings seen on imaging exams.
+            </p>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mt-6 mb-3">
+                Workflows:
+            </h3>
+            {{ flowbite_icon_list(workflows_list) }}
+        {% endset %}
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 py-12">
+            <div>
+                {{ flowbite_card("What is a Finding Model?", card1_content) }}
+            </div>
+            <div>
+                {{ flowbite_card("What is Finding Model Forge?", card2_content) }}
             </div>
         </div>
-    </section>
+    </div>
 </div>
 {% endblock %}
