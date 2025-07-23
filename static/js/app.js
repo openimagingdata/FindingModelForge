@@ -280,7 +280,7 @@ window.showToast = function(message) {
 
 // Console welcome message
 console.log(
-    '%cWelcome to Finding Model Forge! 🚀',
+    '%cWelcome to Finding Model Forge! ⚒︎',
     'color: #3b82f6; font-size: 16px; font-weight: bold;'
 );
 console.log(
