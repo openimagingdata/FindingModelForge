@@ -1,3 +1,4 @@
+# Docker Compose configuration with Redis cache for development
 version: '3.8'
 
 services:
@@ -8,36 +9,56 @@ services:
     environment:
       - DEBUG=true
       - ENVIRONMENT=development
-      - HOST=0.0.0.0
-      - PORT=8000
-    env_file:
-      - .env
+      - MONGODB_URI=mongodb://mongodb:27017
+      - DATABASE_NAME=findingmodels
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - REDIS_ENABLED=true
+      # Add your GitHub OAuth credentials here
+      # - GITHUB_CLIENT_ID=your_client_id
+      # - GITHUB_CLIENT_SECRET=your_client_secret
+    depends_on:
+      - mongodb
+      - redis
     volumes:
       - .:/app
-      - /app/.venv  # Exclude .venv from volume mount
-    # depends_on:
-    #   - redis
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
-  # redis:
-  #   image: redis:7-alpine
-  #   ports:
-  #     - "6379:6379"
-  #   volumes:
-  #     - redis_data:/data
+  mongodb:
+    image: mongo:7.0
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=findingmodels
 
-  # Optional: Database (uncomment if needed)
-  # db:
-  #   image: postgres:15
-  #   environment:
-  #     POSTGRES_DB: fastapi_starter
-  #     POSTGRES_USER: postgres
-  #     POSTGRES_PASSWORD: postgres
-  #   ports:
-  #     - "5432:5432"
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data
+  redis:
+    image: redis:7.2-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
-# volumes:
-#   redis_data:
-#   postgres_data:
+  # Redis monitoring (optional)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    depends_on:
+      - redis
+    profiles:
+      - monitoring
+
+volumes:
+  mongodb_data:
+  redis_data:
