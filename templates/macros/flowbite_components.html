@@ -47,6 +47,46 @@
     </a>
 {%- endmacro %}
 
+{# Action Button (for forms and JS actions) #}
+{% macro action_button(text, type="primary", size="default", icon=none, icon_position="left", disabled=false, classes="", attributes="") -%}
+    {% set base_classes = "inline-flex items-center font-medium rounded-md text-center transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2" %}
+
+    {% set size_classes = {
+        "xs": "px-2.5 py-1.5 text-xs",
+        "sm": "px-3 py-2 text-sm",
+        "default": "px-4 py-2 text-sm",
+        "lg": "px-6 py-3 text-lg"
+    } %}
+
+    {% set type_classes = {
+        "primary": "text-white bg-primary-600 hover:bg-primary-700 focus:ring-primary-500",
+        "secondary": "text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 focus:ring-primary-500",
+        "success": "text-white bg-green-600 hover:bg-green-700 focus:ring-green-500",
+        "warning": "text-yellow-800 bg-yellow-200 border border-yellow-300 hover:bg-yellow-300 focus:ring-yellow-500 dark:bg-yellow-600 dark:text-white dark:border-yellow-700 dark:hover:bg-yellow-700",
+        "danger": "text-white bg-red-600 hover:bg-red-700 focus:ring-red-500",
+        "dark": "text-white bg-gray-800 hover:bg-gray-700 focus:ring-gray-500 dark:bg-gray-700 dark:hover:bg-gray-600"
+    } %}
+
+    {% set disabled_classes = "disabled:opacity-50 disabled:cursor-not-allowed" if disabled else "" %}
+    {% set all_classes = [base_classes, size_classes[size], type_classes[type], disabled_classes, classes]|join(" ") %}
+
+    <button type="button"
+            class="{{ all_classes }}"
+            {% if disabled %}disabled{% endif %}
+            {{ attributes|safe }}>
+
+        {% if icon and icon_position == "left" %}
+            {{ icon|safe }}
+        {% endif %}
+
+        {{ text }}
+
+        {% if icon and icon_position == "right" %}
+            {{ icon|safe }}
+        {% endif %}
+    </button>
+{%- endmacro %}
+
 {# ===== BADGES ===== #}
 
 {# Standard Flowbite badge with proper styling #}
@@ -193,6 +233,46 @@
 
 {# ===== NAVIGATION ===== #}
 
+{# Breadcrumb Component #}
+{% macro breadcrumb(items) -%}
+    <nav class="flex mb-8" aria-label="Breadcrumb">
+        <ol class="inline-flex items-center space-x-1 md:space-x-3">
+            {% for item in items %}
+                <li {% if loop.first %}class="inline-flex items-center"{% endif %}>
+                    {% if not loop.last %}
+                        {% if loop.first %}
+                            <a href="{{ item.href }}" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-primary-600 dark:text-gray-400 dark:hover:text-white">
+                                {% if item.icon %}{{ item.icon|safe }}{% endif %}
+                                {{ item.text }}
+                            </a>
+                        {% else %}
+                            <div class="flex items-center">
+                                <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+                                </svg>
+                                <a href="{{ item.href }}" class="ml-1 text-sm font-medium text-gray-700 hover:text-primary-600 md:ml-2 dark:text-gray-400 dark:hover:text-white">
+                                    {{ item.text }}
+                                </a>
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="flex items-center">
+                            {% if not loop.first %}
+                                <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+                                </svg>
+                            {% endif %}
+                            <span class="{% if not loop.first %}ml-1 md:ml-2{% endif %} text-sm font-medium text-gray-500 dark:text-gray-400">
+                                {{ item.text }}
+                            </span>
+                        </div>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ol>
+    </nav>
+{%- endmacro %}
+
 {# Navigation Link Component #}
 {% macro nav_link(text, href, icon=none, active=false) -%}
     {% set base_classes = "inline-flex items-center px-3 py-2 text-sm font-medium transition-colors" %}
@@ -297,4 +377,78 @@
             {% endfor %}
         </div>
     </div>
+{%- endmacro %}
+
+{# ===== FORM COMPONENTS ===== #}
+
+{# Form Input Component #}
+{% macro form_input(name, type="text", label=none, placeholder="", value="", required=false, disabled=false, readonly=false, classes="", attributes="") -%}
+    {% set input_classes = "block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white sm:text-sm" %}
+    {% set disabled_classes = "bg-gray-50 dark:bg-gray-600 text-gray-500 dark:text-gray-400" if disabled or readonly else "" %}
+    {% set all_classes = [input_classes, disabled_classes, classes]|join(" ") %}
+
+    {% if label %}
+        <div>
+            <label for="{{ name }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {{ label }}
+                {% if required %}<span class="text-red-500">*</span>{% endif %}
+            </label>
+            <input type="{{ type }}"
+                   id="{{ name }}"
+                   name="{{ name }}"
+                   class="{{ all_classes }}"
+                   placeholder="{{ placeholder }}"
+                   value="{{ value }}"
+                   {% if required %}required{% endif %}
+                   {% if disabled %}disabled{% endif %}
+                   {% if readonly %}readonly{% endif %}
+                   {{ attributes|safe }}>
+        </div>
+    {% else %}
+        <input type="{{ type }}"
+               id="{{ name }}"
+               name="{{ name }}"
+               class="{{ all_classes }}"
+               placeholder="{{ placeholder }}"
+               value="{{ value }}"
+               {% if required %}required{% endif %}
+               {% if disabled %}disabled{% endif %}
+               {% if readonly %}readonly{% endif %}
+               {{ attributes|safe }}>
+    {% endif %}
+{%- endmacro %}
+
+{# Textarea Component #}
+{% macro form_textarea(name, label=none, placeholder="", value="", rows=3, required=false, disabled=false, readonly=false, classes="", attributes="") -%}
+    {% set textarea_classes = "block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white sm:text-sm" %}
+    {% set disabled_classes = "bg-gray-50 dark:bg-gray-600 text-gray-500 dark:text-gray-400" if disabled or readonly else "" %}
+    {% set all_classes = [textarea_classes, disabled_classes, classes]|join(" ") %}
+
+    {% if label %}
+        <div>
+            <label for="{{ name }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {{ label }}
+                {% if required %}<span class="text-red-500">*</span>{% endif %}
+            </label>
+            <textarea id="{{ name }}"
+                      name="{{ name }}"
+                      rows="{{ rows }}"
+                      class="{{ all_classes }}"
+                      placeholder="{{ placeholder }}"
+                      {% if required %}required{% endif %}
+                      {% if disabled %}disabled{% endif %}
+                      {% if readonly %}readonly{% endif %}
+                      {{ attributes|safe }}>{{ value }}</textarea>
+        </div>
+    {% else %}
+        <textarea id="{{ name }}"
+                  name="{{ name }}"
+                  rows="{{ rows }}"
+                  class="{{ all_classes }}"
+                  placeholder="{{ placeholder }}"
+                  {% if required %}required{% endif %}
+                  {% if disabled %}disabled{% endif %}
+                  {% if readonly %}readonly{% endif %}
+                  {{ attributes|safe }}>{{ value }}</textarea>
+    {% endif %}
 {%- endmacro %}

@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% from "macros/flowbite_components.html" import breadcrumb %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+  <div class="container mx-auto px-4 py-8 max-w-6xl">
+    <!-- Breadcrumb -->
+    {% set home_icon %}
+        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+            <path d="m19.707 9.293-2-2-7-7a1 1 0 0 0-1.414 0l-7 7-2 2a1 1 0 0 0 1.414 1.414L2 10.414V18a2 2 0 0 0 2 2h3a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h3a2 2 0 0 0 2-2v-7.586l.293.293a1 1 0 0 0 1.414-1.414Z"/>
+        </svg>
+    {% endset %}
+
+    {{ breadcrumb([
+        {"text": "Home", "href": url_for('index'), "icon": home_icon},
+        {"text": "Finding Models"}
+    ]) }}
+
+    <!-- Page Title -->
+    <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-6">
+      {{ title }}
+    </h1>
+
+    <!-- Finding Models List -->
+    <table id="finding-models-table">
+        <thead>
+            <tr>
+                <th>
+                    <span class="flex items-center">
+                        ID
+                    </span>
+                </th>
+                <th>
+                    <span class="flex items-center">
+                        Name
+                    </span>
+                </th>
+                <th>
+                    <span class="flex items-center">
+                        Actions
+                    </span>
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for model in finding_models %}
+            <tr>
+                <td>{{ model.id }}</td>
+                <td class="font-medium text-gray-900 whitespace-nowrap dark:text-white">{{ model.name }}</td>
+                <td>
+                    <a href="/finding-model/{{ model.slug }}" class="font-medium text-blue-600 dark:text-blue-500 hover:underline">View</a>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+    <script>
+        if (document.getElementById("finding-models-table") && typeof simpleDatatables !== 'undefined') {
+            const dataTable = new simpleDatatables.DataTable("#finding-models-table", {
+                searchable: true,
+                perPageSelect: [20, 35, 50],
+                perPage: 20,
+                sortable: false
+            });
+        }
+    </script>
+{% endblock %}

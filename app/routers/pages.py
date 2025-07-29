@@ -92,6 +92,47 @@ async def create_finding_model_page(
     )
 
 
+@router.get("/finding-models", response_class=HTMLResponse)
+async def finding_models_list(
+    request: Request,
+    current_user: Annotated[User | None, Depends(get_optional_user_dependency)],
+    index: Annotated[Index, Depends(get_finding_index)],
+) -> HTMLResponse:
+    """List all finding models."""
+    logger.info(f"Accessing finding models list for user: {current_user.login if current_user else 'Guest'}")
+
+    # Fetch all finding models from the index
+    # Use a case-insensitive sort by adding a computed field for lowercase name
+    finding_models_data: list[dict[str, Any]] = await index.index_collection.aggregate(
+        [
+            {"$addFields": {"name_lower": {"$toLower": "$name"}}},
+            {"$sort": {"name_lower": 1}},
+            {"$project": {"name_lower": 0}},  # Exclude the helper field from results
+        ]
+    ).to_list(length=None)
+    if not finding_models_data:
+        logger.warning("No finding models found in index")
+        return templates.TemplateResponse(
+            request=request,
+            name="finding_models_list.html",
+            context={"user": current_user, "title": "Finding Models", "finding_models": []},
+        )
+
+    def slugify(name: str) -> str:
+        """Convert a name to a URL-friendly slug."""
+        return name.lower().replace(" ", "-").replace("_", "-")
+
+    finding_models = [
+        {"id": model["oifm_id"], "name": model["name"], "slug": slugify(model["name"])} for model in finding_models_data
+    ]
+
+    return templates.TemplateResponse(
+        request=request,
+        name="finding_models_list.html",
+        context={"user": current_user, "title": "Finding Models", "finding_models": finding_models},
+    )
+
+
 @router.get("/finding-model/{slug}", response_class=HTMLResponse)
 async def finding_model_display(
     request: Request,

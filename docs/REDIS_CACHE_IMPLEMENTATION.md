@@ -155,10 +155,10 @@ async def get_user_profile(user: User = Depends(get_current_user)) -> JSONRespon
     cached_user = await cache.get_user(str(user.id))
     if cached_user:
         return JSONResponse(content=cached_user.model_dump())
-    
+
     # Cache miss - use the authenticated user and cache it
     await cache.set_user(str(user.id), user, expires=1800)  # 30 minutes
-    
+
     return JSONResponse(content=user.model_dump())
 ```
 
