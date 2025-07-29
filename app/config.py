@@ -55,6 +55,9 @@ class Settings(BaseSettings):
     redis_db: int = 0
     redis_enabled: bool = True
 
+    # Cache Configuration
+    cache_finding_models_expires_in: int = 3600  # 1 hour
+
     @property
     def github_redirect_uri(self) -> str:
         """GitHub OAuth redirect URI."""

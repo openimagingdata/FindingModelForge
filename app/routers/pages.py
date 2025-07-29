@@ -97,9 +97,17 @@ async def finding_models_list(
     request: Request,
     current_user: Annotated[User | None, Depends(get_optional_user_dependency)],
     index: Annotated[Index, Depends(get_finding_index)],
+    cache: Annotated[RedisCache, Depends(get_cache)],
 ) -> HTMLResponse:
     """List all finding models."""
     logger.info(f"Accessing finding models list for user: {current_user.login if current_user else 'Guest'}")
+
+    # Check cache first
+    finding_models = await cache.get_finding_models()
+    if finding_models:
+        logger.debug("Cache hit for finding models list")
+    else:
+        logger.debug("Cache miss for finding models list, fetching from index")
 
     # Fetch all finding models from the index
     # Use a case-insensitive sort by adding a computed field for lowercase name
@@ -125,6 +133,9 @@ async def finding_models_list(
     finding_models = [
         {"id": model["oifm_id"], "name": model["name"], "slug": slugify(model["name"])} for model in finding_models_data
     ]
+
+    # Cache the finding models list for 1 hour
+    await cache.set_finding_models(finding_models)
 
     return templates.TemplateResponse(
         request=request,
