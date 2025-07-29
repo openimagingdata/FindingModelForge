@@ -4,10 +4,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
+from .cache import CacheConfig, cache
 from .config import logger, settings
 from .database import Database
 from .health import router as health_router
-from .routers import auth, pages, static, users
+from .routers import auth, finding_models, pages, static, users
 
 
 @asynccontextmanager
@@ -17,6 +18,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info(f"Starting {settings.app_name} v{settings.app_version}")
     logger.info(f"Environment: {settings.environment}")
     logger.info(f"Debug mode: {settings.debug}")
+
+    # Initialize Redis cache if enabled
+    if settings.redis_enabled:
+        cache_config = CacheConfig(
+            host=settings.redis_host,
+            port=settings.redis_port,
+            db=settings.redis_db,
+        )
+        cache.config = cache_config
+        await cache.connect()
+        if await cache.is_healthy():
+            logger.info("Redis cache initialized and healthy")
+        else:
+            logger.warning("Redis cache connection failed - continuing without cache")
+    else:
+        logger.info("Redis caching is disabled")
 
     # Create and connect to MongoDB
     database = Database()
@@ -42,6 +59,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await database.disconnect()
     logger.info("Disconnected from MongoDB")
 
+    # Disconnect cache
+    await cache.disconnect()
+    logger.info("Disconnected from Redis cache")
+
 
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
@@ -63,10 +84,6 @@ def create_app() -> FastAPI:
     app.include_router(users.router, prefix="/api/users", tags=["users"])
     app.include_router(static.router, tags=["static"])
     app.include_router(pages.router, tags=["pages"])
-
-    # Import and include finding models router
-    from .routers import finding_models
-
     app.include_router(finding_models.router, prefix="/api/finding-models", tags=["finding-models"])
 
     return app

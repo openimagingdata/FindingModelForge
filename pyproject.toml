@@ -15,6 +15,7 @@ dependencies = [
     "go-task-bin>=3.44.0",
     "motor>=3.6.0",
     "findingmodel>=0.3.1",
+    "redis>=6.2.0",
 ]
 
 [dependency-groups]
@@ -77,6 +78,9 @@ minversion = "6.0"
 addopts = "-ra -q --cov=app --cov-report=term-missing"
 testpaths = ["tests"]
 asyncio_mode = "auto"
+filterwarnings = [
+    "ignore:Support for class-based.*:DeprecationWarning:pydantic.*",
+]
 
 [tool.coverage.run]
 source = ["app"]

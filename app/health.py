@@ -1,16 +1,20 @@
-# mypy: disable-error-code="prop-decorator"
-from datetime import datetime
+"""Health check endpoints."""
 
-from fastapi import APIRouter
+from datetime import datetime
+from typing import Annotated
+
+from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
+from .cache import RedisCache
 from .config import settings
+from .dependencies import get_cache
 from .models import HealthCheck
 
 router = APIRouter()
 
 
-@router.get("/health", response_model=HealthCheck)
+@router.get("/health")
 async def health_check() -> HealthCheck:
     """Basic health check endpoint."""
     return HealthCheck(
@@ -22,22 +26,48 @@ async def health_check() -> HealthCheck:
 
 
 @router.get("/health/ready")
-async def readiness_check() -> JSONResponse:
-    """Readiness check for Kubernetes deployments."""
-    # Add checks for database connectivity, external services, etc.
+async def readiness_check(cache: Annotated[RedisCache, Depends(get_cache)]) -> JSONResponse:
+    """Readiness check endpoint with cache status."""
+    checks = {
+        "database": "healthy",  # We assume MongoDB is healthy if we reach this point
+        "cache": "disabled" if not cache.enabled else ("healthy" if await cache.is_healthy() else "unhealthy"),
+    }
+
+    overall_status = "ready" if all(status in ["healthy", "disabled"] for status in checks.values()) else "not_ready"
+
     return JSONResponse(
         content={
-            "status": "ready",
+            "status": overall_status,
             "timestamp": datetime.now().isoformat(),
-            "checks": {
-                "database": "ok",  # Replace with actual database check
-                "github_oauth": "ok" if settings.github_client_id else "disabled",
-            },
+            "checks": checks,
         }
     )
 
 
 @router.get("/health/live")
 async def liveness_check() -> JSONResponse:
-    """Liveness check for Kubernetes deployments."""
-    return JSONResponse(content={"status": "alive", "timestamp": datetime.now().isoformat()})
+    """Liveness check endpoint."""
+    return JSONResponse(
+        content={
+            "status": "alive",
+            "timestamp": datetime.now().isoformat(),
+        }
+    )
+
+
+@router.get("/health/cache")
+async def cache_health_check(cache: Annotated[RedisCache, Depends(get_cache)]) -> JSONResponse:
+    """Cache-specific health check with statistics."""
+    if not cache.enabled:
+        return JSONResponse(
+            content={
+                "status": "disabled",
+                "message": "Redis caching is disabled",
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
+
+    cache_stats = await cache.get_stats()
+    cache_stats["timestamp"] = datetime.now().isoformat()
+
+    return JSONResponse(content=cache_stats)

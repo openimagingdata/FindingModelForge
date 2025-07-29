@@ -3,7 +3,7 @@
 version: "3"
 
 vars:
-  CONTAINER_NAME: ghcr.io/openimagingdata/findingmodelforge:latest
+  CONTAINER_NAME: ghcr.io/openimagingdata/findingmodelforge
   DATE_TAG: "{{now | date \"20060102\"}}"
 
 tasks:
@@ -155,9 +155,9 @@ tasks:
     desc: "Build Docker image (assumes frontend assets already built)"
     cmds:
       - echo "🐳 Building Finding Model Forge Docker image..."
-      - docker build -t findingmodelforge:latest -t findingmodelforge:{{.DATE_TAG}} .
+      - docker build --platform linux/amd64 -t {{.CONTAINER_NAME}}:latest -t {{.CONTAINER_NAME}}:{{.DATE_TAG}} .
       - echo "📊 Image sizes:"
-      - docker images findingmodelforge --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}"
+      - docker images {{.CONTAINER_NAME}} --format "table {{`{{.Repository}}`}}\t{{`{{.Tag}}`}}\t{{`{{.Size}}`}}" | head -6 || echo "No images found"
       - echo "✅ Docker build complete!"
     silent: true
 
@@ -194,7 +194,7 @@ tasks:
       - echo "🐳 Building production Docker image..."
       - echo "🎨 Building frontend assets for production..."
       - npm run build
-      - docker build --platform linux/amd64 -t {{.CONTAINER_NAME}} -t findingmodelforge:{{.DATE_TAG}} .
+      - docker build --platform linux/amd64 -t {{.CONTAINER_NAME}} -t {{.CONTAINER_NAME}}:{{.DATE_TAG}} .
       - echo "📊 Image sizes:"
       - sh -c 'docker images --format "table {{`{{.Repository}}`}}\t{{`{{.Tag}}`}}\t{{`{{.Size}}`}}" | grep -E "(REPOSITORY|findingmodelforge|ghcr.io)" | head -6' || echo "No images found"
       - echo "✅ Production build complete!"
@@ -214,16 +214,16 @@ tasks:
           npm run download:libs
         fi
       - echo "✅ Frontend assets ready"
-      - docker build --platform linux/amd64 -t {{.CONTAINER_NAME}} -t findingmodelforge:{{.DATE_TAG}} .
+      - docker build --platform linux/amd64 -t {{.CONTAINER_NAME}} -t {{.CONTAINER_NAME}}:{{.DATE_TAG}} .
       - echo "📊 Image sizes:"
-      - sh -c 'docker images --format "table {{`{{.Repository}}`}}\t{{`{{.Tag}}`}}\t{{`{{.Size}}`}}" | grep -E "(REPOSITORY|findingmodelforge|ghcr.io)" | head -6' || echo "No images found"
+      - sh -c 'docker images --format "table {{`{{.Repository}}`}}\t{{`{{.Tag}}`}}\t{{`{{.Size}}`}}" | grep -E "(REPOSIT{{.CONTAINER_NAME}}|ghcr.io)" | head -6' || echo "No images found"
       - echo "✅ CI build complete!"
 
   run-container:
     desc: "Run the app in a Docker container"
     cmds:
       - echo "🐳 Running FindingModelForge container..."
-      - docker run --name findingmodelforge --platform linux/amd64 -d --env-file .env -p 8000:8000 --rm findingmodelforge:latest
+      - docker run --name findingmodelforge --platform linux/amd64 -d --env-file .env -p 8000:8000 --rm {{.CONTAINER_NAME}}:latest
       - echo "🌐 Container running on http://localhost:8000"
       - echo "💡 Use 'docker logs findingmodelforge' to see logs"
       - echo "💡 Use 'docker stop findingmodelforge' to stop"

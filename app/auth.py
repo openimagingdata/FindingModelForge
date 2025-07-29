@@ -1,3 +1,5 @@
+"""Authentication utilities for FindingModelForge with transparent caching support."""
+
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any
 
@@ -6,6 +8,7 @@ import jwt
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer
 
+from .cache import cache
 from .config import logger, settings
 from .database import UserRepo
 from .dependencies import get_user_repo
@@ -103,19 +106,31 @@ async def get_github_user(access_token: str) -> GitHubUser:
 
 
 async def get_or_create_user(github_user: GitHubUser, user_repo: UserRepo) -> tuple[User, bool]:
-    """Get or create user from GitHub user data.
+    """Get or create user from GitHub user data with optional caching.
 
     Returns:
         tuple[User, bool]: (user, is_new_user)
     """
-    # Check if user exists
-    logger.info(f"Checking if user exists in database {github_user.id}")
+    # Check cache first (transparently handles Redis availability)
+    logger.info(f"Checking cache for user {github_user.id}")
+    cached_user = await cache.get_user(str(github_user.id))
+    if cached_user:
+        logger.info(f"Found user {cached_user.login} in cache")
+        return cached_user, False
+
+    # Check if user exists in database
+    logger.info(f"Checking database for user {github_user.id}")
     existing_user = await user_repo.get_user(github_user.id)
 
     if existing_user:
+        # Cache the user for future requests (transparently handles Redis availability)
+        await cache.set_user(str(existing_user.id), existing_user)
+        await cache.set_user_by_login(existing_user)
+        logger.info(f"Found user {existing_user.login} in database, cached for future requests")
         return existing_user, False
 
     # Create new user
+    logger.info(f"Creating new user for GitHub user {github_user.login}")
     user_create = UserCreate(
         id=github_user.id,
         login=github_user.login,
@@ -126,11 +141,17 @@ async def get_or_create_user(github_user: GitHubUser, user_repo: UserRepo) -> tu
     )
 
     user = await user_repo.create_user(user_create)
+
+    # Cache the new user (transparently handles Redis availability)
+    await cache.set_user(str(user.id), user)
+    await cache.set_user_by_login(user)
+    logger.info(f"Created and cached new user {user.login}")
+
     return user, True
 
 
 async def get_current_user(request: Request, user_repo: Annotated[UserRepo, Depends(get_user_repo)]) -> User:
-    """Get current authenticated user from JWT token."""
+    """Get current authenticated user from JWT token with transparent caching."""
     # Try to get token from cookie first
     token = request.cookies.get("access_token")
 
@@ -155,19 +176,31 @@ async def get_current_user(request: Request, user_repo: Annotated[UserRepo, Depe
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # Check cache first (transparently handles no Redis)
+    user = await cache.get_user(str(token_data.user_id))
+    if user:
+        logger.debug(f"Cache hit for user {user.login} (ID: {user.id})")
+        return user
+
+    # Fall back to database
+    logger.debug(f"Cache miss for user ID {token_data.user_id}, checking database")
     user = await user_repo.get_user(token_data.user_id)
 
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-    logger.info(f"Current user: {user.login} (ID: {user.id})")
+    # Cache the user for future requests (transparently handles no Redis)
+    await cache.set_user(str(user.id), user)
+    await cache.set_user_by_login(user)
+    logger.debug(f"Database hit for user {user.login}, cached for future requests")
+
     return user
 
 
 async def get_optional_user(request: Request, user_repo: Annotated[UserRepo, Depends(get_user_repo)]) -> User | None:
-    """Get current user if authenticated, otherwise return None."""
+    """Get current user if authenticated with transparent caching, otherwise return None."""
     try:
         return await get_current_user(request, user_repo)
     except HTTPException as e:
-        logger.warning(f"No authenticated user found, returning None ({e})")
+        logger.debug(f"No authenticated user found, returning None ({e})")
         return None

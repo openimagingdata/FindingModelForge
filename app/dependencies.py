@@ -5,6 +5,7 @@ from typing import Annotated
 from fastapi import Depends, Request
 from findingmodel.index import Index
 
+from .cache import RedisCache, cache
 from .database import Database, UserRepo
 
 
@@ -25,3 +26,8 @@ def get_finding_index(database: Annotated[Database, Depends(get_database)]) -> I
     if database.finding_index is None:
         raise RuntimeError("Database not initialized or FindingModel Index not available")
     return database.finding_index
+
+
+def get_cache() -> RedisCache:
+    """Get cache dependency."""
+    return cache

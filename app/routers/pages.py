@@ -1,6 +1,6 @@
 # ruff: noqa: B008
 # mypy: disable-error-code="prop-decorator"
-from typing import Annotated
+from typing import Annotated, Any
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -10,8 +10,9 @@ from findingmodel import FindingModelFull
 from findingmodel.index import Index
 
 from app.auth import get_optional_user
+from app.cache import RedisCache
 from app.config import logger, settings
-from app.dependencies import get_finding_index
+from app.dependencies import get_cache, get_finding_index
 from app.models import User
 
 router = APIRouter()
@@ -97,13 +98,14 @@ async def finding_model_display(
     slug: str,
     current_user: Annotated[User | None, Depends(get_optional_user_dependency)],
     index: Annotated[Index, Depends(get_finding_index)],
+    cache: Annotated[RedisCache, Depends(get_cache)],
 ) -> HTMLResponse:
-    """Display a finding model by slug."""
+    """Display a finding model by slug with caching."""
     logger.info(f"Accessing finding model '{slug}' for user: {current_user.login if current_user else 'Guest'}")
 
     slug = slug.replace("-", " ").replace("_", " ").lower().strip()
     try:
-        # Look up the finding model in the index by slug
+        # Look up the finding model in the index by slug (needed for metadata)
         index_entry = await index.get(slug)
         if not index_entry:
             raise HTTPException(
@@ -111,22 +113,34 @@ async def finding_model_display(
                 detail=f"Finding model '{slug}' not found in index",
             )
 
-        # Extract filename from index entry
-        if not index_entry.filename:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Finding model entry missing filename",
-            )
+        # Check cache first
+        finding_model = await cache.get_finding_model(slug)
+        if finding_model:
+            logger.debug(f"Cache hit for finding model '{slug}'")
+        else:
+            logger.debug(f"Cache miss for finding model '{slug}', fetching from GitHub")
 
-        # Construct the GitHub raw URL
-        github_url = f"{settings.finding_models_github_base_url}{index_entry.filename}"
-        logger.debug(f"Fetching finding model from: {github_url}")
+            # Extract filename from index entry
+            if not index_entry.filename:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Finding model entry missing filename",
+                )
 
-        # Fetch the finding model JSON from GitHub
-        async with httpx.AsyncClient() as client:
-            response = await client.get(github_url)
-            response.raise_for_status()
-            finding_model = FindingModelFull.model_validate_json(response.text)
+            # Construct the GitHub raw URL
+            github_url = f"{settings.finding_models_github_base_url}{index_entry.filename}"
+            logger.debug(f"Fetching finding model from: {github_url}")
+
+            # Fetch the finding model JSON from GitHub
+            async with httpx.AsyncClient() as client:
+                response = await client.get(github_url)
+                response.raise_for_status()
+                finding_model = FindingModelFull.model_validate_json(response.text)
+
+            # Cache the result
+            await cache.set_finding_model(slug, finding_model)
+            logger.debug(f"Cached finding model '{slug}' for future requests")
+
         # Pass the data to the template
         return templates.TemplateResponse(
             request=request,

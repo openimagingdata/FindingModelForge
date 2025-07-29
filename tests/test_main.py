@@ -82,6 +82,11 @@ async def test_lifespan_startup_success() -> None:
         mock_settings.debug = False
         mock_settings.github_client_id = "test_client_id"
         mock_settings.mongodb_db = "test_db"
+        # Redis settings
+        mock_settings.redis_enabled = False  # Disable Redis for tests
+        mock_settings.redis_host = "localhost"
+        mock_settings.redis_port = 6379
+        mock_settings.redis_db = 0
 
         # Import and test the lifespan function
         from app.main import lifespan
@@ -116,6 +121,11 @@ async def test_lifespan_startup_database_failure() -> None:
         mock_settings.environment = "test"
         mock_settings.debug = False
         mock_settings.github_client_id = "test_client_id"
+        # Redis settings
+        mock_settings.redis_enabled = False  # Disable Redis for tests
+        mock_settings.redis_host = "localhost"
+        mock_settings.redis_port = 6379
+        mock_settings.redis_db = 0
 
         from app.main import lifespan
 
@@ -145,6 +155,11 @@ async def test_lifespan_warns_when_github_not_configured() -> None:
         mock_settings.environment = "test"
         mock_settings.debug = False
         mock_settings.github_client_id = None  # Not configured
+        # Redis settings
+        mock_settings.redis_enabled = False  # Disable Redis for tests
+        mock_settings.redis_host = "localhost"
+        mock_settings.redis_port = 6379
+        mock_settings.redis_db = 0
 
         from app.main import lifespan
 

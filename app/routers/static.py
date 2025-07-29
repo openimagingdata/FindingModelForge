@@ -18,12 +18,6 @@ async def apple_touch_icon() -> FileResponse:
     return FileResponse("static/images/apple-touch-icon.png")
 
 
-@router.get("/apple-touch-icon-precomposed.png")
-async def apple_touch_icon_precomposed() -> FileResponse:
-    """Serve Apple touch icon precomposed."""
-    return FileResponse("static/images/apple-touch-icon-precomposed.png")
-
-
 @router.get("/android-chrome-192x192.png")
 async def android_chrome_192() -> FileResponse:
     """Serve Android Chrome 192x192 icon."""
