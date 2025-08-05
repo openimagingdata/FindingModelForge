@@ -137,6 +137,102 @@ async def finding_models_list(
     return make_response(finding_models)
 
 
+async def _get_finding_model_with_cache(
+    slug: str,
+    index: Any,  # Index type from findingmodel.index
+    cache: Any,  # RedisCache type
+) -> tuple[FindingModelFull, Any]:
+    """
+    Shared logic to fetch a finding model with caching.
+
+    Returns:
+        Tuple of (finding_model, index_entry)
+    """
+    slug = slug.replace("-", " ").replace("_", " ").lower().strip()
+
+    # Look up the finding model in the index by slug (needed for metadata)
+    index_entry = await index.get(slug)
+    if not index_entry:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Finding model '{slug}' not found in index",
+        )
+
+    # Check cache first
+    finding_model = await cache.get_finding_model(slug)
+    if finding_model:
+        logger.debug(f"Cache hit for finding model '{slug}'")
+    else:
+        logger.debug(f"Cache miss for finding model '{slug}', fetching from GitHub")
+
+        # Extract filename from index entry
+        if not index_entry.filename:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Finding model entry missing filename",
+            )
+
+        # Construct the GitHub raw URL
+        github_url = f"{settings.finding_models_github_base_url}{index_entry.filename}"
+        logger.debug(f"Fetching finding model from: {github_url}")
+
+        # Fetch the finding model JSON from GitHub
+        async with httpx.AsyncClient() as client:
+            response = await client.get(github_url)
+            response.raise_for_status()
+            finding_model = FindingModelFull.model_validate_json(response.text)
+
+        # Cache the result
+        await cache.set_finding_model(slug, finding_model)
+        logger.debug(f"Cached finding model '{slug}' for future requests")
+
+    return finding_model, index_entry
+
+
+@router.get("/finding-model/{slug}/partial", response_class=HTMLResponse)
+async def finding_model_partial(
+    request: Request,
+    slug: str,
+    current_user: OptionalUserDep,
+    index: FindingIndexDep,
+    cache: CacheDep,
+) -> HTMLResponse:
+    """Return partial HTML for finding model display."""
+    logger.info(f"Accessing finding model partial '{slug}' for user: {current_user.login if current_user else 'Guest'}")
+
+    try:
+        finding_model, index_entry = await _get_finding_model_with_cache(slug, index, cache)
+
+        # Return just the component template
+        return templates.TemplateResponse(
+            request=request,
+            name="components/finding_model_display.html",
+            context={
+                "finding_model": finding_model,
+                "index_entry": index_entry,
+                "slug": slug.replace("-", " ").replace("_", " ").lower().strip(),
+            },
+        )
+
+    except httpx.HTTPError as e:
+        logger.error(f"HTTP error fetching finding model '{slug}': {e}")
+        error_content = (
+            '<div class="p-4 text-red-600 bg-red-50 dark:bg-red-900 dark:text-red-200 rounded-lg">'
+            "Failed to load finding model</div>"
+        )
+        return HTMLResponse(content=error_content, status_code=500)
+    except HTTPException:
+        # Let HTTPException propagate as-is
+        raise
+    except Exception as e:
+        logger.error(f"Error displaying finding model partial '{slug}': {e}")
+        error_content = (
+            '<div class="p-4 text-red-600 bg-red-50 dark:bg-red-900 dark:text-red-200 rounded-lg">'
+            "Error loading finding model</div>"
+        )
+        return HTMLResponse(content=error_content, status_code=500)
+
+
 @router.get("/finding-model/{slug}", response_class=HTMLResponse)
 async def finding_model_display(
     request: Request,
@@ -148,43 +244,11 @@ async def finding_model_display(
     """Display a finding model by slug with caching."""
     logger.info(f"Accessing finding model '{slug}' for user: {current_user.login if current_user else 'Guest'}")
 
-    slug = slug.replace("-", " ").replace("_", " ").lower().strip()
     try:
-        # Look up the finding model in the index by slug (needed for metadata)
-        index_entry = await index.get(slug)
-        if not index_entry:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Finding model '{slug}' not found in index",
-            )
+        finding_model, index_entry = await _get_finding_model_with_cache(slug, index, cache)
 
-        # Check cache first
-        finding_model = await cache.get_finding_model(slug)
-        if finding_model:
-            logger.debug(f"Cache hit for finding model '{slug}'")
-        else:
-            logger.debug(f"Cache miss for finding model '{slug}', fetching from GitHub")
-
-            # Extract filename from index entry
-            if not index_entry.filename:
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Finding model entry missing filename",
-                )
-
-            # Construct the GitHub raw URL
-            github_url = f"{settings.finding_models_github_base_url}{index_entry.filename}"
-            logger.debug(f"Fetching finding model from: {github_url}")
-
-            # Fetch the finding model JSON from GitHub
-            async with httpx.AsyncClient() as client:
-                response = await client.get(github_url)
-                response.raise_for_status()
-                finding_model = FindingModelFull.model_validate_json(response.text)
-
-            # Cache the result
-            await cache.set_finding_model(slug, finding_model)
-            logger.debug(f"Cached finding model '{slug}' for future requests")
+        # Normalize slug for template context
+        normalized_slug = slug.replace("-", " ").replace("_", " ").lower().strip()
 
         # Pass the data to the template
         return templates.TemplateResponse(
@@ -197,7 +261,7 @@ async def finding_model_display(
                 "finding_model_json": finding_model.model_dump_json(indent=2, exclude_none=True),
                 "filename": index_entry.filename,
                 "index_entry": index_entry,
-                "slug": slug,
+                "slug": normalized_slug,
             },
         )
 
