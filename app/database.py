@@ -85,18 +85,6 @@ class UserRepo:
             return User(**user_dict)
         return None
 
-    async def get_organizations(self) -> list[Organization]:
-        """Get all organizations."""
-        if self._organizations:
-            return self._organizations
-        cursor = self.org_collection.find()
-        organizations = []
-        async for org_dict in cursor:
-            org_dict.pop("_id", None)
-            organizations.append(Organization(**org_dict))
-        self._organizations = organizations
-        return organizations
-
     async def get_user_by_login(self, login: str) -> User | None:
         """Get user by GitHub login/username."""
         user_dict = await self.collection.find_one({"login": login})

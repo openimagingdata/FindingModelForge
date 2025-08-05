@@ -1,23 +1,21 @@
 # mypy: disable-error-code="prop-decorator"
 # mypy: disable-error-code="arg-type"
-from typing import Annotated
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
 
 from app.auth import (
+    CurrentUserDep,
     create_access_token,
     create_refresh_token,
-    get_current_user,
     get_github_access_token,
     get_github_user,
     get_or_create_user,
     verify_token,
 )
 from app.config import logger, settings
-from app.database import UserRepo
-from app.dependencies import get_user_repo
+from app.dependencies import UserRepoDep
 from app.models import Token, User
 
 router = APIRouter()
@@ -50,7 +48,7 @@ async def login() -> RedirectResponse:
 
 
 @router.get("/callback")
-async def auth_callback(code: str, user_repo: Annotated[UserRepo, Depends(get_user_repo)]) -> RedirectResponse:
+async def auth_callback(code: str, user_repo: UserRepoDep) -> RedirectResponse:
     """Handle GitHub OAuth callback."""
     try:
         # Exchange code for access token
@@ -137,13 +135,7 @@ async def refresh_token(request: Request) -> Token:
     )
 
 
-# Dependency wrapper for get_current_user
-async def get_current_user_dependency(request: Request, user_repo: Annotated[UserRepo, Depends(get_user_repo)]) -> User:
-    """Dependency wrapper for get_current_user."""
-    return await get_current_user(request, user_repo)
-
-
 @router.get("/me", response_model=User)
-async def get_me(current_user: Annotated[User, Depends(get_current_user_dependency)]) -> User:
+async def get_me(current_user: CurrentUserDep) -> User:
     """Get current user information."""
     return current_user

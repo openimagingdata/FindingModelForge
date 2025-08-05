@@ -1,14 +1,12 @@
 """Health check endpoints."""
 
 from datetime import datetime
-from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from .cache import RedisCache
 from .config import settings
-from .dependencies import get_cache
+from .dependencies import CacheDep
 from .models import HealthCheck
 
 router = APIRouter()
@@ -26,7 +24,7 @@ async def health_check() -> HealthCheck:
 
 
 @router.get("/health/ready")
-async def readiness_check(cache: Annotated[RedisCache, Depends(get_cache)]) -> JSONResponse:
+async def readiness_check(cache: CacheDep) -> JSONResponse:
     """Readiness check endpoint with cache status."""
     checks = {
         "database": "healthy",  # We assume MongoDB is healthy if we reach this point
@@ -56,7 +54,7 @@ async def liveness_check() -> JSONResponse:
 
 
 @router.get("/health/cache")
-async def cache_health_check(cache: Annotated[RedisCache, Depends(get_cache)]) -> JSONResponse:
+async def cache_health_check(cache: CacheDep) -> JSONResponse:
     """Cache-specific health check with statistics."""
     if not cache.enabled:
         return JSONResponse(

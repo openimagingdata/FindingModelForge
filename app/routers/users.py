@@ -1,26 +1,17 @@
 # ruff: noqa: B008
 """User management API routes."""
 
-from typing import Annotated
+from fastapi import APIRouter, HTTPException, status
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-
-from app.auth import get_current_user
-from app.database import UserRepo
-from app.dependencies import get_user_repo
+from app.auth import CurrentUserDep
+from app.dependencies import UserRepoDep
 from app.models import User, UserUpdate
 
 router = APIRouter()
 
 
-# Dependency wrapper for get_current_user
-async def get_current_user_dependency(request: Request, user_repo: UserRepo = Depends(get_user_repo)) -> User:
-    """Dependency wrapper for get_current_user."""
-    return await get_current_user(request, user_repo)
-
-
 @router.get("/profile", response_model=User)
-async def get_user_profile(current_user: Annotated[User, Depends(get_current_user_dependency)]) -> User:
+async def get_user_profile(current_user: CurrentUserDep) -> User:
     """Get current user's profile."""
     return current_user
 
@@ -28,8 +19,8 @@ async def get_user_profile(current_user: Annotated[User, Depends(get_current_use
 @router.patch("/profile", response_model=User)
 async def update_user_profile(
     user_update: UserUpdate,
-    current_user: Annotated[User, Depends(get_current_user_dependency)],
-    user_repo: UserRepo = Depends(get_user_repo),
+    current_user: CurrentUserDep,
+    user_repo: UserRepoDep,
 ) -> User:
     """Update current user's profile."""
     updated_user = await user_repo.update_user(current_user.id, user_update)
@@ -38,14 +29,9 @@ async def update_user_profile(
     return updated_user
 
 
-@router.get("/organizations/{org_code}/members", response_model=list[User])
-async def get_organization_members(
-    org_code: str,
-    current_user: Annotated[User, Depends(get_current_user_dependency)],
-    user_repo: UserRepo = Depends(get_user_repo),
-) -> list[User]:
-    """Get all users in an organization (only if current user is member)."""
-    if org_code not in (current_user.organizations or []):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not a member of this organization")
-
-    return await user_repo.list_users_by_organization(org_code)
+@router.get("/profile/organizations", response_model=list[str])
+async def get_user_organizations(
+    current_user: CurrentUserDep,
+) -> list[str]:
+    """Get organizations that the current user belongs to."""
+    return current_user.organizations or []

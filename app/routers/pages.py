@@ -1,32 +1,23 @@
 # ruff: noqa: B008
 # mypy: disable-error-code="prop-decorator"
-from typing import Annotated, Any
+from typing import Any
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from findingmodel import FindingModelFull
-from findingmodel.index import Index
 
-from app.auth import get_optional_user
-from app.cache import RedisCache
+from app.auth import OptionalUserDep
 from app.config import logger, settings
-from app.dependencies import get_cache, get_finding_index
-from app.models import User
+from app.dependencies import CacheDep, FindingIndexDep
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 
 
-# Use get_optional_user directly as a dependency
-get_optional_user_dependency = get_optional_user
-
-
 @router.get("/", response_class=HTMLResponse)
-async def index(
-    request: Request, current_user: Annotated[User | None, Depends(get_optional_user_dependency)]
-) -> HTMLResponse:
+async def index(request: Request, current_user: OptionalUserDep) -> HTMLResponse:
     """Home page."""
     return templates.TemplateResponse(
         request=request,
@@ -42,7 +33,7 @@ async def login_page(request: Request) -> HTMLResponse:
 
 
 @router.get("/profile", response_class=HTMLResponse)
-async def profile(request: Request, current_user: User = Depends(get_optional_user_dependency)) -> HTMLResponse:
+async def profile(request: Request, current_user: OptionalUserDep) -> HTMLResponse:
     """Protected profile page."""
     logger.info(f"Accessing profile for user: {current_user.login if current_user else 'Guest'}")
     if not current_user:
@@ -69,9 +60,7 @@ async def dashboard_redirect() -> RedirectResponse:
 
 
 @router.get("/create-finding-model", response_class=HTMLResponse)
-async def create_finding_model_page(
-    request: Request, current_user: Annotated[User | None, Depends(get_optional_user_dependency)]
-) -> HTMLResponse:
+async def create_finding_model_page(request: Request, current_user: OptionalUserDep) -> HTMLResponse:
     """Finding model creation page."""
     logger.info(f"Accessing finding model creation for user: {current_user.login if current_user else 'Guest'}")
 
@@ -95,19 +84,27 @@ async def create_finding_model_page(
 @router.get("/finding-models", response_class=HTMLResponse)
 async def finding_models_list(
     request: Request,
-    current_user: Annotated[User | None, Depends(get_optional_user_dependency)],
-    index: Annotated[Index, Depends(get_finding_index)],
-    cache: Annotated[RedisCache, Depends(get_cache)],
+    current_user: OptionalUserDep,
+    index: FindingIndexDep,
+    cache: CacheDep,
 ) -> HTMLResponse:
     """List all finding models."""
     logger.info(f"Accessing finding models list for user: {current_user.login if current_user else 'Guest'}")
+
+    def make_response(finding_models: list[dict[str, Any]]) -> HTMLResponse:
+        return templates.TemplateResponse(
+            request=request,
+            name="finding_models_list.html",
+            context={"user": current_user, "title": "Finding Models", "finding_models": finding_models},
+        )
 
     # Check cache first
     finding_models = await cache.get_finding_models()
     if finding_models:
         logger.debug("Cache hit for finding models list")
-    else:
-        logger.debug("Cache miss for finding models list, fetching from index")
+        return make_response(finding_models)
+
+    logger.debug("Cache miss for finding models list, fetching from index")
 
     # Fetch all finding models from the index
     # Use a case-insensitive sort by adding a computed field for lowercase name
@@ -137,20 +134,16 @@ async def finding_models_list(
     # Cache the finding models list for 1 hour
     await cache.set_finding_models(finding_models)
 
-    return templates.TemplateResponse(
-        request=request,
-        name="finding_models_list.html",
-        context={"user": current_user, "title": "Finding Models", "finding_models": finding_models},
-    )
+    return make_response(finding_models)
 
 
 @router.get("/finding-model/{slug}", response_class=HTMLResponse)
 async def finding_model_display(
     request: Request,
     slug: str,
-    current_user: Annotated[User | None, Depends(get_optional_user_dependency)],
-    index: Annotated[Index, Depends(get_finding_index)],
-    cache: Annotated[RedisCache, Depends(get_cache)],
+    current_user: OptionalUserDep,
+    index: FindingIndexDep,
+    cache: CacheDep,
 ) -> HTMLResponse:
     """Display a finding model by slug with caching."""
     logger.info(f"Accessing finding model '{slug}' for user: {current_user.login if current_user else 'Guest'}")

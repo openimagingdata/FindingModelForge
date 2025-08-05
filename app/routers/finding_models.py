@@ -1,13 +1,10 @@
 # ruff: noqa: B008
 """Finding Model creation and management routes."""
 
-from typing import Annotated
-
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.templating import Jinja2Templates
 from findingmodel import FindingInfo
-from findingmodel.index import Index
 from findingmodel.tools import (
     add_ids_to_model,
     add_standard_codes_to_model,
@@ -16,10 +13,9 @@ from findingmodel.tools import (
     find_similar_models,
 )
 
-from app.auth import get_current_user
+from app.auth import CurrentUserDep
 from app.config import logger
-from app.database import Database
-from app.dependencies import get_database, get_finding_index
+from app.dependencies import DatabaseDep, FindingIndexDep
 from app.models import (
     FindingInfoEditRequest,
     FindingInfoRequest,
@@ -29,7 +25,6 @@ from app.models import (
     NameAvailabilityResponse,
     SimilarModelsAnalysis,
     SimilarModelsRequest,
-    User,
 )
 
 router = APIRouter()
@@ -39,8 +34,8 @@ templates = Jinja2Templates(directory="templates")
 @router.post("/check-name", response_model=NameAvailabilityResponse)
 async def check_finding_name(
     request: FindingNameCheck,
-    current_user: Annotated[User, Depends(get_current_user)],
-    index: Annotated[Index, Depends(get_finding_index)],
+    current_user: CurrentUserDep,
+    index: FindingIndexDep,
 ) -> NameAvailabilityResponse:
     """Check if a finding name already exists in the index."""
     try:
@@ -64,7 +59,7 @@ async def check_finding_name(
 @router.post("/create-info", response_model=FindingInfoResponse)
 async def create_finding_info(
     request: FindingInfoRequest,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: CurrentUserDep,
 ) -> FindingInfoResponse:
     """Create finding information from just a name using AI generation."""
     try:
@@ -91,8 +86,8 @@ async def create_finding_info(
 @router.post("/find-similar", response_model=SimilarModelsAnalysis)
 async def find_similar(
     request: SimilarModelsRequest,
-    current_user: Annotated[User, Depends(get_current_user)],
-    index: Annotated[Index, Depends(get_finding_index)],
+    current_user: CurrentUserDep,
+    index: FindingIndexDep,
 ) -> SimilarModelsAnalysis:
     """Find similar models to avoid duplicates."""
     try:
@@ -140,7 +135,7 @@ async def find_similar(
 @router.post("/generate-stub")
 async def generate_stub_markdown(
     request: FindingInfoEditRequest,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: CurrentUserDep,
 ) -> JSONResponse:
     """Generate basic attributes markdown stub for editing."""
     try:
@@ -181,8 +176,8 @@ How the {request.name} has changed compared to prior imaging
 async def generate_model(
     request: Request,
     model_request: GenerateModelRequest,
-    current_user: Annotated[User, Depends(get_current_user)],
-    database: Annotated[Database, Depends(get_database)],
+    current_user: CurrentUserDep,
+    database: DatabaseDep,
 ) -> JSONResponse:
     """Generate the final finding model from FindingInfo and attributes markdown."""
     try:

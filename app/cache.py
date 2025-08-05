@@ -8,8 +8,9 @@ from typing import Any
 import jiter
 import redis.asyncio as redis_client
 from findingmodel import FindingModelFull
+from findingmodel.contributor import Organization
 from loguru import logger
-from pydantic import BaseModel
+from pydantic import BaseModel, TypeAdapter
 
 from .config import settings
 from .models import GitHubUser, User
@@ -27,6 +28,9 @@ class CacheConfig(BaseModel):
     socket_keepalive_options: dict[str, int] = {}
     health_check_interval: int = 30
     max_connections: int = 20
+
+
+OrganizationList = TypeAdapter(list[Organization])
 
 
 class RedisCache:
@@ -374,6 +378,47 @@ class RedisCache:
         key = self._make_key("finding_models", "all")
         await self.delete(key)
         logger.info("Invalidated cache for finding models list")
+
+    async def get_organizations(self) -> list[Organization] | None:
+        """Get all organizations from cache."""
+        key = self._make_key("organizations", "all")
+        cached_data = await self.get(key)
+
+        if cached_data:
+            try:
+                return OrganizationList.validate_json(cached_data)
+            except ValueError:
+                logger.warning(f"Cached organizations data is not valid: {cached_data}")
+                await self.delete(key)
+            except TypeError:
+                logger.warning(f"Cached organizations data is not a valid JSON: {cached_data}")
+                await self.delete(key)
+            except Exception as e:
+                logger.warning(f"Failed to deserialize cached organizations: {e}")
+                await self.delete(key)
+
+        return None
+
+    async def set_organizations(
+        self,
+        organizations: list[Organization],
+        expires_in: timedelta | None = None,
+    ) -> bool:
+        """Set all organizations in cache."""
+        key = self._make_key("organizations", "all")
+        orgs_json = "[" + ",".join(org.model_dump_json(exclude_none=True) for org in organizations) + "]"
+
+        # Organizations can be cached longer as they don't change frequently
+        if expires_in is None:
+            expires_in = timedelta(seconds=settings.cache_finding_models_expires_in)
+
+        return await self.set(key, orgs_json, expires_in)
+
+    async def invalidate_organizations_cache(self) -> None:
+        """Invalidate cached organizations list."""
+        key = self._make_key("organizations", "all")
+        await self.delete(key)
+        logger.info("Invalidated cache for organizations list")
 
 
 # Global cache instance
