@@ -165,6 +165,7 @@ class TestCachedAuthentication:
         from unittest.mock import Mock
 
         from app.auth import get_current_user
+        from app.cache import RedisCache
 
         # Mock dependencies
         request = Mock()
@@ -174,22 +175,22 @@ class TestCachedAuthentication:
         user_repo.get_user.return_value = sample_user
 
         # Mock cache to simulate cache miss then hit
-        with patch("app.auth.cache") as mock_cache:
-            mock_cache.get_user = AsyncMock(side_effect=[None, sample_user])  # Miss then hit
-            mock_cache.set_user = AsyncMock(return_value=True)
-            mock_cache.set_user_by_login = AsyncMock(return_value=True)
+        mock_cache = AsyncMock(spec=RedisCache)
+        mock_cache.get_user = AsyncMock(side_effect=[None, sample_user])  # Miss then hit
+        mock_cache.set_user = AsyncMock(return_value=True)
+        mock_cache.set_user_by_login = AsyncMock(return_value=True)
 
-            # Mock token verification
-            with patch("app.auth.verify_token") as mock_verify:
-                from app.models import TokenData
+        # Mock token verification
+        with patch("app.auth.verify_token") as mock_verify:
+            from app.models import TokenData
 
-                mock_verify.return_value = TokenData(user_id=sample_user.id, username=sample_user.login)
+            mock_verify.return_value = TokenData(user_id=sample_user.id, username=sample_user.login)
 
-                # First call - should hit database and cache result
-                result = await get_current_user(request, user_repo)
-                assert result.id == sample_user.id
-                user_repo.get_user.assert_called_once()
-                mock_cache.set_user.assert_called_once()
+            # First call - should hit database and cache result
+            result = await get_current_user(request, user_repo, mock_cache)
+            assert result.id == sample_user.id
+            user_repo.get_user.assert_called_once()
+            mock_cache.set_user.assert_called_once()
 
 
 @pytest.mark.integration

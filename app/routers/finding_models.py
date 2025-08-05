@@ -200,8 +200,8 @@ async def generate_model(
         # Generate the final FindingModel using findingmodel tools
         finding_model_generated = await create_model_from_markdown(finding_info, markdown_text=complete_markdown)
 
-        assert database.user_repo, "UserRepo must be initialized in the database"
-        author = await database.user_repo.get_person_by_github_username(current_user.login)
+        assert database.finding_index, "FindingIndex must be initialized in the database"
+        author = database.people.get(current_user.login)
         logger.info(f"Generating finding model for user: {current_user.login}, author: {author}")
         # Add IDs and standard codes to the model
         if author:
@@ -214,6 +214,8 @@ async def generate_model(
         add_standard_codes_to_model(finding_model)
         if author:
             finding_model.contributors = [author]
+        if source and (organization := database.organizations.get(source)):
+            finding_model.contributors.append(organization) if finding_model.contributors else [organization]
 
         # Generate JSON for the model
         finding_model_json = finding_model.model_dump_json(indent=2, exclude_none=True)

@@ -78,6 +78,9 @@ minversion = "6.0"
 addopts = "-ra -q --cov=app --cov-report=term-missing"
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = [
+    "integration: marks tests as integration tests (requiring external services like Redis)",
+]
 filterwarnings = [
     "ignore:Support for class-based.*:DeprecationWarning:pydantic.*",
 ]

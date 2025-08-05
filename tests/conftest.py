@@ -1,6 +1,6 @@
 """Test configuration and fixtures."""
 
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -25,7 +25,16 @@ def client() -> TestClient:
     mock_finding_index = MagicMock(spec=Index)
     mock_database.finding_index = mock_finding_index
 
+    # Mock cache for tests
+    from app.cache import RedisCache
+
+    mock_cache = MagicMock(spec=RedisCache)
+    mock_cache.enabled = True  # Set enabled property for health checks
+    mock_cache.is_healthy = AsyncMock(return_value=True)  # Mock health check method
+
+    # Set up app state
     app.state.database = mock_database
+    app.state.cache = mock_cache
 
     return TestClient(app)
 

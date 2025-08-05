@@ -6,7 +6,7 @@ from fastapi import Depends, Request
 from findingmodel.contributor import Organization
 from findingmodel.index import Index
 
-from .cache import RedisCache, cache
+from .cache import RedisCache
 from .database import Database, UserRepo
 
 
@@ -38,9 +38,9 @@ def get_finding_index(database: DatabaseDep) -> Index:
 FindingIndexDep = Annotated[Index, Depends(get_finding_index)]
 
 
-def get_cache() -> RedisCache:
+def get_cache(request: Request) -> RedisCache:
     """Get cache dependency."""
-    return cache
+    return request.app.state.cache  # type: ignore[no-any-return]
 
 
 CacheDep = Annotated[RedisCache, Depends(get_cache)]

@@ -76,11 +76,21 @@ def test_finding_model_display(client: TestClient) -> None:
     def mock_get_finding_index() -> MagicMock:
         return mock_index
 
+    # Mock cache to return None for initial cache miss
+    def mock_get_cache() -> MagicMock:
+        from app.cache import RedisCache
+
+        mock_cache = MagicMock(spec=RedisCache)
+        mock_cache.get_finding_model = AsyncMock(return_value=None)  # Simulate cache miss
+        mock_cache.set_finding_model = AsyncMock(return_value=True)
+        return mock_cache
+
     # Import the app to override dependencies
-    from app.dependencies import get_finding_index
+    from app.dependencies import get_cache, get_finding_index
     from app.main import app
 
     app.dependency_overrides[get_finding_index] = mock_get_finding_index
+    app.dependency_overrides[get_cache] = mock_get_cache
 
     with patch("app.routers.pages.httpx.AsyncClient") as mock_async_client:
         # Mock the async context manager and the get method
@@ -108,7 +118,7 @@ def test_finding_model_display(client: TestClient) -> None:
             "https://raw.githubusercontent.com/openimagingdata/findingmodels/refs/heads/main/defs/abdominal_abscess.fm.json"
         )
 
-    # Clean up
+    # Clean up dependency overrides
     app.dependency_overrides.clear()
 
 

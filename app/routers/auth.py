@@ -15,7 +15,7 @@ from app.auth import (
     verify_token,
 )
 from app.config import logger, settings
-from app.dependencies import UserRepoDep
+from app.dependencies import CacheDep, UserRepoDep
 from app.models import Token, User
 
 router = APIRouter()
@@ -48,7 +48,7 @@ async def login() -> RedirectResponse:
 
 
 @router.get("/callback")
-async def auth_callback(code: str, user_repo: UserRepoDep) -> RedirectResponse:
+async def auth_callback(code: str, user_repo: UserRepoDep, cache: CacheDep) -> RedirectResponse:
     """Handle GitHub OAuth callback."""
     try:
         # Exchange code for access token
@@ -59,7 +59,7 @@ async def auth_callback(code: str, user_repo: UserRepoDep) -> RedirectResponse:
 
         logger.info(f"GitHub user info: {github_user}")
         # Get or create user in our database
-        user, is_new_user = await get_or_create_user(github_user, user_repo)
+        user, is_new_user = await get_or_create_user(github_user, user_repo, cache)
         logger.info(f"User info: {user}, is_new_user: {is_new_user}")
 
         # Create JWT tokens

@@ -54,14 +54,6 @@ class GitHubUser(BaseModel):
     site_admin: bool = False
 
 
-class Organization(BaseModel):
-    """Organization model."""
-
-    code: str = Field(min_length=3, max_length=4, pattern=r"^[A-Z]+$")  # 3-4 uppercase letters
-    name: str
-    url: str | None = None
-
-
 class Token(BaseModel):
     """JWT token response."""
 

@@ -419,7 +419,3 @@ class RedisCache:
         key = self._make_key("organizations", "all")
         await self.delete(key)
         logger.info("Invalidated cache for organizations list")
-
-
-# Global cache instance
-cache = RedisCache()

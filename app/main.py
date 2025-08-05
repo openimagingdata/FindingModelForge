@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from .cache import CacheConfig, cache
+from .cache import CacheConfig, RedisCache
 from .config import logger, settings
 from .database import Database
 from .health import router as health_router
@@ -20,13 +20,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info(f"Debug mode: {settings.debug}")
 
     # Initialize Redis cache if enabled
+    cache = RedisCache()
     if settings.redis_enabled:
         cache_config = CacheConfig(
             host=settings.redis_host,
             port=settings.redis_port,
             db=settings.redis_db,
         )
-        cache.config = cache_config
+        cache = RedisCache(config=cache_config)
         await cache.connect()
         if await cache.is_healthy():
             logger.info("Redis cache initialized and healthy")
@@ -34,16 +35,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             logger.warning("Redis cache connection failed - continuing without cache")
     else:
         logger.info("Redis caching is disabled")
+    app.state.cache = cache
 
     # Create and connect to MongoDB
     database = Database()
     try:
         await database.connect()
         logger.info("Connected to MongoDB")
+        logger.info("FindingModel Index initialized")
+        logger.info(f"Loaded {len(database.people)} people and {len(database.organizations)} organizations into memory")
 
         # Store database in app state for dependency injection
         app.state.database = database
-        logger.info("FindingModel Index initialized")
 
     except Exception as e:
         logger.error(f"Failed to connect to MongoDB: {e}")
@@ -60,8 +63,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Disconnected from MongoDB")
 
     # Disconnect cache
-    await cache.disconnect()
-    logger.info("Disconnected from Redis cache")
+    if cache:
+        await cache.disconnect()
+        logger.info("Disconnected from Redis cache")
+    else:
+        logger.info("No Redis cache to disconnect")
 
 
 def create_app() -> FastAPI:

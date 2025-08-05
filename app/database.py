@@ -3,14 +3,13 @@
 from datetime import UTC, datetime
 from typing import Any
 
-from findingmodel.contributor import Person
+from findingmodel.contributor import Organization, Person
 from findingmodel.index import Index
-from loguru import logger
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from pymongo.errors import DuplicateKeyError
 
 from .config import settings
-from .models import Organization, User, UserCreate, UserUpdate
+from .models import User, UserCreate, UserUpdate
 
 
 class Database:
@@ -21,6 +20,8 @@ class Database:
         self.db: AsyncIOMotorDatabase[Any] | None = None
         self.user_repo: UserRepo | None = None
         self.finding_index: Index | None = None
+        self.people: dict[str, Person] = {}
+        self.organizations: dict[str, Organization] = {}
 
     async def connect(self) -> None:
         """Connect to MongoDB."""
@@ -30,6 +31,20 @@ class Database:
 
         # Initialize finding index with the same database client
         self.finding_index = Index(client=self.client, db_name=settings.mongodb_db)
+        await self._load_people_and_organizations()
+
+    async def _load_people_and_organizations(self) -> None:
+        """Load people and organizations into memory."""
+        assert self.finding_index is not None, "Finding index is not initialized"
+        people_cursor = self.finding_index.people_collection.find()
+        self.people.clear()
+        async for person in people_cursor:
+            if "github_username" in person:
+                self.people[person["github_username"]] = Person.model_validate(person)
+        organizations_cursor = self.finding_index.organizations_collection.find()
+        self.organizations.clear()
+        async for organization in organizations_cursor:
+            self.organizations[organization["code"]] = Organization.model_validate(organization)
 
     async def disconnect(self) -> None:
         """Disconnect from MongoDB."""
@@ -45,9 +60,6 @@ class UserRepo:
     def __init__(self, db: AsyncIOMotorDatabase[Any]) -> None:
         self.db = db
         self.collection = db.users
-        self.org_collection = db.organizations_main
-        self.people_collection = db.people_main
-        self._organizations: list[Organization] = []
 
     async def create_user(self, user_data: UserCreate) -> User:
         """Create a new user."""
@@ -82,7 +94,7 @@ class UserRepo:
         if user_dict:
             # Remove MongoDB's _id field
             user_dict.pop("_id", None)
-            return User(**user_dict)
+            return User.model_validate(user_dict)
         return None
 
     async def get_user_by_login(self, login: str) -> User | None:
@@ -91,7 +103,7 @@ class UserRepo:
         if user_dict:
             # Remove MongoDB's _id field
             user_dict.pop("_id", None)
-            return User(**user_dict)
+            return User.model_validate(user_dict)
         return None
 
     async def update_user(self, user_id: int, user_update: UserUpdate) -> User | None:
@@ -114,21 +126,3 @@ class UserRepo:
             {"id": user_id}, {"$set": {"is_active": False, "updated_at": datetime.now(UTC)}}
         )
         return bool(result.modified_count > 0)
-
-    async def list_users_by_organization(self, org_code: str) -> list[User]:
-        """Get all users in an organization."""
-        cursor = self.collection.find({"organizations": org_code, "is_active": True})
-        users = []
-        async for user_dict in cursor:
-            user_dict.pop("_id", None)
-            users.append(User(**user_dict))
-        return users
-
-    async def get_person_by_github_username(self, username: str) -> Person | None:
-        """Get a person by their GitHub username."""
-        person_dict = await self.people_collection.find_one({"github_username": username})
-        logger.info(f"Fetching person by GitHub username: {username}, found: {person_dict}")
-        if not person_dict:
-            return None
-        person_dict.pop("_id", None)
-        return Person.model_validate(person_dict)
