@@ -13,6 +13,7 @@ We always strive to use updated libraries and frameworks, with a focus on type s
 - **FastAPI** - Modern Python web framework for APIs and web applications
 - **Python 3.12+** - Target Python version with extensive type hinting
 - **Pydantic** - Data validation and serialization (drives APIs, DB models, UI, JSON schemas)
+- **Redis** - In-memory data structure store for caching and session management
 - **Motor** - Async MongoDB driver for database operations
 - **Loguru** - Structured application logging
 - **JWT + GitHub OAuth** - Authentication and authorization system
@@ -24,6 +25,14 @@ We always strive to use updated libraries and frameworks, with a focus on type s
 - **Alpine.js** - Lightweight JavaScript framework for interactivity
 - **Flowbite Components** - Pre-built UI components with data attribute-based functionality
 
+Use websearch and Context7 to ensure you are using the latest Flowbite components and patterns, and always prefer
+pre-built Flowbite components over custom implementations. Where possible, pull out re-usable components
+into Jinja2 macros (see `docs/UI_COMPONENT_MACROS.md` for information; see `templates/macros/*.html`
+for current implementations).
+
+Please make sure to use Alpine.js for any interactivity—this includes handling user input, toggling UI elements, and making AJAX requests.
+Minimize custom JavaScript where possible.
+
 ### Development Tools
 
 - **uv** - Fast Python package manager (primary dependency management)
@@ -32,6 +41,12 @@ We always strive to use updated libraries and frameworks, with a focus on type s
 - **MyPy** - Static type checking with strict configuration
 - **Pytest** - Testing framework with coverage and async support
 - **Pre-commit** - Automated code quality hooks
+
+To use the local environment, run `uv python <scriptname>.py` for test scripts.
+
+Use `uv ruff check` for linting and formatting checks, and `uv ruff format` to automatically fix issues.
+
+Use `uv mypy` for type checking.
 
 ## Code Standards & Practices
 
@@ -43,6 +58,7 @@ We always strive to use updated libraries and frameworks, with a focus on type s
 4. **Error Handling**: Use proper exception handling with descriptive error messages
 5. **Logging**: Use Loguru for structured logging with appropriate levels
 6. **Configuration**: Use pydantic-settings for environment-based configuration
+7. **Dependency Injection**: Use FastAPI's dependency injection for services (database, auth, config)
 
 ### Code Organization
 
@@ -62,6 +78,7 @@ We always strive to use updated libraries and frameworks, with a focus on type s
 - **Import Sorting**: Use Ruff to organize imports
 - **Code Style**: Follow Ruff's extended rule set (see pyproject.toml)
 - **Type Checking**: MyPy strict mode enabled with comprehensive checks
+- **Markdown files**: Follow Markdownlint rules, especially remembering to include blank lines as appropriate.
 
 ## Development Workflow
 
@@ -93,7 +110,7 @@ We always strive to use updated libraries and frameworks, with a focus on type s
 1. **Use Data Attributes**: All Flowbite components work via data attributes (e.g., `data-accordion="collapse"`, `data-modal-target`)
 2. **Follow Official Patterns**: Reference Flowbite documentation and existing working components in the codebase
 3. **Avoid Custom JavaScript**: Never create custom `toggleAccordion()`, `showModal()`, etc. - use Flowbite's API
-4. **Use Context7 Documentation**: Always check Context7 for up-to-date Flowbite patterns before implementing
+4. **Use Websearch and Context7 Documentation**: Always check web search and Context7 for up-to-date Flowbite patterns before implementing
 5. **Initialize Properly**: Use `initFlowbite()` for dynamically injected content, not custom initialization
 6. **Copy Working Examples**: Look at existing components like `finding_model_display.html` accordion for proven patterns
 
@@ -147,8 +164,8 @@ We always strive to use updated libraries and frameworks, with a focus on type s
 ### Example Database Usage
 
 ```python
-# Always use async patterns
-async def get_user(user_id: str) -> User | None:
+# Always use async patterns and dependency injection
+async def get_user(user_id: str, database=Annotated[Database, Depends(get_database)]) -> User | None:
     document = await database.users.find_one({"_id": user_id})
     return User(**document) if document else None
 ```
