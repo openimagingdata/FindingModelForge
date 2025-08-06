@@ -2,7 +2,7 @@
 
 Tool set for creating finding models for defining the semantic labels for imaging findings.
 
-In `findingmodelforge`, there is a [NiceGUI](https://nicegui.io)/FastAPI application exposing [`findingmodel`](https://github.com/openimagingdata/findingmodel) functionality. The app uses GitHub OAuth for authentication.
+FindingModelForge is a FastAPI web application exposing [`findingmodel`](https://github.com/openimagingdata/findingmodel) functionality. The app uses GitHub OAuth for authentication, Jinja2 for templating, and provides a modern web interface with Tailwind CSS and Alpine.js.
 
 ## Run
 

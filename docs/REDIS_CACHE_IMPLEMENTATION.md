@@ -179,7 +179,7 @@ async def get_cache_stats() -> JSONResponse:
 1. Start Redis and Redis Commander:
 
 ```bash
-docker-compose -f docker-compose.cache.yml up -d
+docker-compose up -d
 ```
 
 1. Access Redis Commander at <http://localhost:8081>
