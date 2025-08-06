@@ -2,17 +2,14 @@
   "name": "findingmodelforge",
   "version": "1.0.0",
   "description": "Tool set for creating finding models for defining the semantic labels for imaging findings.",
-  "main": "index.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "vite",
+    "build:js": "vite build",
+    "preview": "vite preview",
     "build:css": "npx @tailwindcss/cli -i ./src/input.css -o ./static/css/output.css",
     "watch:css": "npx @tailwindcss/cli -i ./src/input.css -o ./static/css/output.css --watch",
-    "download:flowbite": "curl -o static/js/flowbite.min.js https://cdnjs.cloudflare.com/ajax/libs/flowbite/3.1.2/flowbite.min.js",
-    "download:flowbite-map": "curl -o static/js/flowbite.min.js.map https://cdnjs.cloudflare.com/ajax/libs/flowbite/3.1.2/flowbite.min.js.map",
-    "download:alpine": "curl -o static/js/alpine.min.js https://unpkg.com/alpinejs@3.13.7/dist/cdn.min.js",
-    "download:datatables": "curl -o static/js/simple-datatables.js https://cdn.jsdelivr.net/npm/simple-datatables@9.0.3/dist/umd/simple-datatables.js",
-    "download:libs": "npm run download:flowbite && npm run download:flowbite-map && npm run download:alpine && npm run download:datatables",
-    "build": "npm run build:css && npm run download:libs",
+    "build": "npm run build:css && npm run build:js",
     "setup": "npm install && npm run build"
   },
   "repository": {
@@ -21,9 +18,11 @@
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.1.1",
-    "tailwindcss": "^4.1.1"
+    "tailwindcss": "^4.1.1",
+    "vite": "^6.0.0"
   },
   "dependencies": {
+    "alpinejs": "^3.14.1",
     "flowbite": "^3.1.2",
     "simple-datatables": "^9.0.3"
   }

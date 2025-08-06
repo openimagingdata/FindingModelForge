@@ -35,15 +35,16 @@ scripts/
 plans/
 zOld/
 
-# Node.js (we build frontend assets locally)
+# Node.js (excluding lock file since we need it for reproducible builds)
 node_modules/
-package-lock.json
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Frontend source files (we copy built assets only)
-src/
+# Frontend build files we need:
+# - package.json and package-lock.json (for npm ci)
+# - src/ directory (source files for Vite)
+# - vite.config.js (Vite configuration)
 
 # Build artifacts
 dist/

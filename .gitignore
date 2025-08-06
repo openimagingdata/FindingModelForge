@@ -122,6 +122,12 @@ node_modules/
 
 # Build artifacts (generated files)
 static/css/output.css
+
+# Vite build artifacts
+static/js/main.*.js
+static/.vite/
+
+# Legacy downloaded JS files (no longer used)
 static/js/alpine.min.js
 static/js/flowbite.min.js
 static/js/flowbite.min.js.map

@@ -1,4 +1,4 @@
-# Docker Compose configuration with Redis cache for development
+  # Docker Compose configuration with Redis cache for development
 version: '3.8'
 
 services:
@@ -6,18 +6,8 @@ services:
     build: .
     ports:
       - "8000:8000"
-    environment:
-      - DEBUG=true
-      - ENVIRONMENT=development
-      - MONGODB_URI=mongodb://mongodb:27017
-      - DATABASE_NAME=findingmodels
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_DB=0
-      - REDIS_ENABLED=true
-      # Add your GitHub OAuth credentials here
-      # - GITHUB_CLIENT_ID=your_client_id
-      # - GITHUB_CLIENT_SECRET=your_client_secret
+    env_file:
+      - .env.container
     depends_on:
       - mongodb
       - redis

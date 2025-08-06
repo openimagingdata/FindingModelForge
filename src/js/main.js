@@ -1,4 +1,12 @@
-// Alpine.js utilities and app logic
+// Main JavaScript entry point for FindingModelForge
+import Alpine from 'alpinejs'
+import { initFlowbite } from 'flowbite'
+import { DataTable } from 'simple-datatables'
+
+// Make Alpine and other libraries globally available
+window.Alpine = Alpine
+window.initFlowbite = initFlowbite
+window.simpleDatatables = { DataTable }
 
 // Dark mode management
 document.addEventListener('alpine:init', () => {
@@ -34,7 +42,7 @@ document.addEventListener('alpine:init', () => {
     }));
 });
 
-// Global Alpine.js functions (for navbar compatibility)
+// Global dark mode toggle function (for navbar compatibility)
 window.toggleDarkMode = function() {
     const isDark = document.documentElement.classList.contains('dark');
     if (isDark) {
@@ -77,9 +85,8 @@ window.utils = {
         }
     },
 
-    // Show notification (you can integrate with a notification library)
+    // Show notification
     showNotification(message, type = 'info') {
-        // Simple notification implementation
         const notification = document.createElement('div');
         notification.className = `fixed top-4 right-4 p-4 rounded-md shadow-lg z-50 ${
             type === 'success' ? 'bg-green-500 text-white' :
@@ -110,33 +117,6 @@ window.utils = {
         }, 3000);
     },
 
-    // Format date
-    formatDate(dateString) {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
-    },
-
-    // Format relative time
-    formatRelativeTime(dateString) {
-        const date = new Date(dateString);
-        const now = new Date();
-        const diffInMs = now - date;
-        const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
-        const diffInHours = Math.floor(diffInMinutes / 60);
-        const diffInDays = Math.floor(diffInHours / 24);
-
-        if (diffInMinutes < 1) return 'just now';
-        if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-        if (diffInHours < 24) return `${diffInHours}h ago`;
-        if (diffInDays < 7) return `${diffInDays}d ago`;
-
-        return this.formatDate(dateString);
-    },
-
     // Debounce function
     debounce(func, wait) {
         let timeout;
@@ -148,103 +128,8 @@ window.utils = {
             clearTimeout(timeout);
             timeout = setTimeout(later, wait);
         };
-    },
-
-    // Throttle function
-    throttle(func, limit) {
-        let inThrottle;
-        return function() {
-            const args = arguments;
-            const context = this;
-            if (!inThrottle) {
-                func.apply(context, args);
-                inThrottle = true;
-                setTimeout(() => inThrottle = false, limit);
-            }
-        };
     }
 };
-
-// API utilities
-window.api = {
-    // Base API URL
-    baseURL: '/api',
-
-    // Default headers
-    defaultHeaders: {
-        'Content-Type': 'application/json',
-    },
-
-    // Make API request
-    async request(endpoint, options = {}) {
-        const url = endpoint.startsWith('http') ? endpoint : `${this.baseURL}${endpoint}`;
-        const config = {
-            headers: { ...this.defaultHeaders, ...options.headers },
-            ...options
-        };
-
-        try {
-            const response = await fetch(url, config);
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-                return await response.json();
-            }
-
-            return await response.text();
-        } catch (error) {
-            console.error('API request failed:', error);
-            throw error;
-        }
-    },
-
-    // GET request
-    async get(endpoint) {
-        return this.request(endpoint, { method: 'GET' });
-    },
-
-    // POST request
-    async post(endpoint, data) {
-        return this.request(endpoint, {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-    },
-
-    // PUT request
-    async put(endpoint, data) {
-        return this.request(endpoint, {
-            method: 'PUT',
-            body: JSON.stringify(data)
-        });
-    },
-
-    // DELETE request
-    async delete(endpoint) {
-        return this.request(endpoint, { method: 'DELETE' });
-    }
-};
-
-// Keyboard shortcuts
-document.addEventListener('keydown', (e) => {
-    // Ctrl/Cmd + K for search (if implemented)
-    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault();
-        // Implement search functionality
-        console.log('Search shortcut pressed');
-    }
-
-    // Ctrl/Cmd + / for help (if implemented)
-    if ((e.ctrlKey || e.metaKey) && e.key === '/') {
-        e.preventDefault();
-        // Implement help functionality
-        console.log('Help shortcut pressed');
-    }
-});
 
 // Global functions for finding model components
 window.downloadJSON = function(jsonData, filename) {
@@ -278,17 +163,19 @@ window.showToast = function(message) {
     }, 3000);
 };
 
+// Initialize Alpine
+Alpine.start()
+
+// Initialize Flowbite components on DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+    initFlowbite()
+})
+
 // Console welcome message
 console.log(
     '%cWelcome to Finding Model Forge! ⚒︎',
     'color: #3b82f6; font-size: 16px; font-weight: bold;'
 );
-console.log(
-    '%cBuilt with FastAPI, Tailwind CSS, and Alpine.js',
-    'color: #6b7280; font-size: 12px;'
-);
 
-// Export for module usage if needed
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { utils, api };
-}
+// For any modules that need these
+export { Alpine, initFlowbite, DataTable }

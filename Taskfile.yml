@@ -50,6 +50,19 @@ tasks:
       - uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --proxy-headers --forwarded-allow-ips "*"
     silent: true
 
+  dev-vite:
+    desc: "Start development server with Vite dev mode"
+    cmds:
+      - echo "🚀 Starting Finding Model Forge with Vite dev mode..."
+      - task: setup
+      - echo "👀 Starting Vite dev server in background..."
+      - npm run dev &
+      - echo "🌐 Starting FastAPI server on http://localhost:8000"
+      - echo "💡 Vite dev server running on http://localhost:5173"
+      - echo "💡 Frontend changes will auto-reload. Press Ctrl+C to stop both processes."
+      - uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --proxy-headers --forwarded-allow-ips "*"
+    silent: true
+
   dev-watch:
     desc: "Start development server with CSS watch mode"
     cmds:
@@ -83,16 +96,15 @@ tasks:
       - npm run watch:css
     silent: true
 
-  download-libs:
-    desc: "Download JavaScript libraries"
+  watch-js:
+    desc: "Watch and rebuild JavaScript on changes (Vite dev mode)"
     cmds:
-      - echo "📥 Downloading JavaScript libraries..."
-      - npm run download:libs
-      - echo "✅ Libraries downloaded!"
+      - echo "� Starting Vite dev server for JavaScript watching..."
+      - npm run dev
     silent: true
 
   build-frontend:
-    desc: "Build all frontend assets"
+    desc: "Build all frontend assets (CSS + JS)"
     cmds:
       - echo "🎨 Building frontend assets..."
       - npm run build
@@ -151,8 +163,8 @@ tasks:
     silent: true
 
   # Docker tasks
-  build-docker-only:
-    desc: "Build Docker image (assumes frontend assets already built)"
+  build:
+    desc: "Build Docker image"
     cmds:
       - echo "🐳 Building Finding Model Forge Docker image..."
       - docker build --platform linux/amd64 -t {{.CONTAINER_NAME}}:latest -t {{.CONTAINER_NAME}}:{{.DATE_TAG}} .
@@ -161,79 +173,11 @@ tasks:
       - echo "✅ Docker build complete!"
     silent: true
 
-  build:
-    desc: "Build Docker image with fresh frontend assets"
-    cmds:
-      - echo "🐳 Building Finding Model Forge Docker image..."
-      - echo "🎨 Building frontend assets first..."
-      - npm run build
-      - task: build-docker-only
-    silent: true
-
-  build-check:
-    desc: "Build Docker image with frontend asset validation"
-    cmds:
-      - echo "🔍 Checking for frontend assets..."
-      - |
-        if [ ! -f "static/css/output.css" ]; then
-          echo "❌ Frontend CSS not built. Run 'task build-frontend' first."
-          exit 1
-        fi
-      - |
-        if [ ! -f "static/js/alpine.min.js" ]; then
-          echo "❌ Frontend JS libraries not downloaded. Run 'task build-frontend' first."
-          exit 1
-        fi
-      - |
-        if [ ! -f "static/js/simple-datatables.js" ]; then
-          echo "❌ Frontend JS libraries not downloaded. Run 'task build-frontend' first."
-          exit 1
-        fi
-      - echo "✅ Frontend assets found"
-      - task: build-docker-only
-    silent: true
-
-  build-prod:
-    desc: "Build production Docker image with registry tags"
-    cmds:
-      - echo "🐳 Building production Docker image..."
-      - echo "🎨 Building frontend assets for production..."
-      - npm run build
-      - docker build --platform linux/amd64 -t {{.CONTAINER_NAME}} -t {{.CONTAINER_NAME}}:{{.DATE_TAG}} .
-      - echo "📊 Image sizes:"
-      - sh -c 'docker images --format "table {{`{{.Repository}}`}}\t{{`{{.Tag}}`}}\t{{`{{.Size}}`}}" | grep -E "(REPOSITORY|findingmodelforge|ghcr.io)" | head -6' || echo "No images found"
-      - echo "✅ Production build complete!"
-
-  build-ci:
-    desc: "Build for CI/production (validates frontend assets exist)"
-    cmds:
-      - echo "🔍 Checking for required frontend assets..."
-      - |
-        if [ ! -f "static/css/output.css" ]; then
-          echo "❌ Frontend CSS not built. Building now..."
-          npm run build:css
-        fi
-      - |
-        if [ ! -f "static/js/alpine.min.js" ]; then
-          echo "❌ Frontend JS libraries not downloaded. Downloading now..."
-          npm run download:libs
-        fi
-      - |
-        if [ ! -f "static/js/simple-datatables.js" ]; then
-          echo "❌ Frontend JS libraries not downloaded. Downloading now..."
-          npm run download:libs
-        fi
-      - echo "✅ Frontend assets ready"
-      - docker build --platform linux/amd64 -t {{.CONTAINER_NAME}} -t {{.CONTAINER_NAME}}:{{.DATE_TAG}} .
-      - echo "📊 Image sizes:"
-      - sh -c 'docker images --format "table {{`{{.Repository}}`}}\t{{`{{.Tag}}`}}\t{{`{{.Size}}`}}" | grep -E "(REPOSIT{{.CONTAINER_NAME}}|ghcr.io)" | head -6' || echo "No images found"
-      - echo "✅ CI build complete!"
-
   run-container:
     desc: "Run the app in a Docker container"
     cmds:
       - echo "🐳 Running FindingModelForge container..."
-      - docker run --name findingmodelforge --platform linux/amd64 -d --env-file .env -p 8000:8000 --rm {{.CONTAINER_NAME}}:latest
+      - docker run --name findingmodelforge --platform linux/amd64 -d --env-file .env.container -p 8000:8000 --rm {{.CONTAINER_NAME}}:latest
       - echo "🌐 Container running on http://localhost:8000"
       - echo "💡 Use 'docker logs findingmodelforge' to see logs"
       - echo "💡 Use 'docker stop findingmodelforge' to stop"
@@ -247,7 +191,8 @@ tasks:
       - echo "🧹 Cleaning up Python artifacts..."
       - rm -rf .pytest_cache/ .mypy_cache/ .ruff_cache/ htmlcov/ .coverage
       - echo "🧹 Cleaning up frontend build artifacts..."
-      - rm -f static/css/output.css static/js/alpine.min.js static/js/flowbite.min.js static/js/flowbite.min.js.map static/js/simple-datatables.js
+      - rm -f static/css/output.css
+      - rm -rf static/.vite/ static/js/
       - echo "🧹 Cleaning up Node.js artifacts..."
       - rm -rf node_modules/
       - echo "✅ Cleanup complete!"

@@ -11,9 +11,13 @@ from findingmodel import FindingModelFull
 from app.auth import OptionalUserDep
 from app.config import logger, settings
 from app.dependencies import CacheDep, FindingIndexDep
+from app.vite_manifest import get_vite_asset_path
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
+
+# Add vite asset helper to template globals
+templates.env.globals["vite_asset"] = get_vite_asset_path
 
 
 @router.get("/", response_class=HTMLResponse)

@@ -27,9 +27,6 @@
         [x-cloak] { display: none !important; }
     </style>
 
-    <!-- Alpine.js -->
-    <script src="{{ url_for('static', path='js/alpine.min.js') }}" defer></script>
-
     <!-- Favicon and App Icons -->
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', path='images/hammer.svg') }}">
     <link rel="alternate icon" href="{{ url_for('static', path='images/favicon.ico') }}">
@@ -54,14 +51,8 @@
     <!-- Footer -->
     {% include 'components/footer.html' %}
 
-    <!-- Alpine.js and custom JavaScript -->
-    <script src="{{ url_for('static', path='js/app.js') }}"></script>
-
-    <!-- Flowbite JS (local) -->
-    <script src="{{ url_for('static', path='js/flowbite.min.js') }}"></script>
-
-    <!-- Simple DataTables for Flowbite (local) -->
-    <script src="{{ url_for('static', path='js/simple-datatables.js') }}"></script>
+    <!-- Bundled JavaScript (includes Alpine.js, Flowbite, SimpleDatatables, and app utilities) -->
+    <script src="{{ url_for('static', path=vite_asset()) }}" defer></script>
 
     {% block scripts %}{% endblock %}
 </body>

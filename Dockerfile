@@ -1,7 +1,25 @@
 # Multi-stage Dockerfile for Finding Model Forge
 
-# Build stage
-FROM python:3.13-slim-bullseye AS builder
+# Frontend build stage
+FROM node:18-alpine AS frontend-builder
+
+WORKDIR /app
+
+# Copy package files
+COPY package.json package-lock.json* ./
+
+# Install Node.js dependencies (including devDependencies for build)
+RUN npm ci
+
+# Copy source files needed for build
+COPY src/ ./src/
+COPY vite.config.js ./
+
+# Build frontend assets
+RUN npm run build
+
+# Python build stage
+FROM python:3.13-slim-bullseye AS python-builder
 
 # Ensure all security updates are applied
 RUN apt-get update && apt-get upgrade -y \
@@ -43,8 +61,11 @@ WORKDIR /app
 # Copy uv from builder
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# Copy virtual environment from builder
-COPY --from=builder --chown=appuser:appuser /app/.venv /app/.venv
+# Copy virtual environment from python builder
+COPY --from=python-builder --chown=appuser:appuser /app/.venv /app/.venv
+
+# Copy built frontend assets from frontend builder
+COPY --from=frontend-builder --chown=appuser:appuser /app/static/ /app/static/
 
 # Copy application code
 COPY --chown=appuser:appuser . .
