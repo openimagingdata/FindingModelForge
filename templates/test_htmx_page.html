@@ -7,65 +7,65 @@
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
     <div class="container mx-auto px-4 py-8 max-w-4xl">
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-8">HTMX Integration Test</h1>
-        
+
         <!-- Progress Stepper -->
         {{ creation_stepper(1) }}
-        
+
         <!-- Loading Indicator -->
         {{ step_loading_indicator() }}
-        
+
         <!-- Test Buttons -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700 mb-6">
             <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Test HTMX Endpoints</h2>
             <p class="text-gray-600 dark:text-gray-400 mb-6">First create a session, then test the step endpoints:</p>
-            
+
             <div class="space-y-4">
                 <!-- Simple HTMX Test (no auth needed) -->
-                <button hx-get="/test-htmx-simple" 
+                <button hx-get="/test-htmx-simple"
                         hx-target="#step-container"
                         hx-swap="innerHTML"
                         hx-indicator="#step-loading"
                         class="w-full px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors">
                     🔥 Simple HTMX Test (No Auth)
                 </button>
-                
+
                 <!-- Session Management -->
-                <button hx-post="/api/finding-models/create/restart" 
+                <button hx-post="/api/finding-models/create/restart"
                         hx-target="#step-container"
                         hx-swap="innerHTML"
                         hx-indicator="#step-loading"
                         class="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
                     🚀 Create New Session & Start Step 1
                 </button>
-                
+
                 <hr class="border-gray-300 dark:border-gray-600">
-                
+
                 <!-- Individual Step Tests (require session) -->
-                <button hx-get="/api/finding-models/create/step/2" 
+                <button hx-get="/api/finding-models/create/step/2"
                         hx-target="#step-container"
                         hx-swap="innerHTML"
                         hx-indicator="#step-loading"
                         class="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
                     Load Step 2 (Description Edit)
                 </button>
-                
-                <button hx-get="/api/finding-models/create/step/3" 
+
+                <button hx-get="/api/finding-models/create/step/3"
                         hx-target="#step-container"
                         hx-swap="innerHTML"
                         hx-indicator="#step-loading"
                         class="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors">
                     Load Step 3 (Similar Review)
                 </button>
-                
-                <button hx-get="/api/finding-models/create/step/4" 
+
+                <button hx-get="/api/finding-models/create/step/4"
                         hx-target="#step-container"
                         hx-swap="innerHTML"
                         hx-indicator="#step-loading"
                         class="w-full px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors">
                     Load Step 4 (Attributes Edit)
                 </button>
-                
-                <button hx-get="/api/finding-models/create/step/5" 
+
+                <button hx-get="/api/finding-models/create/step/5"
                         hx-target="#step-container"
                         hx-swap="innerHTML"
                         hx-indicator="#step-loading"
@@ -81,18 +81,18 @@
                 <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">Ready to Test</h3>
                 <p class="text-gray-600 dark:text-gray-400">Click a button above to load a step and test HTMX functionality</p>
                 <div class="mt-4 space-y-2">
-                    <button onclick="document.getElementById('step-container').innerHTML = '<div class=\'p-4 bg-green-100 text-green-800\'>Manual test - JavaScript is working!</div>'" 
+                    <button onclick="document.getElementById('step-container').innerHTML = '<div class=\'p-4 bg-green-100 text-green-800\'>Manual test - JavaScript is working!</div>'"
                             class="px-3 py-1 bg-gray-500 text-white rounded text-sm">
                         Test JS (No HTMX)
                     </button>
-                    <button onclick="console.log('Target element:', document.getElementById('step-container')); alert('Check console for target element');" 
+                    <button onclick="console.log('Target element:', document.getElementById('step-container')); alert('Check console for target element');"
                             class="px-3 py-1 bg-gray-600 text-white rounded text-sm">
                         Check Target Element
                     </button>
                 </div>
             </div>
         </div>
-        
+
         <!-- Debug Information -->
         <div class="mt-8 bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Debug Information</h3>
@@ -110,7 +110,7 @@
                     <span id="flowbite-status" class="text-gray-600 dark:text-gray-400">Loading...</span>
                 </div>
             </div>
-            
+
             <div class="mt-4">
                 <strong class="text-gray-900 dark:text-white">HTMX Event Log:</strong>
                 <div id="event-log" class="mt-2 p-3 bg-gray-50 dark:bg-gray-900 rounded border max-h-32 overflow-y-auto text-xs font-mono">
@@ -128,11 +128,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const alpineVersion = document.getElementById('alpine-version');
     const flowbiteStatus = document.getElementById('flowbite-status');
     const eventLog = document.getElementById('event-log');
-    
+
     htmxVersion.textContent = window.htmx?.version || 'Not Available';
     alpineVersion.textContent = window.Alpine?.version || 'Not Available';
     flowbiteStatus.textContent = typeof window.initFlowbite === 'function' ? 'Available' : 'Not Available';
-    
+
     // Log HTMX config
     if (window.htmx) {
         console.log('HTMX Config:', window.htmx.config);
@@ -141,19 +141,19 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
         logEvent('❌ HTMX not loaded!');
     }
-    
+
     function logEvent(message) {
         const timestamp = new Date().toLocaleTimeString();
         eventLog.innerHTML += `[${timestamp}] ${message}\n`;
         eventLog.scrollTop = eventLog.scrollHeight;
     }
-    
+
     // HTMX event logging
     document.addEventListener('htmx:beforeRequest', function(evt) {
         logEvent(`🚀 Request: ${evt.detail.requestConfig.verb} ${evt.detail.requestConfig.path}`);
         console.log('HTMX Request Config:', evt.detail.requestConfig);
     });
-    
+
     document.addEventListener('htmx:afterRequest', function(evt) {
         const status = evt.detail.xhr.status;
         const statusIcon = status >= 200 && status < 300 ? '✅' : '❌';
@@ -161,30 +161,30 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('HTMX Response:', evt.detail.xhr);
         console.log('Response Text:', evt.detail.xhr.responseText);
     });
-    
+
     document.addEventListener('htmx:afterSwap', function(evt) {
         logEvent('🔄 Content swapped successfully');
     });
-    
+
     document.addEventListener('htmx:responseError', function(evt) {
         logEvent(`❌ Error: ${evt.detail.xhr.status} ${evt.detail.xhr.statusText}`);
         console.error('HTMX Response Error:', evt.detail);
     });
-    
+
     document.addEventListener('htmx:sendError', function(evt) {
         logEvent(`❌ Send Error: ${evt.detail.error}`);
         console.error('HTMX Send Error:', evt.detail);
     });
-    
+
     document.addEventListener('htmx:timeout', function(evt) {
         logEvent(`⏰ Request Timeout`);
         console.error('HTMX Timeout:', evt.detail);
     });
-    
+
     document.addEventListener('htmx:targetError', function(evt) {
         logEvent(`🎯 Target Error: ${evt.detail.target}`);
         console.error('HTMX Target Error:', evt.detail);
-        
+
         // Check if target element exists
         const targetElement = document.querySelector('#step-container');
         if (targetElement) {
@@ -194,12 +194,12 @@ document.addEventListener('DOMContentLoaded', function() {
             logEvent(`❌ Target element #step-container NOT FOUND in DOM`);
         }
     });
-    
+
     document.addEventListener('htmx:swapError', function(evt) {
         logEvent(`🔄 Swap Error: ${evt.detail.error}`);
         console.error('HTMX Swap Error:', evt.detail);
     });
-    
+
     logEvent('🎬 HTMX Test Page loaded and ready');
 });
 </script>

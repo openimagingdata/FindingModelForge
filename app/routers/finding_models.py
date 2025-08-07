@@ -19,6 +19,7 @@ from app.dependencies import (
     CreationSessionDep,
     DatabaseDep,
     FindingIndexDep,
+    FindingModelCreationSession,
     SessionManagerDep,
 )
 from app.models import (
@@ -290,13 +291,12 @@ async def get_creation_step(
         # Add step-specific context
         if step_number == 3:  # Similar models review
             context["similar_models"] = session.similar_models
-        elif step_number == 5:  # Final display
-            if session.final_model:
-                # Render the model display component
-                display_html = templates.get_template("components/finding_model_display.html").render(
-                    finding_model=session.final_model
-                )
-                context["model_display_html"] = display_html
+        elif step_number == 5 and session.final_model:  # Final display
+            # Render the model display component
+            display_html = templates.get_template("components/finding_model_display.html").render(
+                finding_model=session.final_model
+            )
+            context["model_display_html"] = display_html
 
         html_content = templates.get_template(template_name).render(**context)
         return HTMLResponse(content=html_content)
@@ -320,6 +320,48 @@ async def process_step_1(
 ) -> HTMLResponse:
     """Process step 1: Check name and generate description."""
     try:
+        # Validate input
+        name = name.strip()
+        if not name:
+            context = {
+                "request": request,
+                "current_step": 1,
+                "session_data": session,
+                "name_check_result": {"available": False, "message": "Finding name cannot be empty"},
+                "form_data": {"name": name},
+            }
+            html_content = templates.get_template("components/finding_model_creation/step_name_input.html").render(
+                **context
+            )
+            return HTMLResponse(content=html_content)
+
+        # Validate name format (basic rules)
+        if len(name) < 3:
+            context = {
+                "request": request,
+                "current_step": 1,
+                "session_data": session,
+                "name_check_result": {"available": False, "message": "Finding name must be at least 3 characters long"},
+                "form_data": {"name": name},
+            }
+            html_content = templates.get_template("components/finding_model_creation/step_name_input.html").render(
+                **context
+            )
+            return HTMLResponse(content=html_content)
+
+        if len(name) > 100:
+            context = {
+                "request": request,
+                "current_step": 1,
+                "session_data": session,
+                "name_check_result": {"available": False, "message": "Finding name cannot exceed 100 characters"},
+                "form_data": {"name": name},
+            }
+            html_content = templates.get_template("components/finding_model_creation/step_name_input.html").render(
+                **context
+            )
+            return HTMLResponse(content=html_content)
+
         # Check name availability
         existing_entry = await index.get(name)
         if existing_entry:
@@ -388,8 +430,76 @@ async def process_step_2(
     try:
         import json
 
-        # Parse synonyms JSON
-        synonyms_list = json.loads(synonyms) if synonyms else []
+        # Validate description
+        description = description.strip()
+        if not description:
+            context = {
+                "request": request,
+                "current_step": 2,
+                "session_data": session,
+                "error_message": "Description cannot be empty",
+                "form_data": {"description": description, "synonyms": synonyms},
+            }
+            html_content = templates.get_template(
+                "components/finding_model_creation/step_description_edit.html"
+            ).render(**context)
+            return HTMLResponse(content=html_content)
+
+        if len(description) < 10:
+            context = {
+                "request": request,
+                "current_step": 2,
+                "session_data": session,
+                "error_message": "Description must be at least 10 characters long",
+                "form_data": {"description": description, "synonyms": synonyms},
+            }
+            html_content = templates.get_template(
+                "components/finding_model_creation/step_description_edit.html"
+            ).render(**context)
+            return HTMLResponse(content=html_content)
+
+        if len(description) > 1000:
+            context = {
+                "request": request,
+                "current_step": 2,
+                "session_data": session,
+                "error_message": "Description cannot exceed 1000 characters",
+                "form_data": {"description": description, "synonyms": synonyms},
+            }
+            html_content = templates.get_template(
+                "components/finding_model_creation/step_description_edit.html"
+            ).render(**context)
+            return HTMLResponse(content=html_content)
+
+        # Parse and validate synonyms JSON
+        try:
+            synonyms_list = json.loads(synonyms) if synonyms else []
+            if not isinstance(synonyms_list, list):
+                raise ValueError("Synonyms must be a list")
+
+            # Validate individual synonyms
+            validated_synonyms = []
+            for synonym in synonyms_list:
+                if not isinstance(synonym, str):
+                    continue
+                synonym = synonym.strip()
+                if synonym and len(synonym) <= 50:  # Skip empty and overly long synonyms
+                    validated_synonyms.append(synonym)
+
+            synonyms_list = validated_synonyms
+
+        except (json.JSONDecodeError, ValueError):
+            context = {
+                "request": request,
+                "current_step": 2,
+                "session_data": session,
+                "error_message": "Invalid synonyms format. Please check the synonym list.",
+                "form_data": {"description": description, "synonyms": synonyms},
+            }
+            html_content = templates.get_template(
+                "components/finding_model_creation/step_description_edit.html"
+            ).render(**context)
+            return HTMLResponse(content=html_content)
 
         # Update session
         session.description = description
@@ -397,9 +507,14 @@ async def process_step_2(
         session.current_step = 3
 
         # Find similar models
-        finding_info = FindingInfo(name=session.name or "", description=description, synonyms=synonyms_list)
-        similar_models = await find_similar_models(finding_info, index=index)
-        session.similar_models = [model.model_dump() for model in similar_models]
+        analysis = await find_similar_models(
+            finding_name=session.name or "",
+            description=description,
+            synonyms=synonyms_list,
+            index=index,
+        )
+        # Convert SearchResult objects to plain dictionaries for session storage
+        session.similar_models = [dict(model) for model in analysis.similar_models]
 
         await session_manager.update_session(session)
 
@@ -514,8 +629,128 @@ async def process_step_4(
     try:
         import json
 
-        # Parse synonyms JSON
-        synonyms_list = json.loads(synonyms) if synonyms else []
+        # Validate description
+        description = description.strip()
+        if not description:
+            context = {
+                "request": request,
+                "current_step": 4,
+                "session_data": session,
+                "error_message": "Description cannot be empty",
+                "form_data": {
+                    "description": description,
+                    "synonyms": synonyms,
+                    "attributes_markdown": attributes_markdown,
+                },
+            }
+            html_content = templates.get_template("components/finding_model_creation/step_attributes_edit.html").render(
+                **context
+            )
+            return HTMLResponse(content=html_content)
+
+        if len(description) < 10:
+            context = {
+                "request": request,
+                "current_step": 4,
+                "session_data": session,
+                "error_message": "Description must be at least 10 characters long",
+                "form_data": {
+                    "description": description,
+                    "synonyms": synonyms,
+                    "attributes_markdown": attributes_markdown,
+                },
+            }
+            html_content = templates.get_template("components/finding_model_creation/step_attributes_edit.html").render(
+                **context
+            )
+            return HTMLResponse(content=html_content)
+
+        if len(description) > 1000:
+            context = {
+                "request": request,
+                "current_step": 4,
+                "session_data": session,
+                "error_message": "Description cannot exceed 1000 characters",
+                "form_data": {
+                    "description": description,
+                    "synonyms": synonyms,
+                    "attributes_markdown": attributes_markdown,
+                },
+            }
+            html_content = templates.get_template("components/finding_model_creation/step_attributes_edit.html").render(
+                **context
+            )
+            return HTMLResponse(content=html_content)
+
+        # Validate attributes markdown
+        attributes_markdown = attributes_markdown.strip()
+        if not attributes_markdown:
+            context = {
+                "request": request,
+                "current_step": 4,
+                "session_data": session,
+                "error_message": "Attributes definition cannot be empty",
+                "form_data": {
+                    "description": description,
+                    "synonyms": synonyms,
+                    "attributes_markdown": attributes_markdown,
+                },
+            }
+            html_content = templates.get_template("components/finding_model_creation/step_attributes_edit.html").render(
+                **context
+            )
+            return HTMLResponse(content=html_content)
+
+        if len(attributes_markdown) < 20:
+            context = {
+                "request": request,
+                "current_step": 4,
+                "session_data": session,
+                "error_message": "Attributes definition is too short. Please provide more detailed attributes.",
+                "form_data": {
+                    "description": description,
+                    "synonyms": synonyms,
+                    "attributes_markdown": attributes_markdown,
+                },
+            }
+            html_content = templates.get_template("components/finding_model_creation/step_attributes_edit.html").render(
+                **context
+            )
+            return HTMLResponse(content=html_content)
+
+        # Parse and validate synonyms JSON
+        try:
+            synonyms_list = json.loads(synonyms) if synonyms else []
+            if not isinstance(synonyms_list, list):
+                raise ValueError("Synonyms must be a list")
+
+            # Validate individual synonyms
+            validated_synonyms = []
+            for synonym in synonyms_list:
+                if not isinstance(synonym, str):
+                    continue
+                synonym = synonym.strip()
+                if synonym and len(synonym) <= 50:  # Skip empty and overly long synonyms
+                    validated_synonyms.append(synonym)
+
+            synonyms_list = validated_synonyms
+
+        except (json.JSONDecodeError, ValueError):
+            context = {
+                "request": request,
+                "current_step": 4,
+                "session_data": session,
+                "error_message": "Invalid synonyms format. Please check the synonym list.",
+                "form_data": {
+                    "description": description,
+                    "synonyms": synonyms,
+                    "attributes_markdown": attributes_markdown,
+                },
+            }
+            html_content = templates.get_template("components/finding_model_creation/step_attributes_edit.html").render(
+                **context
+            )
+            return HTMLResponse(content=html_content)
 
         # Update session
         session.description = description
@@ -598,8 +833,9 @@ async def restart_creation(
         new_session_id = await session_manager.create_session()
         new_session = await session_manager.get_session(new_session_id)
 
+        # If cache is failing, create a fallback session
         if not new_session:
-            raise HTTPException(status_code=500, detail="Failed to create new session")
+            new_session = FindingModelCreationSession(session_id=new_session_id)
 
         # Return step 1
         context = {

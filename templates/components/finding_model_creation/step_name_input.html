@@ -4,11 +4,11 @@
     <p class="text-gray-600 dark:text-gray-400 mb-6">Enter a unique name for your finding model. We'll generate a description for you to review and edit.</p>
 
     {# Name input form - will be populated with proper Flowbite components in Phase 3 #}
-    <form hx-post="/api/finding-models/create/step/1" 
+    <form hx-post="/api/finding-models/create/step/1"
           hx-target="#step-container"
           hx-swap="innerHTML"
           hx-indicator="#step-loading">
-        
+
         <div class="space-y-4">
             <div>
                 <label for="finding-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -21,7 +21,7 @@
                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
                        placeholder="e.g., pulmonary-nodule, brain-aneurysm, liver-lesion"
                        required>
-                
+
                 {# Name availability feedback #}
                 {% if name_check_result %}
                     {% if name_check_result.available %}

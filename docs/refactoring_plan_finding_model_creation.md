@@ -47,7 +47,7 @@ templates/
 ├── create_finding_model.html (main orchestrator, ~50 lines)
 ├── components/finding_model_creation/
 │   ├── step_name_input.html
-│   ├── step_description_edit.html  
+│   ├── step_description_edit.html
 │   ├── step_similar_review.html
 │   ├── step_attributes_edit.html
 │   └── step_final_display.html
@@ -133,7 +133,7 @@ x-data="{
 
 ```html
 <!-- Step navigation -->
-<button hx-get="/create/step/2" 
+<button hx-get="/create/step/2"
         hx-target="#step-container"
         hx-indicator="#loading"
         class="btn btn-primary">
@@ -167,7 +167,7 @@ x-data="{
 - [ ] Move validation logic to server
 - [ ] Add proper error handling
 
-### Phase 3: Component Refactoring  
+### Phase 3: Component Refactoring
 - [ ] Break down monolithic template into components
 - [ ] Replace custom components with Flowbite patterns
 - [ ] Implement proper Flowbite stepper

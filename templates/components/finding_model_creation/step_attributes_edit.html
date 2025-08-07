@@ -7,30 +7,30 @@
           hx-target="#step-container"
           hx-swap="innerHTML"
           hx-indicator="#step-loading">
-        
+
         <div class="space-y-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Finding Name</label>
-                <input type="text" 
-                       value="{{ session_data.name }}" 
-                       readonly 
+                <input type="text"
+                       value="{{ session_data.name }}"
+                       readonly
                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-gray-50 dark:bg-gray-600 text-gray-500 dark:text-gray-400">
             </div>
-            
+
             <div>
                 <label for="description" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description</label>
-                <textarea name="description" 
+                <textarea name="description"
                           id="description"
-                          rows="4" 
+                          rows="4"
                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">{{ session_data.description or '' }}</textarea>
             </div>
-            
+
             <div class="space-y-3">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Synonyms
                     <span class="text-xs text-gray-500 dark:text-gray-400 font-normal">(Click to remove)</span>
                 </label>
-                
+
                 <div x-data="{ synonyms: {{ session_data.synonyms | tojson if session_data.synonyms else '[]' }}, newSynonym: '' }">
                     <div x-show="synonyms.length > 0" class="flex flex-wrap gap-2">
                         <template x-for="(synonym, index) in synonyms" :key="synonym">
@@ -46,18 +46,18 @@
                     </div>
 
                     <div class="flex gap-2">
-                        <input type="text" 
+                        <input type="text"
                                x-model="newSynonym"
                                @keyup.enter="if(newSynonym.trim()) { synonyms.push(newSynonym.trim()); newSynonym = ''; }"
-                               placeholder="Add a synonym..." 
+                               placeholder="Add a synonym..."
                                class="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
-                        <button type="button" 
+                        <button type="button"
                                 @click="if(newSynonym.trim()) { synonyms.push(newSynonym.trim()); newSynonym = ''; }"
                                 class="px-3 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
                             Add
                         </button>
                     </div>
-                    
+
                     <input type="hidden" name="synonyms" :value="JSON.stringify(synonyms)">
                 </div>
             </div>

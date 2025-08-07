@@ -303,12 +303,15 @@ async def test_htmx_simple(request: Request) -> HTMLResponse:
 
     current_time = datetime.now().strftime("%H:%M:%S")
 
+    # SVG checkmark icon path
+    check_path = "M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"  # noqa: E501
+
     return HTMLResponse(
         content=f"""
         <div class="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700">
             <div class="flex items-center">
                 <svg class="w-5 h-5 text-green-600 dark:text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                    <path fill-rule="evenodd" d="{check_path}" clip-rule="evenodd"/>
                 </svg>
                 <div>
                     <h4 class="text-green-800 dark:text-green-200 font-semibold">HTMX Test Successful! ✅</h4>

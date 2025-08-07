@@ -7,7 +7,7 @@
           hx-target="#step-container"
           hx-swap="innerHTML"
           hx-indicator="#step-loading">
-        
+
         <div class="space-y-4">
             <div>
                 <label for="finding-name-readonly" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -37,7 +37,7 @@
                     Synonyms
                     <span class="text-xs text-gray-500 dark:text-gray-400 font-normal">(Click to remove, or add new ones)</span>
                 </label>
-                
+
                 {# Display existing synonyms #}
                 <div x-data="{ synonyms: {{ session_data.synonyms | tojson if session_data.synonyms else '[]' }}, newSynonym: '' }">
                     <div x-show="synonyms.length > 0" class="flex flex-wrap gap-2">
@@ -66,7 +66,7 @@
                             Add
                         </button>
                     </div>
-                    
+
                     {# Hidden input to submit synonyms #}
                     <input type="hidden" name="synonyms" :value="JSON.stringify(synonyms)">
                 </div>

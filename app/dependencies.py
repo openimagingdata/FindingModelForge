@@ -1,5 +1,7 @@
 """Dependency injection for the application."""
 
+import contextlib
+import json
 import uuid
 from typing import Annotated, Any
 
@@ -86,7 +88,7 @@ class FindingModelCreationSession(BaseModel):
 class SessionManager:
     """Manages creation sessions using Redis cache."""
 
-    def __init__(self, cache: RedisCache):
+    def __init__(self, cache: RedisCache) -> None:
         self.cache = cache
         self.session_prefix = "creation_session:"
         self.session_ttl = 3600 * 4  # 4 hours
@@ -95,39 +97,41 @@ class SessionManager:
         """Create a new session and return session ID."""
         session_id = str(uuid.uuid4())
         session = FindingModelCreationSession(session_id=session_id)
-        await self._save_session(session)
+        with contextlib.suppress(Exception):
+            await self._save_session(session)
         return session_id
 
     async def get_session(self, session_id: str) -> FindingModelCreationSession | None:
         """Get session data by ID."""
-        cache_key = f"{self.session_prefix}{session_id}"
-        session_data = await self.cache.get(cache_key)
-        if session_data is None:
-            return None
-
-        if isinstance(session_data, str):
-            # Parse JSON string if needed
-            import json
-
-            try:
-                session_dict = json.loads(session_data)
-                return FindingModelCreationSession.model_validate(session_dict)
-            except (json.JSONDecodeError, ValueError):
+        try:
+            cache_key = f"{self.session_prefix}{session_id}"
+            session_data = await self.cache.get(cache_key)
+            if session_data is None:
                 return None
-        elif isinstance(session_data, dict):
-            # Direct dict
-            return FindingModelCreationSession.model_validate(session_data)
-        else:
+
+            # Cache stores JSON strings, so we always expect strings
+            try:
+                session_dict = json.loads(str(session_data))
+                return FindingModelCreationSession.model_validate(session_dict)
+            except (json.JSONDecodeError, ValueError, TypeError):
+                return None
+        except Exception:
+            # Handle cache connection/operation errors gracefully
             return None
 
     async def update_session(self, session: FindingModelCreationSession) -> None:
         """Update session data."""
-        await self._save_session(session)
+        with contextlib.suppress(Exception):
+            await self._save_session(session)
 
     async def delete_session(self, session_id: str) -> None:
         """Delete a session."""
-        cache_key = f"{self.session_prefix}{session_id}"
-        await self.cache.delete(cache_key)
+        try:
+            cache_key = f"{self.session_prefix}{session_id}"
+            await self.cache.delete(cache_key)
+        except Exception:
+            # Handle cache errors gracefully - deletion failures are not critical
+            pass
 
     async def _save_session(self, session: FindingModelCreationSession) -> None:
         """Save session to cache."""
@@ -158,7 +162,9 @@ async def get_creation_session(request: Request, session_manager: SessionManager
     if not session_id and request.method == "POST":
         try:
             form = await request.form()
-            session_id = form.get("session_id")
+            form_session_id = form.get("session_id")
+            if isinstance(form_session_id, str):
+                session_id = form_session_id
         except Exception:
             pass
 

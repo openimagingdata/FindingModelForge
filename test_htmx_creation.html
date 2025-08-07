@@ -10,7 +10,7 @@
 <body class="bg-gray-50 dark:bg-gray-900 min-h-screen">
     <div class="container mx-auto px-4 py-8">
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-8">HTMX Creation Flow Test</h1>
-        
+
         <!-- Progress Indicator -->
         <div class="mb-8">
             <ol class="flex items-center w-full text-sm font-medium text-center text-gray-500 dark:text-gray-400 sm:text-base mb-8">
@@ -49,8 +49,8 @@
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
                 <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Loading...</h2>
                 <p class="text-gray-600 dark:text-gray-400 mb-6">Initializing creation workflow...</p>
-                
-                <button hx-get="/api/finding-models/create/step/1" 
+
+                <button hx-get="/api/finding-models/create/step/1"
                         hx-target="#step-container"
                         hx-indicator="#step-loading"
                         class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
@@ -58,7 +58,7 @@
                 </button>
             </div>
         </div>
-        
+
         <!-- Debug Section -->
         <div class="mt-8 bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Debug Info</h3>
@@ -76,21 +76,21 @@
             document.getElementById('htmx-version').textContent = htmx.version || 'Not found';
             document.getElementById('alpine-version').textContent = Alpine.version || 'Not found';
             document.getElementById('current-url').textContent = window.location.href;
-            
+
             console.log('HTMX:', window.htmx);
             console.log('Alpine:', window.Alpine);
             console.log('Flowbite:', window.initFlowbite);
         });
-        
+
         // HTMX event logging for debugging
         document.addEventListener('htmx:beforeRequest', function(evt) {
             console.log('HTMX Before Request:', evt.detail);
         });
-        
+
         document.addEventListener('htmx:afterRequest', function(evt) {
             console.log('HTMX After Request:', evt.detail);
         });
-        
+
         document.addEventListener('htmx:responseError', function(evt) {
             console.error('HTMX Response Error:', evt.detail);
         });
