@@ -284,3 +284,42 @@ async def finding_model_display(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to display finding model: {e}",
         ) from e
+
+
+@router.get("/test-htmx", response_class=HTMLResponse)
+async def test_htmx_page(request: Request, current_user: OptionalUserDep) -> HTMLResponse:
+    """HTMX integration test page."""
+    return templates.TemplateResponse(
+        request=request,
+        name="test_htmx_page.html",
+        context={"user": current_user, "title": "HTMX Test Page"},
+    )
+
+
+@router.get("/test-htmx-simple", response_class=HTMLResponse)
+async def test_htmx_simple(request: Request) -> HTMLResponse:
+    """Simple HTMX test endpoint that returns HTML."""
+    from datetime import datetime
+
+    current_time = datetime.now().strftime("%H:%M:%S")
+
+    return HTMLResponse(
+        content=f"""
+        <div class="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700">
+            <div class="flex items-center">
+                <svg class="w-5 h-5 text-green-600 dark:text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                </svg>
+                <div>
+                    <h4 class="text-green-800 dark:text-green-200 font-semibold">HTMX Test Successful! ✅</h4>
+                    <p class="text-green-700 dark:text-green-300 text-sm mt-1">
+                        This content was loaded via HTMX from <code>/test-htmx-simple</code>
+                    </p>
+                    <p class="text-green-600 dark:text-green-400 text-xs mt-2">
+                        Request time: {current_time}
+                    </p>
+                </div>
+            </div>
+        </div>
+    """
+    )

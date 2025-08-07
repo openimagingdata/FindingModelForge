@@ -2,11 +2,13 @@
 import Alpine from "alpinejs"
 import { initFlowbite } from "flowbite"
 import { DataTable } from "simple-datatables"
+import htmx from "htmx.org"
 
 // Make Alpine and other libraries globally available
 window.Alpine = Alpine
 window.initFlowbite = initFlowbite
 window.simpleDatatables = { DataTable }
+window.htmx = htmx
 
 // Dark mode management
 document.addEventListener("alpine:init", () => {
@@ -172,6 +174,24 @@ window.showToast = function (message) {
   }, 3000)
 }
 
+// HTMX Configuration
+htmx.config.globalViewTransitions = true  // Enable smooth transitions
+htmx.config.defaultSwapStyle = 'outerHTML' // Default swap behavior
+htmx.config.scrollBehavior = 'auto'       // Auto-scroll behavior
+htmx.config.includeIndicatorStyles = false // We use custom loading styles
+htmx.config.withCredentials = true        // Include cookies in all requests
+
+// HTMX Event Listeners for better integration with Flowbite
+document.addEventListener('htmx:afterSwap', function() {
+  // Reinitialize Flowbite components after HTMX swaps content
+  initFlowbite()
+})
+
+document.addEventListener('htmx:afterSettle', function(event) {
+  // Ensure Alpine.js processes any new content
+  Alpine.initTree(event.detail.elt)
+})
+
 // Initialize Alpine
 Alpine.start()
 
@@ -184,4 +204,4 @@ document.addEventListener("DOMContentLoaded", () => {
 console.log("%cWelcome to Finding Model Forge! ⚒︎", "color: #3b82f6; font-size: 16px; font-weight: bold;")
 
 // For any modules that need these
-export { Alpine, initFlowbite, DataTable }
+export { Alpine, initFlowbite, DataTable, htmx }

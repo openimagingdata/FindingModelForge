@@ -1,8 +1,8 @@
 # ruff: noqa: B008
 """Finding Model creation and management routes."""
 
-from fastapi import APIRouter, HTTPException, Request, status
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Form, HTTPException, Request, status
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from findingmodel import FindingInfo
 from findingmodel.tools import (
@@ -15,7 +15,12 @@ from findingmodel.tools import (
 
 from app.auth import CurrentUserDep
 from app.config import logger
-from app.dependencies import DatabaseDep, FindingIndexDep
+from app.dependencies import (
+    CreationSessionDep,
+    DatabaseDep,
+    FindingIndexDep,
+    SessionManagerDep,
+)
 from app.models import (
     FindingInfoEditRequest,
     FindingInfoRequest,
@@ -243,3 +248,382 @@ async def generate_model(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error generating finding model: {str(e)}"
         ) from e
+
+
+# ===== HTMX ENDPOINTS FOR STEP-BY-STEP CREATION =====
+
+
+@router.get("/create/step/{step_number}")
+async def get_creation_step(
+    step_number: int,
+    request: Request,
+    current_user: CurrentUserDep,
+    session: CreationSessionDep,
+    session_manager: SessionManagerDep,
+) -> HTMLResponse:
+    """Get a specific step in the creation workflow."""
+    try:
+        # Map step numbers to templates
+        step_templates = {
+            1: "components/finding_model_creation/step_name_input.html",
+            2: "components/finding_model_creation/step_description_edit.html",
+            3: "components/finding_model_creation/step_similar_review.html",
+            4: "components/finding_model_creation/step_attributes_edit.html",
+            5: "components/finding_model_creation/step_final_display.html",
+        }
+
+        if step_number not in step_templates:
+            raise HTTPException(status_code=404, detail="Step not found")
+
+        template_name = step_templates[step_number]
+
+        # Update session step
+        session.current_step = step_number
+
+        # Prepare template context
+        context = {
+            "request": request,
+            "current_step": step_number,
+            "session_data": session,
+        }
+
+        # Add step-specific context
+        if step_number == 3:  # Similar models review
+            context["similar_models"] = session.similar_models
+        elif step_number == 5:  # Final display
+            if session.final_model:
+                # Render the model display component
+                display_html = templates.get_template("components/finding_model_display.html").render(
+                    finding_model=session.final_model
+                )
+                context["model_display_html"] = display_html
+
+        html_content = templates.get_template(template_name).render(**context)
+        return HTMLResponse(content=html_content)
+
+    except Exception as e:
+        logger.error(f"Error getting creation step {step_number}: {str(e)}", exc_info=True)
+        error_html = templates.get_template("components/error_display.html").render(
+            request=request, error_message=f"Error loading step {step_number}: {str(e)}"
+        )
+        return HTMLResponse(content=error_html, status_code=500)
+
+
+@router.post("/create/step/1")
+async def process_step_1(
+    request: Request,
+    current_user: CurrentUserDep,
+    session: CreationSessionDep,
+    session_manager: SessionManagerDep,
+    index: FindingIndexDep,
+    name: str = Form(...),
+) -> HTMLResponse:
+    """Process step 1: Check name and generate description."""
+    try:
+        # Check name availability
+        existing_entry = await index.get(name)
+        if existing_entry:
+            context = {
+                "request": request,
+                "current_step": 1,
+                "session_data": session,
+                "name_check_result": {"available": False, "message": f"Name '{name}' already exists in the index"},
+                "form_data": {"name": name},
+            }
+            html_content = templates.get_template("components/finding_model_creation/step_name_input.html").render(
+                **context
+            )
+            return HTMLResponse(content=html_content)
+
+        # Generate finding info
+        finding_info = await create_info_from_name(name)
+
+        # Update session
+        session.name = name
+        session.description = finding_info.description
+        session.synonyms = finding_info.synonyms or []
+        session.current_step = 2
+        await session_manager.update_session(session)
+
+        # Move to step 2
+        context = {
+            "request": request,
+            "current_step": 2,
+            "session_data": session,
+        }
+        html_content = templates.get_template("components/finding_model_creation/step_description_edit.html").render(
+            **context
+        )
+        return HTMLResponse(content=html_content)
+
+    except Exception as e:
+        logger.error(f"Error processing step 1: {str(e)}", exc_info=True)
+        session.error_message = f"Error generating description: {str(e)}"
+        await session_manager.update_session(session)
+
+        context = {
+            "request": request,
+            "current_step": 1,
+            "session_data": session,
+            "form_data": {"name": name},
+            "error_message": session.error_message,
+        }
+        html_content = templates.get_template("components/finding_model_creation/step_name_input.html").render(
+            **context
+        )
+        return HTMLResponse(content=html_content, status_code=500)
+
+
+@router.post("/create/step/2")
+async def process_step_2(
+    request: Request,
+    current_user: CurrentUserDep,
+    session: CreationSessionDep,
+    session_manager: SessionManagerDep,
+    index: FindingIndexDep,
+    description: str = Form(...),
+    synonyms: str = Form("[]"),  # JSON string
+) -> HTMLResponse:
+    """Process step 2: Update description and find similar models."""
+    try:
+        import json
+
+        # Parse synonyms JSON
+        synonyms_list = json.loads(synonyms) if synonyms else []
+
+        # Update session
+        session.description = description
+        session.synonyms = synonyms_list
+        session.current_step = 3
+
+        # Find similar models
+        finding_info = FindingInfo(name=session.name or "", description=description, synonyms=synonyms_list)
+        similar_models = await find_similar_models(finding_info, index=index)
+        session.similar_models = [model.model_dump() for model in similar_models]
+
+        await session_manager.update_session(session)
+
+        # Move to step 3
+        context = {
+            "request": request,
+            "current_step": 3,
+            "session_data": session,
+            "similar_models": session.similar_models,
+        }
+        html_content = templates.get_template("components/finding_model_creation/step_similar_review.html").render(
+            **context
+        )
+        return HTMLResponse(content=html_content)
+
+    except Exception as e:
+        logger.error(f"Error processing step 2: {str(e)}", exc_info=True)
+        session.error_message = f"Error finding similar models: {str(e)}"
+        await session_manager.update_session(session)
+
+        context = {
+            "request": request,
+            "current_step": 2,
+            "session_data": session,
+            "error_message": session.error_message,
+        }
+        html_content = templates.get_template("components/finding_model_creation/step_description_edit.html").render(
+            **context
+        )
+        return HTMLResponse(content=html_content, status_code=500)
+
+
+@router.post("/create/step/3")
+async def process_step_3(
+    request: Request,
+    current_user: CurrentUserDep,
+    session: CreationSessionDep,
+    session_manager: SessionManagerDep,
+) -> HTMLResponse:
+    """Process step 3: Generate stub markdown for attributes."""
+    try:
+        # Generate stub markdown
+        stub_markdown = f"""### presence
+
+Presence of {session.name or "the finding"}
+
+- absent: {(session.name or "Finding").capitalize()} is not visible
+- present: {(session.name or "Finding").capitalize()} is clearly visible
+- indeterminate: Presence of {session.name or "finding"} cannot be determined
+- unknown: Presence of {session.name or "finding"} is unknown
+
+### change from prior
+
+How the {session.name or "finding"} has changed compared to prior imaging
+
+- unchanged: {(session.name or "Finding").capitalize()} is unchanged from prior imaging
+- stable: {(session.name or "Finding").capitalize()} is stable
+- new: New {(session.name or "finding").capitalize()} not seen on prior imaging
+- resolved: {(session.name or "Finding").capitalize()} seen on a prior exam has resolved
+- increased: {(session.name or "Finding").capitalize()} has increased
+- decreased: {(session.name or "Finding").capitalize()} has decreased
+- larger: {(session.name or "Finding").capitalize()} is larger
+- smaller: {(session.name or "Finding").capitalize()} is smaller
+"""
+
+        # Update session
+        session.attributes_markdown = stub_markdown
+        session.current_step = 4
+        await session_manager.update_session(session)
+
+        # Move to step 4
+        context = {
+            "request": request,
+            "current_step": 4,
+            "session_data": session,
+        }
+        html_content = templates.get_template("components/finding_model_creation/step_attributes_edit.html").render(
+            **context
+        )
+        return HTMLResponse(content=html_content)
+
+    except Exception as e:
+        logger.error(f"Error processing step 3: {str(e)}", exc_info=True)
+        session.error_message = f"Error generating attributes: {str(e)}"
+        await session_manager.update_session(session)
+
+        context = {
+            "request": request,
+            "current_step": 3,
+            "session_data": session,
+            "similar_models": session.similar_models,
+            "error_message": session.error_message,
+        }
+        html_content = templates.get_template("components/finding_model_creation/step_similar_review.html").render(
+            **context
+        )
+        return HTMLResponse(content=html_content, status_code=500)
+
+
+@router.post("/create/step/4")
+async def process_step_4(
+    request: Request,
+    current_user: CurrentUserDep,
+    session: CreationSessionDep,
+    session_manager: SessionManagerDep,
+    database: DatabaseDep,
+    description: str = Form(...),
+    synonyms: str = Form("[]"),  # JSON string
+    attributes_markdown: str = Form(...),
+) -> HTMLResponse:
+    """Process step 4: Generate final model."""
+    try:
+        import json
+
+        # Parse synonyms JSON
+        synonyms_list = json.loads(synonyms) if synonyms else []
+
+        # Update session
+        session.description = description
+        session.synonyms = synonyms_list
+        session.attributes_markdown = attributes_markdown
+
+        # Generate final model
+        finding_info = FindingInfo(name=session.name or "", description=description, synonyms=synonyms_list)
+
+        complete_markdown = f"""# {session.name}
+
+## Description
+{description}
+
+{attributes_markdown}
+"""
+
+        finding_model_generated = await create_model_from_markdown(finding_info, markdown_text=complete_markdown)
+
+        # Add IDs and contributors
+        assert database.finding_index, "FindingIndex must be initialized in the database"
+        author = database.people.get(current_user.login)
+        source = (
+            author.organization_code
+            if author
+            else (current_user.organizations[0] if current_user.organizations else "OIDM")
+        )
+
+        finding_model = add_ids_to_model(finding_model_generated, source=source)
+        add_standard_codes_to_model(finding_model)
+
+        if author:
+            finding_model.contributors = [author]
+        if source and (organization := database.organizations.get(source)):
+            finding_model.contributors.append(organization) if finding_model.contributors else [organization]
+
+        # Store in session as dict for template rendering
+        session.final_model = finding_model.model_dump()
+        session.current_step = 5
+        await session_manager.update_session(session)
+
+        # Generate display HTML
+        display_html = templates.get_template("components/finding_model_display.html").render(
+            finding_model=finding_model
+        )
+
+        # Move to step 5
+        context = {"request": request, "current_step": 5, "session_data": session, "model_display_html": display_html}
+        html_content = templates.get_template("components/finding_model_creation/step_final_display.html").render(
+            **context
+        )
+        return HTMLResponse(content=html_content)
+
+    except Exception as e:
+        logger.error(f"Error processing step 4: {str(e)}", exc_info=True)
+        session.error_message = f"Error generating final model: {str(e)}"
+        await session_manager.update_session(session)
+
+        context = {
+            "request": request,
+            "current_step": 4,
+            "session_data": session,
+            "error_message": session.error_message,
+        }
+        html_content = templates.get_template("components/finding_model_creation/step_attributes_edit.html").render(
+            **context
+        )
+        return HTMLResponse(content=html_content, status_code=500)
+
+
+@router.post("/create/restart")
+async def restart_creation(
+    request: Request,
+    current_user: CurrentUserDep,
+    session_manager: SessionManagerDep,
+) -> HTMLResponse:
+    """Restart the creation process with a new session."""
+    try:
+        # Create new session
+        new_session_id = await session_manager.create_session()
+        new_session = await session_manager.get_session(new_session_id)
+
+        if not new_session:
+            raise HTTPException(status_code=500, detail="Failed to create new session")
+
+        # Return step 1
+        context = {
+            "request": request,
+            "current_step": 1,
+            "session_data": new_session,
+        }
+        html_content = templates.get_template("components/finding_model_creation/step_name_input.html").render(
+            **context
+        )
+
+        # Set new session cookie in response
+        response = HTMLResponse(content=html_content)
+        response.set_cookie(
+            key="creation_session_id",
+            value=new_session_id,
+            max_age=3600 * 4,  # 4 hours
+            httponly=True,
+        )
+        return response
+
+    except Exception as e:
+        logger.error(f"Error restarting creation: {str(e)}", exc_info=True)
+        error_html = templates.get_template("components/error_display.html").render(
+            request=request, error_message=f"Error restarting creation: {str(e)}"
+        )
+        return HTMLResponse(content=error_html, status_code=500)

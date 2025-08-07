@@ -1,0 +1,54 @@
+{# Step 3: Similar Models Review Component #}
+<div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Review Similar Models</h2>
+    <p class="text-gray-600 dark:text-gray-400 mb-6">We found some existing models that might be similar to yours. Review them to ensure your model is unique.</p>
+
+    {% if similar_models and similar_models|length > 0 %}
+        <div class="space-y-4 mb-6">
+            {% for model in similar_models %}
+                <div class="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="font-medium text-gray-900 dark:text-white">{{ model.name }}</h3>
+                        <span class="text-sm text-blue-600 dark:text-blue-400 font-medium">
+                            {% if model.similarity %}{{ (model.similarity * 100) | round }}% similar{% endif %}
+                        </span>
+                    </div>
+                    <p class="text-gray-600 dark:text-gray-400 text-sm mb-2">{{ model.description or 'No description available' }}</p>
+                    {% if model.tags and model.tags|length > 0 %}
+                        <div class="flex flex-wrap gap-2">
+                            {% for tag in model.tags %}
+                                <span class="inline-block bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300 text-xs px-2 py-1 rounded">{{ tag }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="text-center py-8">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No similar models found</h3>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Your finding model appears to be unique!</p>
+        </div>
+    {% endif %}
+
+    <div class="flex justify-between pt-4">
+        <button type="button"
+                hx-get="/api/finding-models/create/step/2"
+                hx-target="#step-container"
+                hx-swap="innerHTML"
+                class="px-4 py-2 text-gray-600 dark:text-gray-400 font-medium rounded-md border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+            ← Back
+        </button>
+        <button type="button"
+                hx-post="/api/finding-models/create/step/3"
+                hx-target="#step-container"
+                hx-swap="innerHTML"
+                hx-indicator="#step-loading"
+                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+            Continue to Edit Attributes
+        </button>
+    </div>
+</div>

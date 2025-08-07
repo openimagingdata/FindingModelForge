@@ -1,0 +1,92 @@
+{# Step 4: Attributes Edit Component #}
+<div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Edit Attributes</h2>
+    <p class="text-gray-600 dark:text-gray-400 mb-6">Customize the attributes for your finding model. The basic attributes (presence and change from prior) are included, and you can add additional specific attributes.</p>
+
+    <form hx-post="/api/finding-models/create/step/4"
+          hx-target="#step-container"
+          hx-swap="innerHTML"
+          hx-indicator="#step-loading">
+        
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Finding Name</label>
+                <input type="text" 
+                       value="{{ session_data.name }}" 
+                       readonly 
+                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-gray-50 dark:bg-gray-600 text-gray-500 dark:text-gray-400">
+            </div>
+            
+            <div>
+                <label for="description" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description</label>
+                <textarea name="description" 
+                          id="description"
+                          rows="4" 
+                          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">{{ session_data.description or '' }}</textarea>
+            </div>
+            
+            <div class="space-y-3">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Synonyms
+                    <span class="text-xs text-gray-500 dark:text-gray-400 font-normal">(Click to remove)</span>
+                </label>
+                
+                <div x-data="{ synonyms: {{ session_data.synonyms | tojson if session_data.synonyms else '[]' }}, newSynonym: '' }">
+                    <div x-show="synonyms.length > 0" class="flex flex-wrap gap-2">
+                        <template x-for="(synonym, index) in synonyms" :key="synonym">
+                            <button type="button"
+                                    @click="synonyms.splice(index, 1)"
+                                    class="inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 transition-colors dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800 dark:hover:bg-blue-900/30">
+                                <span x-text="synonym"></span>
+                                <svg class="ml-1.5 h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </template>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <input type="text" 
+                               x-model="newSynonym"
+                               @keyup.enter="if(newSynonym.trim()) { synonyms.push(newSynonym.trim()); newSynonym = ''; }"
+                               placeholder="Add a synonym..." 
+                               class="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+                        <button type="button" 
+                                @click="if(newSynonym.trim()) { synonyms.push(newSynonym.trim()); newSynonym = ''; }"
+                                class="px-3 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                            Add
+                        </button>
+                    </div>
+                    
+                    <input type="hidden" name="synonyms" :value="JSON.stringify(synonyms)">
+                </div>
+            </div>
+
+            <div>
+                <label for="attributes-markdown" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Attributes Markdown
+                </label>
+                <textarea name="attributes_markdown"
+                          id="attributes-markdown"
+                          rows="20"
+                          required
+                          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white font-mono text-sm"
+                          placeholder="Attributes markdown will be loaded here...">{{ session_data.attributes_markdown or '' }}</textarea>
+            </div>
+
+            <div class="flex justify-between pt-4">
+                <button type="button"
+                        hx-get="/api/finding-models/create/step/3"
+                        hx-target="#step-container"
+                        hx-swap="innerHTML"
+                        class="px-4 py-2 text-gray-600 dark:text-gray-400 font-medium rounded-md border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                    ← Back
+                </button>
+                <button type="submit"
+                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                    Generate Final Model
+                </button>
+            </div>
+        </div>
+    </form>
+</div>

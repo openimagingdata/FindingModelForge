@@ -18,7 +18,8 @@
       "mcp__serena__search_for_pattern",
       "Bash(uv run:*)",
       "Bash(git checkout:*)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(git stash push:*)"
     ],
     "deny": []
   },
