@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+.venv/
+
+# Build outputs
+dist/
+build/
+static/css/output.css
+static/.vite/
+static/js/
+
+# Cache and temp files
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+htmlcov/
+*.log
+
+# Old/archived files
+zOld/
+
+# Environment files
+.env
+.env.*
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo

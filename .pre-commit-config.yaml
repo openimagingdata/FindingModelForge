@@ -28,7 +28,7 @@ repos:
         language: system
         types: [python]
         args: [--config-file=pyproject.toml]
-        exclude: ^zOld/
+        exclude: ^(zOld/|tests/)
 
   - repo: local
     hooks:

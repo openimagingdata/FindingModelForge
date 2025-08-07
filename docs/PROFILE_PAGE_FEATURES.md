@@ -101,4 +101,5 @@ The new profile page (`/profile`) replaces the old dashboard with the following 
 - Navigation updated to use "Profile" instead of "Dashboard"
 - All existing functionality preserved
 
-This new profile page provides a much better user experience for managing profile information while maintaining the professional look and feel of the application.
+This new profile page provides a much better user experience for managing profile information while maintaining the
+professional look and feel of the application.

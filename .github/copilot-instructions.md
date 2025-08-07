@@ -2,9 +2,13 @@
 
 ## Project Overview
 
-FindingModelForge is a modern FastAPI web application for creating and managing finding models, which defining semantic labels for medical imaging findings. This is a professional tool built with contemporary Python web development best practices.
+FindingModelForge is a modern FastAPI web application for creating and managing finding models, which defining semantic
+labels for medical imaging findings. This is a professional tool built with contemporary Python web development best
+practices.
 
-We always strive to use updated libraries and frameworks, with a focus on type safety, async patterns, and comprehensive testing. The project is designed to be maintainable, scalable, and secure. Make sure to use tools such as Context7 to get updated documentation for libraries and frameworks as needed.
+We always strive to use updated libraries and frameworks, with a focus on type safety, async patterns, and comprehensive
+testing. The project is designed to be maintainable, scalable, and secure. Make sure to use tools such as Context7 to
+get updated documentation for libraries and frameworks as needed.
 
 ## Core Technologies & Architecture
 
@@ -26,12 +30,11 @@ We always strive to use updated libraries and frameworks, with a focus on type s
 - **Flowbite Components** - Pre-built UI components with data attribute-based functionality
 
 Use websearch and Context7 to ensure you are using the latest Flowbite components and patterns, and always prefer
-pre-built Flowbite components over custom implementations. Where possible, pull out re-usable components
-into Jinja2 macros (see `docs/UI_COMPONENT_MACROS.md` for information; see `templates/macros/*.html`
-for current implementations).
+pre-built Flowbite components over custom implementations. Where possible, pull out re-usable components into Jinja2
+macros (see `docs/UI_COMPONENT_MACROS.md` for information; see `templates/macros/*.html` for current implementations).
 
-Please make sure to use Alpine.js for any interactivity—this includes handling user input, toggling UI elements, and making AJAX requests.
-Minimize custom JavaScript where possible.
+Please make sure to use Alpine.js for any interactivity—this includes handling user input, toggling UI elements, and
+making AJAX requests. Minimize custom JavaScript where possible.
 
 ### Development Tools
 
@@ -107,14 +110,18 @@ Use `uv mypy` for type checking.
 
 **CRITICAL: Always use Flowbite's built-in functionality instead of custom implementations**
 
-1. **Use Data Attributes**: All Flowbite components work via data attributes (e.g., `data-accordion="collapse"`, `data-modal-target`)
+1. **Use Data Attributes**: All Flowbite components work via data attributes (e.g., `data-accordion="collapse"`,
+   `data-modal-target`)
 2. **Follow Official Patterns**: Reference Flowbite documentation and existing working components in the codebase
 3. **Avoid Custom JavaScript**: Never create custom `toggleAccordion()`, `showModal()`, etc. - use Flowbite's API
-4. **Use Websearch and Context7 Documentation**: Always check web search and Context7 for up-to-date Flowbite patterns before implementing
+4. **Use Websearch and Context7 Documentation**: Always check web search and Context7 for up-to-date Flowbite patterns
+   before implementing
 5. **Initialize Properly**: Use `initFlowbite()` for dynamically injected content, not custom initialization
-6. **Copy Working Examples**: Look at existing components like `finding_model_display.html` accordion for proven patterns
+6. **Copy Working Examples**: Look at existing components like `finding_model_display.html` accordion for proven
+   patterns
 
 **Example of CORRECT Flowbite usage:**
+
 ```html
 <!-- ✅ CORRECT: Uses Flowbite data attributes -->
 <div data-accordion="collapse">
@@ -124,10 +131,15 @@ Use `uv mypy` for type checking.
 ```
 
 **Example of INCORRECT custom implementation:**
+
 ```html
 <!-- ❌ WRONG: Custom JavaScript -->
 <button onclick="toggleCustom()">Toggle</button>
-<script>function toggleCustom() { /* custom code */ }</script>
+<script>
+  function toggleCustom() {
+    /* custom code */
+  }
+</script>
 ```
 
 ### Docker & Deployment
@@ -273,7 +285,8 @@ DATABASE_NAME="findingmodelforge"
 4. **Use Pydantic models** for all data structures
 5. **Include proper error handling** and logging
 6. **Write comprehensive docstrings** for functions and classes
-7. **ALWAYS use Flowbite components properly** - Never create custom implementations when Flowbite provides the functionality
+7. **ALWAYS use Flowbite components properly** - Never create custom implementations when Flowbite provides the
+   functionality
 
 ### When Suggesting Changes
 
@@ -335,4 +348,5 @@ task build            # Build Docker image
 task run-container    # Run in container
 ```
 
-Remember: This is a professional application with high code quality standards. Always prioritize type safety, proper error handling, and comprehensive testing when making changes.
+Remember: This is a professional application with high code quality standards. Always prioritize type safety, proper
+error handling, and comprehensive testing when making changes.

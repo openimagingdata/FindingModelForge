@@ -1,6 +1,7 @@
 # Jinja2 Macros for FindingModelForge
 
-This directory contains reusable Jinja2 macros that provide consistent UI components throughout the application. All macros follow Flowbite design patterns and include proper dark mode support.
+This directory contains reusable Jinja2 macros that provide consistent UI components throughout the application. All
+macros follow Flowbite design patterns and include proper dark mode support.
 
 ## Usage
 
@@ -18,7 +19,8 @@ Import macros at the top of your template:
 
 #### Buttons
 
-- `flowbite_button(text, href, type, size, icon, icon_position, disabled, target_blank)` - Standard Flowbite button (link)
+- `flowbite_button(text, href, type, size, icon, icon_position, disabled, target_blank)` - Standard Flowbite button
+  (link)
 - `action_button(text, type, size, icon, icon_position, disabled, classes, attributes)` - Action button for forms/JS
 
 #### Navigation
@@ -38,8 +40,10 @@ Import macros at the top of your template:
 
 #### Forms
 
-- `form_input(name, type, label, placeholder, value, required, disabled, readonly, classes, attributes)` - Form input field
-- `form_textarea(name, label, placeholder, value, rows, required, disabled, readonly, classes, attributes)` - Textarea field
+- `form_input(name, type, label, placeholder, value, required, disabled, readonly, classes, attributes)` - Form input
+  field
+- `form_textarea(name, label, placeholder, value, rows, required, disabled, readonly, classes, attributes)` - Textarea
+  field
 
 #### User Interface
 

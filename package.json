@@ -10,7 +10,9 @@
     "build:css": "npx @tailwindcss/cli -i ./src/input.css -o ./static/css/output.css",
     "watch:css": "npx @tailwindcss/cli -i ./src/input.css -o ./static/css/output.css --watch",
     "build": "npm run build:css && npm run build:js",
-    "setup": "npm install && npm run build"
+    "setup": "npm install && npm run build",
+    "format": "prettier --write \"*.md\" \"**/*.md\"",
+    "format:check": "prettier --check \"*.md\" \"**/*.md\""
   },
   "repository": {
     "type": "git",
@@ -18,6 +20,7 @@
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.1.1",
+    "prettier": "^3.4.2",
     "tailwindcss": "^4.1.1",
     "vite": "^6.0.0"
   },

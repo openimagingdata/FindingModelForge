@@ -113,23 +113,43 @@ tasks:
 
   # Code quality tasks
   format:
-    desc: "Format code (fixes formatting issues)"
+    desc: "Format code and markdown (fixes formatting issues)"
     cmds:
       - echo "🎨 Formatting Finding Model Forge code..."
+      - uv run ruff format .
+      - echo "🎨 Formatting Markdown files..."
+      - npm run format
+      - echo "✅ Code and Markdown formatting complete!"
+    silent: true
+
+  format-code:
+    desc: "Format Python code only"
+    cmds:
+      - echo "🎨 Formatting Python code..."
       - uv run ruff format .
       - echo "✅ Code formatting complete!"
     silent: true
 
+  format-markdown:
+    desc: "Format Markdown files only"
+    cmds:
+      - echo "🎨 Formatting Markdown files..."
+      - npm run format
+      - echo "✅ Markdown formatting complete!"
+    silent: true
+
   lint:
-    desc: "Lint and fix code issues"
+    desc: "Lint and fix code and markdown issues"
     cmds:
       - echo "🎨 Formatting and linting Finding Model Forge code..."
       - uv run ruff format .
       - echo "🔍 Fixing linting issues..."
       - uv run ruff check --fix .
+      - echo "🎨 Formatting Markdown files..."
+      - npm run format
       - echo "🔎 Running type checking..."
       - uv run mypy .
-      - echo "✅ Code formatting and linting complete!"
+      - echo "✅ Code and Markdown formatting and linting complete!"
     silent: true
 
   check:
@@ -140,6 +160,8 @@ tasks:
       - uv run ruff check .
       - echo "🎨 Checking code formatting..."
       - uv run ruff format --check .
+      - echo "🎨 Checking Markdown formatting..."
+      - npm run format:check
       - echo "🔎 Running type checking..."
       - uv run mypy .
       - echo "✅ All quality checks passed!"
@@ -153,6 +175,22 @@ tasks:
       - echo "📋 Running tests with coverage..."
       - uv run pytest --cov=app --cov-report=term-missing --cov-report=html
       - echo "✅ All tests passed!"
+    silent: true
+
+  test-unit:
+    desc: "Run unit tests only (fast, for development)"
+    cmds:
+      - echo "⚡ Running unit tests (excluding integration tests)..."
+      - uv run pytest -m "not integration" --cov=app --cov-report=term-missing
+      - echo "✅ Unit tests passed!"
+    silent: true
+
+  test-integration:
+    desc: "Run integration tests only"
+    cmds:
+      - echo "🔗 Running integration tests..."
+      - uv run pytest -m "integration" --cov=app --cov-report=term-missing
+      - echo "✅ Integration tests passed!"
     silent: true
 
   test-full:

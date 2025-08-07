@@ -2,7 +2,9 @@
 
 Tool set for creating finding models for defining the semantic labels for imaging findings.
 
-FindingModelForge is a FastAPI web application exposing [`findingmodel`](https://github.com/openimagingdata/findingmodel) functionality. The app uses GitHub OAuth for authentication, Jinja2 for templating, and provides a modern web interface with Tailwind CSS and Alpine.js.
+FindingModelForge is a FastAPI web application exposing
+[`findingmodel`](https://github.com/openimagingdata/findingmodel) functionality. The app uses GitHub OAuth for
+authentication, Jinja2 for templating, and provides a modern web interface with Tailwind CSS and Alpine.js.
 
 ## Run
 
@@ -76,21 +78,23 @@ task build-frontend  # Build CSS and JS assets
 - [x] Use `task` for integration tasks (lint, format, type-check, test, build)
 - [x] Pre-commit hooks for automated code quality checks
 - [ ] GitHub Actions for automatic checking on commit for formatting, linting, and passing tests
-- [ ] Set up [Dependabot](https://docs.github.com/en/code-security/getting-started/dependabot-quickstart-guide) to keep dependencies up to date
+- [ ] Set up [Dependabot](https://docs.github.com/en/code-security/getting-started/dependabot-quickstart-guide) to keep
+      dependencies up to date
 
 ### Deployment (eventually CD)
 
 - Build any packages and create releases on GitHub; automate with GitHub actions as appropriate
-- Build app container image with `task` and push to [GitHub Container Registry](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry)
-- Temporarily, manual deployment to [Railway](https://railway.com), with separate staging/
-production environments.
+- Build app container image with `task` and push to
+  [GitHub Container Registry](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry)
+- Temporarily, manual deployment to [Railway](https://railway.com), with separate staging/ production environments.
 - Later, move to continuous deployment with GitHub Actions
 
 ### Code Standards
 
 - Target Python version 3.12+
 - Extensive type hinting throughout the codebase
-- Environment variables for configuration using [pydantic-settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/)
+- Environment variables for configuration using
+  [pydantic-settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/)
 - Async/await patterns for I/O operations
 - Comprehensive error handling and logging
 

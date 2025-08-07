@@ -2,13 +2,16 @@
 
 ## Project Overview
 
-FindingModelForge is a FastAPI-based web application for creating and managing medical imaging finding models. These models define semantic labels and structured attributes for medical imaging findings, using the `findingmodel` library for core functionality.
+FindingModelForge is a FastAPI-based web application for creating and managing medical imaging finding models. These
+models define semantic labels and structured attributes for medical imaging findings, using the `findingmodel` library
+for core functionality.
 
 **Current Branch**: `dev` (main branch: `main`)
 
 ## Technical Stack
 
 ### Backend
+
 - **FastAPI** (0.115.0+) - Async web framework with automatic API documentation
 - **Python 3.12+** - With extensive type hinting throughout
 - **Pydantic** - Data validation for models, API contracts, and config
@@ -18,6 +21,7 @@ FindingModelForge is a FastAPI-based web application for creating and managing m
 - **Loguru** - Structured logging framework
 
 ### Frontend
+
 - **Jinja2** - Server-side templating with component macros
 - **Tailwind CSS v4** - Utility-first CSS with dark mode support
 - **Alpine.js** - Reactive JavaScript for interactivity
@@ -25,6 +29,7 @@ FindingModelForge is a FastAPI-based web application for creating and managing m
 - **Vite** - Modern frontend build system with hot reload
 
 ### Core Domain Library
+
 - **findingmodel** (0.3.1+) - Core library for finding model operations
   - Provides `FindingInfo`, `Index`, `Person`, `Organization` models
   - Tools for AI-powered model generation and similarity detection
@@ -74,12 +79,14 @@ FindingModelForge is a FastAPI-based web application for creating and managing m
 ## Key Patterns & Conventions
 
 ### Type Safety
+
 - **Always** use type hints for function signatures
 - Use `Annotated` for FastAPI dependencies
 - Prefer explicit types over `Any`
 - Enable MyPy strict mode compliance
 
 ### Async Patterns
+
 ```python
 # Always use async/await for I/O operations
 async def get_finding_model(
@@ -101,6 +108,7 @@ async def get_finding_model(
 ```
 
 ### Dependency Injection
+
 ```python
 # Use FastAPI's dependency system
 from app.dependencies import DatabaseDep, CacheDep, CurrentUserDep
@@ -122,17 +130,17 @@ async def create_model(
 ```html
 <!-- ✅ CORRECT: Flowbite accordion -->
 <div data-accordion="collapse">
-    <h2 id="accordion-heading-1">
-        <button type="button"
-                data-accordion-target="#accordion-body-1"
-                aria-expanded="false"
-                aria-controls="accordion-body-1">
-            Toggle Section
-        </button>
-    </h2>
-    <div id="accordion-body-1" class="hidden" aria-labelledby="accordion-heading-1">
-        Content here
-    </div>
+  <h2 id="accordion-heading-1">
+    <button
+      type="button"
+      data-accordion-target="#accordion-body-1"
+      aria-expanded="false"
+      aria-controls="accordion-body-1"
+    >
+      Toggle Section
+    </button>
+  </h2>
+  <div id="accordion-body-1" class="hidden" aria-labelledby="accordion-heading-1">Content here</div>
 </div>
 
 <!-- ❌ WRONG: Custom implementation -->
@@ -140,6 +148,7 @@ async def create_model(
 ```
 
 ### Jinja2 Macros
+
 ```jinja
 {# Use macros for reusable components #}
 {% from "macros/app_components.html" import render_finding_model %}
@@ -150,6 +159,7 @@ async def create_model(
 ## Development Workflow
 
 ### Environment Setup
+
 ```bash
 # Install Python dependencies
 uv sync --all-extras --dev
@@ -163,6 +173,7 @@ task setup
 ```
 
 ### Running Development Server
+
 ```bash
 # With hot reload
 task dev
@@ -175,6 +186,7 @@ uv run uvicorn app.main:app --reload
 ```
 
 ### Code Quality
+
 ```bash
 # Format and lint
 task lint
@@ -194,6 +206,7 @@ uv run pytest
 ```
 
 ### Frontend Development
+
 ```bash
 # Build CSS
 npm run build:css
@@ -211,6 +224,7 @@ task build-frontend
 ## Environment Configuration
 
 Required `.env` file:
+
 ```env
 # Application
 APP_NAME="FindingModelForge"
@@ -244,6 +258,7 @@ PORT=8000
 ## Finding Model Domain
 
 The application works with medical imaging finding models that have:
+
 - **Name**: Primary identifier for the finding
 - **Description**: Clinical description
 - **Synonyms**: Alternative names
@@ -251,6 +266,7 @@ The application works with medical imaging finding models that have:
 - **Tags**: Categorization metadata
 
 ### Key Operations
+
 1. **Check Name Availability** - Verify uniqueness in index
 2. **Generate Finding Info** - AI-powered description/synonym generation
 3. **Find Similar Models** - Detect potential duplicates
@@ -260,6 +276,7 @@ The application works with medical imaging finding models that have:
 ## Common Tasks
 
 ### Adding a New API Endpoint
+
 1. Define Pydantic models in `app/models.py`
 2. Create route handler in appropriate router
 3. Use dependency injection for database/cache/auth
@@ -267,6 +284,7 @@ The application works with medical imaging finding models that have:
 5. Update API documentation if needed
 
 ### Adding a New Page
+
 1. Create template in `templates/`
 2. Use Flowbite components and Alpine.js
 3. Add route in `app/routers/pages.py`
@@ -274,6 +292,7 @@ The application works with medical imaging finding models that have:
 5. Test authentication if protected
 
 ### Working with the Database
+
 ```python
 # In app/database.py or repositories
 async def create_finding_model(
@@ -290,6 +309,7 @@ async def create_finding_model(
 ```
 
 ### Using the Cache
+
 ```python
 # Cache operations are optional (check if enabled)
 if cache and await cache.is_healthy():
@@ -302,27 +322,47 @@ if cache and await cache.is_healthy():
 
 ## Testing
 
+### Test Organization
+
+Tests are organized into **unit tests** and **integration tests**:
+
+- **Unit tests**: Fast tests that mock external dependencies (71 tests, ~0.4s)
+- **Integration tests**: Tests that involve external systems like GitHub API, MongoDB, Redis (35 tests, ~0.15s)
+
 ### Running Tests
+
 ```bash
 # All tests with coverage
 task test
 
-# Specific test file
-uv run pytest tests/test_auth.py -v
+# Fast unit tests only (recommended for development)
+task test-unit
 
-# Integration tests only
-uv run pytest -m integration
+# Integration tests only (for CI/deployment verification)
+task test-integration
+
+# Full test suite with quality checks
+task test-full
+
+# Using pytest directly
+uv run pytest -m "not integration" -v      # Unit tests
+uv run pytest -m "integration" -v          # Integration tests
+uv run pytest tests/test_auth.py -v        # Specific test file
+uv run pytest --cov=app --cov-report=term-missing  # With coverage
 ```
 
 ### Test Structure
-- Unit tests for business logic
-- Integration tests for API endpoints
+
+- **Unit tests**: Mock external dependencies, test business logic in isolation
+- **Integration tests**: Test full workflows including database operations, OAuth flows
+- Marked with `@pytest.mark.integration` or `pytestmark = pytest.mark.integration`
 - Async test patterns with `pytest-asyncio`
-- Mock external services when appropriate
+- Comprehensive coverage: 79% overall, 96% database layer, 75% auth layer
 
 ## Docker & Deployment
 
 ### Local Development
+
 ```bash
 # Start MongoDB and Redis
 docker-compose up -d
@@ -335,6 +375,7 @@ task run-container
 ```
 
 ### Production Considerations
+
 - Set strong `SECRET_KEY`
 - Configure production MongoDB URI
 - Enable Redis for caching
@@ -371,4 +412,5 @@ task run-container
 
 ---
 
-Remember: This is a medical domain application. Maintain high code quality, comprehensive testing, and proper error handling throughout.
+Remember: This is a medical domain application. Maintain high code quality, comprehensive testing, and proper error
+handling throughout.

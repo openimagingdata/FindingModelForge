@@ -2,7 +2,8 @@
 
 ## Overview
 
-This document describes the Redis cache implementation for FindingModelForge. The cache provides significant performance improvements by reducing database queries for frequently accessed data, particularly user profiles and finding models.
+This document describes the Redis cache implementation for FindingModelForge. The cache provides significant performance
+improvements by reducing database queries for frequently accessed data, particularly user profiles and finding models.
 
 ## Architecture
 
