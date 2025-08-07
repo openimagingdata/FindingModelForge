@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Edit",
+      "Read",
+      "Write",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(npm:*)",
+      "Bash(python:*)",
+      "Bash(pytest:*)",
+      "Bash(task check)",
+      "Bash(uv run pytest:*)",
+      "Bash(git add:*)",
+      "Bash(uv run pytest:*)",
+      "Bash(task: *)",
+      "Bash(find:*)",
+      "mcp__serena__search_for_pattern",
+      "Bash(uv run:*)"
+    ],
+    "deny": []
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "serena"
+  ]
+}

@@ -115,6 +115,11 @@ secrets/
 .secrets/
 .infisical.json
 
+# MCP Server cache/state files
+.serena/
+.mcp.json
+!.mcp.json.example
+
 # Temporary folders
 tmp/
 temp/
