@@ -16,7 +16,9 @@
       "Bash(task: *)",
       "Bash(find:*)",
       "mcp__serena__search_for_pattern",
-      "Bash(uv run:*)"
+      "Bash(uv run:*)",
+      "Bash(git checkout:*)",
+      "Bash(git stash:*)"
     ],
     "deny": []
   },
