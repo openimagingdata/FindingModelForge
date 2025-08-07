@@ -41,14 +41,16 @@
 
 {# Value display component for finding model attributes #}
 {% macro attribute_value(value) -%}
-    <div class="flex items-start space-x-2">
-        {{ flowbite_badge(value.name if value.name else value.value, "blue", "xs") }}
-        {% if value.description %}
-        <span class="text-xs text-gray-600 dark:text-gray-400 flex-1">
-            {{ value.description }}
-        </span>
-        {% endif %}
-    </div>
+    {% set value_name = value.name if value.name else value.value %}
+    {% if value.description %}
+        <div class="inline-block">
+            <span title="{{ value.description }}" class="cursor-help">
+                {{ flowbite_badge(value_name, "blue", "xs") }}
+            </span>
+        </div>
+    {% else %}
+        {{ flowbite_badge(value_name, "blue", "xs") }}
+    {% endif %}
 {%- endmacro %}
 
 {# Contributor avatar with name and email #}

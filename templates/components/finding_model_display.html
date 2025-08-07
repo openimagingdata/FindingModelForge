@@ -1,5 +1,5 @@
-{% from 'macros/flowbite_components.html' import flowbite_badge, user_avatar %}
-{% from 'macros/app_components.html' import required_badge, id_badge, type_badge, attribute_value %}
+{% from 'macros/flowbite_components.html' import flowbite_badge %}
+{% from 'macros/app_components.html' import required_badge, id_badge, type_badge, attribute_value, contributor_avatar %}
 
 <!-- Finding Model Display Component -->
 <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
@@ -54,7 +54,7 @@
         <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Contributors</h3>
         <div class="space-y-2">
             {% for contributor in finding_model.contributors %}
-                {{ user_avatar(contributor) }}
+                {{ contributor_avatar(contributor) }}
             {% endfor %}
         </div>
     </div>
@@ -64,20 +64,22 @@
     {% if finding_model.attributes and finding_model.attributes|length > 0 %}
     <div class="mb-6">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Attributes</h3>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {% for attribute in finding_model.attributes %}
-            <div class="border border-gray-200 dark:border-gray-600 rounded-lg p-4 relative">
+            <div class="border border-gray-200 dark:border-gray-600 rounded-lg p-4 bg-gray-50 dark:bg-gray-900/50 hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors">
                 <div class="flex items-start justify-between mb-3">
-                    <div class="flex-1">
-                        <div class="flex items-center space-x-2 mb-1">
-                            <h4 class="text-sm font-medium text-gray-900 dark:text-white">{{ attribute.name }}</h4>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center space-x-2 mb-1 flex-wrap">
+                            <h4 class="text-sm font-semibold text-gray-900 dark:text-white truncate">{{ attribute.name }}</h4>
                             {% if attribute.type %}
                                 {{ type_badge(attribute.type.value if attribute.type.value else attribute.type) }}
                             {% endif %}
                         </div>
                     </div>
                     {% if attribute.id or attribute.oifma_id %}
-                        {{ id_badge(attribute.id or attribute.oifma_id) }}
+                        <div class="flex-shrink-0 ml-2">
+                            {{ id_badge(attribute.id or attribute.oifma_id) }}
+                        </div>
                     {% endif %}
                 </div>
 
@@ -102,7 +104,8 @@
                 <!-- Attribute Values -->
                 {% if attribute.values and attribute.values|length > 0 %}
                 <div class="mb-3">
-                    <div class="space-y-2">
+                    <h5 class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Values</h5>
+                    <div class="flex flex-wrap gap-2">
                         {% for value in attribute.values %}
                             {{ attribute_value(value) }}
                         {% endfor %}
@@ -124,17 +127,27 @@
 
     <!-- Footer with metadata -->
     {% if finding_model.created_date or finding_model.last_modified or finding_model.version %}
-    <div class="pt-6">
+    <div class="pt-6 border-t border-gray-200 dark:border-gray-700">
         <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
             <div class="text-sm text-gray-500 dark:text-gray-400">
                 {% if finding_model.created_date %}
-                Created: {{ finding_model.created_date }}
+                    <span class="inline-flex items-center">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                        Created: {% if finding_model.created_date.strftime %}{{ finding_model.created_date.strftime('%B %d, %Y') }}{% else %}{{ finding_model.created_date }}{% endif %}
+                    </span>
                 {% endif %}
                 {% if finding_model.last_modified and finding_model.created_date %}
-                •
+                    <span class="mx-2">•</span>
                 {% endif %}
                 {% if finding_model.last_modified %}
-                Last Modified: {{ finding_model.last_modified }}
+                    <span class="inline-flex items-center">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                        </svg>
+                        Modified: {% if finding_model.last_modified.strftime %}{{ finding_model.last_modified.strftime('%B %d, %Y') }}{% else %}{{ finding_model.last_modified }}{% endif %}
+                    </span>
                 {% endif %}
             </div>
             <div class="flex items-center space-x-4">
