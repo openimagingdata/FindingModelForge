@@ -19,7 +19,8 @@
       "Bash(uv run:*)",
       "Bash(git checkout:*)",
       "Bash(git stash:*)",
-      "Bash(git stash push:*)"
+      "Bash(git stash push:*)",
+      "Bash(echo:*)"
     ],
     "deny": []
   },
