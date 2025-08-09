@@ -50,11 +50,22 @@
 }
 
 .htmx-request .htmx-indicator {
-    display: flex;
+    display: inline-flex !important;
 }
 
 .htmx-request.htmx-indicator {
-    display: flex;
+    display: inline-flex !important;
+}
+
+/* Hide normal button text during HTMX requests */
+.htmx-request button span:not(.htmx-indicator) {
+    display: none !important;
+}
+
+/* Disable button during HTMX requests */
+.htmx-request button {
+    pointer-events: none;
+    opacity: 0.75;
 }
 
 /* Custom styles */

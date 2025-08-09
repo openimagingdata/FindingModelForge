@@ -275,9 +275,9 @@ class TestHTMXStepEndpoints:
 
         assert response.status_code == 200
         content = response.text
-        assert "Review Similar Models" in content
-        # Actually step 2 goes straight to step 4 if no similar models found
-        assert "Continue to Edit Attributes" in content
+        # When no similar models found, should skip to step 4 (attributes editing)
+        assert "Edit Attributes" in content
+        assert "Generate Final Model" in content
 
     def test_step_2_description_too_short(
         self, authenticated_client_with_cache: TestClient, mock_cache: MagicMock

@@ -1,5 +1,18 @@
 {# Step 3: Similar Models Review Component #}
-<div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+<div class="space-y-6">
+    {# Include the stepper #}
+    {% include "components/finding_model_creation/stepper.html" %}
+
+    {# Error and success messages #}
+    {% from "macros/flowbite_components.html" import alert %}
+    {% if session_data.error_message %}
+        {{ alert(session_data.error_message, type="error", dismissible=false) }}
+    {% endif %}
+    {% if session_data.success_message %}
+        {{ alert(session_data.success_message, type="success", dismissible=false) }}
+    {% endif %}
+
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
     <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Review Similar Models</h2>
     <p class="text-gray-600 dark:text-gray-400 mb-6">We found some existing models that might be similar to yours. Review them to ensure your model is unique.</p>
 
@@ -46,9 +59,16 @@
                 hx-post="/api/finding-models/create/step/3"
                 hx-target="#step-container"
                 hx-swap="innerHTML"
-                hx-indicator="#step-loading"
-                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
-            Continue to Edit Attributes
+                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed">
+            <span class="htmx-indicator">
+                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Generating...
+            </span>
+            <span>Continue to Edit Attributes</span>
         </button>
+    </div>
     </div>
 </div>

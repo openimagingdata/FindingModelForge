@@ -176,21 +176,28 @@ window.showToast = function (message) {
 
 // HTMX Configuration
 htmx.config.globalViewTransitions = true  // Enable smooth transitions
-htmx.config.defaultSwapStyle = 'outerHTML' // Default swap behavior
 htmx.config.scrollBehavior = 'auto'       // Auto-scroll behavior
-htmx.config.includeIndicatorStyles = false // We use custom loading styles
+htmx.config.includeIndicatorStyles = true // Enable HTMX indicator system
 htmx.config.withCredentials = true        // Include cookies in all requests
 
-// HTMX Event Listeners for better integration with Flowbite
-document.addEventListener('htmx:afterSwap', function() {
+// HTMX Event Listeners for better integration with Flowbite and Alpine
+document.addEventListener('htmx:afterSwap', function(event) {
   // Reinitialize Flowbite components after HTMX swaps content
   initFlowbite()
+
+  // Process new content with Alpine.js
+  if (window.Alpine && event.detail.elt) {
+    Alpine.initTree(event.detail.elt)
+  }
 })
 
 document.addEventListener('htmx:afterSettle', function(event) {
-  // Ensure Alpine.js processes any new content
-  Alpine.initTree(event.detail.elt)
+  // Ensure Alpine.js processes any new content after settle
+  if (window.Alpine && event.detail.elt) {
+    Alpine.initTree(event.detail.elt)
+  }
 })
+
 
 // Initialize Alpine
 Alpine.start()

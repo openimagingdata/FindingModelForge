@@ -1,0 +1,61 @@
+{# Synonym Management Component Macro #}
+{% macro synonym_manager() %}
+<div class="space-y-3">
+    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        Synonyms
+        <span class="text-xs text-gray-500 dark:text-gray-400 font-normal">(Click to remove, or add new ones)</span>
+    </label>
+
+    {# Display synonyms as removable badges #}
+    <div class="flex flex-wrap gap-2 mb-3 min-h-[2rem]">
+        <template x-for="(synonym, index) in synonyms" :key="synonym">
+            <span class="inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800">
+                <span x-text="synonym"></span>
+                <button type="button"
+                        @click.stop.prevent="removeSynonym(index)"
+                        class="ml-1.5 hover:text-blue-900 dark:hover:text-blue-100">
+                    <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </span>
+        </template>
+        <span x-show="synonyms.length === 0" class="text-sm text-gray-500 dark:text-gray-400 italic">No synonyms yet</span>
+    </div>
+
+    {# Add new synonym #}
+    <div class="flex gap-2">
+        <input type="text"
+               x-model="newSynonym"
+               @keyup.enter="addSynonym()"
+               placeholder="Add a synonym..."
+               class="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+        <button type="button"
+                @click="addSynonym()"
+                class="px-3 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+            Add
+        </button>
+    </div>
+
+    {# Hidden input that stores JSON for form submission #}
+    <input type="hidden" name="synonyms" x-model="synonymsJson">
+</div>
+{% endmacro %}
+
+{# Alpine.js data object for synonym management #}
+{% macro synonym_data(initial_synonyms) %}
+{
+    "synonyms": {{ initial_synonyms | tojson }},
+    "newSynonym": "",
+    get "synonymsJson"() { return JSON.stringify(this.synonyms); },
+    "addSynonym": function() {
+        if (this.newSynonym.trim()) {
+            this.synonyms.push(this.newSynonym.trim());
+            this.newSynonym = "";
+        }
+    },
+    "removeSynonym": function(index) {
+        this.synonyms.splice(index, 1);
+    }
+}
+{% endmacro %}

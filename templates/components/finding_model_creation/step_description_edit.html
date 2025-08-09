@@ -1,12 +1,26 @@
 {# Step 2: Description Edit Component #}
-<div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+<div class="space-y-6">
+    {# Include the stepper #}
+    {% include "components/finding_model_creation/stepper.html" %}
+
+    {# Error and success messages #}
+    {% from "macros/flowbite_components.html" import alert %}
+    {% if session_data.error_message %}
+        {{ alert(session_data.error_message, type="error", dismissible=false) }}
+    {% endif %}
+    {% if session_data.success_message %}
+        {{ alert(session_data.success_message, type="success", dismissible=false) }}
+    {% endif %}
+
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
     <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Edit Description</h2>
     <p class="text-gray-600 dark:text-gray-400 mb-6">Review and edit the AI-generated description for your finding model.</p>
 
+    {% from "macros/synonym_manager.html" import synonym_data %}
     <form hx-post="/api/finding-models/create/step/2"
           hx-target="#step-container"
           hx-swap="innerHTML"
-          hx-indicator="#step-loading">
+          x-data='{{ synonym_data(session_data.synonyms or []) }}'>
 
         <div class="space-y-4">
             <div>
@@ -32,45 +46,8 @@
                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">{{ session_data.description or '' }}</textarea>
             </div>
 
-            <div class="space-y-3">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Synonyms
-                    <span class="text-xs text-gray-500 dark:text-gray-400 font-normal">(Click to remove, or add new ones)</span>
-                </label>
-
-                {# Display existing synonyms #}
-                <div x-data="{ synonyms: {{ session_data.synonyms | tojson if session_data.synonyms else '[]' }}, newSynonym: '' }">
-                    <div x-show="synonyms.length > 0" class="flex flex-wrap gap-2">
-                        <template x-for="(synonym, index) in synonyms" :key="synonym">
-                            <button type="button"
-                                    @click="synonyms.splice(index, 1)"
-                                    class="inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 transition-colors dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800 dark:hover:bg-blue-900/30">
-                                <span x-text="synonym"></span>
-                                <svg class="ml-1.5 h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                </svg>
-                            </button>
-                        </template>
-                    </div>
-
-                    {# Add new synonym input #}
-                    <div class="flex gap-2">
-                        <input type="text"
-                               x-model="newSynonym"
-                               @keyup.enter="if(newSynonym.trim()) { synonyms.push(newSynonym.trim()); newSynonym = ''; }"
-                               placeholder="Add a synonym..."
-                               class="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
-                        <button type="button"
-                                @click="if(newSynonym.trim()) { synonyms.push(newSynonym.trim()); newSynonym = ''; }"
-                                class="px-3 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
-                            Add
-                        </button>
-                    </div>
-
-                    {# Hidden input to submit synonyms #}
-                    <input type="hidden" name="synonyms" :value="JSON.stringify(synonyms)">
-                </div>
-            </div>
+            {% from "macros/synonym_manager.html" import synonym_manager %}
+            {{ synonym_manager() }}
 
             <div class="flex justify-between pt-4">
                 <button type="button"
@@ -81,10 +58,18 @@
                     ← Back
                 </button>
                 <button type="submit"
-                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
-                    Check for Similar
+                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed">
+                    <span class="htmx-indicator">
+                        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Checking...
+                    </span>
+                    <span>Check for Similar</span>
                 </button>
             </div>
         </div>
     </form>
+    </div>
 </div>

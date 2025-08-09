@@ -125,10 +125,30 @@ async def create_model(
 
 ### Frontend Components
 
-**CRITICAL: Use Flowbite's data-attribute patterns, NOT custom JavaScript**
+**CRITICAL: Always follow Flowbite documentation patterns exactly**
+
+1. **Use Flowbite's official markup and CSS classes** - Never invent custom styling
+2. **Consult Flowbite documentation** before implementing any UI component
+3. **Copy exact HTML structure** from Flowbite examples
+4. **Use data-attribute patterns** for interactive components
 
 ```html
-<!-- ✅ CORRECT: Flowbite accordion -->
+<!-- ✅ CORRECT: Official Flowbite stepper from docs -->
+<ol class="flex items-center w-full text-sm font-medium text-center text-gray-500 dark:text-gray-400 sm:text-base">
+    <li class="flex md:w-full items-center text-blue-600 dark:text-blue-500 sm:after:content-[''] after:w-full after:h-1 after:border-b after:border-gray-200 after:border-1 after:hidden sm:after:inline-block after:mx-6 xl:after:mx-10 dark:after:border-gray-700">
+        <span class="flex items-center">
+            <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 me-2.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z"/>
+            </svg>
+            Personal Info
+        </span>
+    </li>
+</ol>
+
+<!-- ❌ WRONG: Made-up custom styling -->
+<div class="w-5 h-5 bg-blue-600 rounded-full">1</div>
+
+<!-- ✅ CORRECT: Flowbite accordion from docs -->
 <div data-accordion="collapse">
   <h2 id="accordion-heading-1">
     <button
@@ -146,6 +166,126 @@ async def create_model(
 <!-- ❌ WRONG: Custom implementation -->
 <button onclick="toggleSection()">Toggle</button>
 ```
+
+**Before implementing any component:**
+1. Visit https://flowbite.com/docs/components/
+2. Find the exact component you need
+3. Copy the official HTML structure and CSS classes
+4. Adapt only the content, not the structure or styling
+
+### Alpine.js and HTMX Integration Patterns
+
+**CRITICAL: Trust Alpine.js reactivity - avoid manual DOM manipulation**
+
+#### ✅ CORRECT: Reactive Data Binding for Forms
+
+```javascript
+// Use computed getters for derived data
+x-data='{
+  items: ["item1", "item2"],
+  get itemsJson() { return JSON.stringify(this.items); }
+}'
+
+// Use x-model for form submission (updates DOM value property)
+<input type="hidden" name="items" x-model="itemsJson">
+```
+
+#### ❌ WRONG: Manual HTMX Event Handling
+
+```javascript
+// Don't manually update form data in HTMX events
+@htmx:config-request="$event.detail.parameters.items = JSON.stringify(items)"
+@htmx:before-request="updateFormData()"
+```
+
+#### Key Principles:
+
+1. **x-model vs :value**:
+   - `x-model` updates DOM value property (form submission)
+   - `:value` only sets HTML attribute (not submitted)
+
+2. **Computed Properties**: Use JavaScript getters for automatic updates
+   ```javascript
+   get "derivedValue"() { return this.sourceValue.toUpperCase(); }
+   ```
+
+3. **Form Scope**: Put `x-data` on form element when form needs access to data
+
+4. **Event Handling**: Use `.stop.prevent` modifiers to control event flow
+   ```html
+   @click.stop.prevent="handleClick()"
+   ```
+
+5. **HTMX Integration**: Alpine.js reactivity handles form data automatically - no HTMX event interception needed
+
+#### Component Reusability Pattern:
+
+```jinja
+{# templates/macros/component_name.html #}
+{% macro component_data(initial_data) %}
+{
+  "data": {{ initial_data | tojson }},
+  get "dataJson"() { return JSON.stringify(this.data); },
+  "addItem": function(item) { this.data.push(item); }
+}
+{% endmacro %}
+
+{% macro component_template() %}
+<div>
+  <!-- Component HTML with Alpine.js directives -->
+  <input type="hidden" name="data" x-model="dataJson">
+</div>
+{% endmacro %}
+```
+
+### Template Component Reuse
+
+**CRITICAL: Always check for existing components before creating new display code**
+
+1. **Audit existing components first** - Search templates/ directory for similar functionality
+2. **Reuse existing templates** - Use `{% include %}` for complete template reuse
+3. **Extract common patterns** - Create shared macros for repeated UI patterns
+4. **Maintain component index** - Keep track of available reusable components
+
+**Component Discovery Process:**
+```bash
+# Search for existing display components
+find templates/ -name "*.html" | grep -E "(display|card|list)"
+# Search for specific functionality
+grep -r "accordion" templates/
+grep -r "badge" templates/macros/
+```
+
+**Reuse Patterns:**
+```jinja
+{# ✅ CORRECT: Reuse existing component #}
+{% set finding_model = session_data.final_model %}
+{% include 'components/finding_model_display.html' %}
+
+{# ✅ CORRECT: Use existing macros #}
+{% from "macros/flowbite_components.html" import alert, badge %}
+{{ alert("Success message", type="success") }}
+{{ badge("Status", "green") }}
+
+{# ❌ WRONG: Recreating existing functionality #}
+<div class="bg-green-100 text-green-800 px-3 py-1 rounded">
+    Success message
+</div>
+```
+
+**Available Component Index:**
+- `components/finding_model_display.html` - Complete finding model display with attributes
+- `components/finding_model_creation/` - Multi-step creation workflow components
+- `macros/flowbite_components.html` - Flowbite UI component macros
+- `macros/app_components.html` - Application-specific component macros
+- `macros/synonym_manager.html` - Synonym management component (Alpine.js + HTMX)
+
+**Before creating new display code:**
+1. Check if a similar component exists in `templates/components/`
+2. Check if relevant macros exist in `templates/macros/`
+3. Consider if existing components can be extended/adapted
+4. Only create new components if truly needed
+5. Extract reusable parts into macros for future use
 
 ### Jinja2 Macros
 

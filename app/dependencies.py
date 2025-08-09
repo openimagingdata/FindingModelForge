@@ -83,6 +83,7 @@ class FindingModelCreationSession(BaseModel):
     attributes_markdown: str | None = None
     final_model: dict[str, Any] | None = None
     error_message: str | None = None
+    success_message: str | None = None
 
 
 class SessionManager:
@@ -152,11 +153,15 @@ SessionManagerDep = Annotated[SessionManager, Depends(get_session_manager)]
 
 async def get_creation_session(request: Request, session_manager: SessionManagerDep) -> FindingModelCreationSession:
     """Get or create a finding model creation session."""
+    from app.config import logger
+
     # Try to get session ID from request (could be from cookie, header, or query param)
     session_id = None
 
     # Check query parameter first (for HTMX requests)
     session_id = request.query_params.get("session_id")
+    if session_id:
+        logger.debug(f"Found session_id in query params: {session_id}")
 
     # Check form data for POST requests
     if not session_id and request.method == "POST":
@@ -165,26 +170,36 @@ async def get_creation_session(request: Request, session_manager: SessionManager
             form_session_id = form.get("session_id")
             if isinstance(form_session_id, str):
                 session_id = form_session_id
+                logger.debug(f"Found session_id in form data: {session_id}")
         except Exception:
             pass
 
     # Check cookies as fallback
     if not session_id:
         session_id = request.cookies.get("creation_session_id")
+        if session_id:
+            logger.debug(f"Found session_id in cookies: {session_id}")
+        else:
+            logger.debug("No session_id found in request")
 
     # Get existing session or create new one
     if session_id:
         session = await session_manager.get_session(session_id)
         if session is not None:
+            logger.debug(f"Retrieved existing session: {session.session_id}")
             return session
+        else:
+            logger.debug(f"Session {session_id} not found in cache")
 
     # Create new session if none found or invalid
+    logger.debug("Creating new session")
     new_session_id = await session_manager.create_session()
     session = await session_manager.get_session(new_session_id)
     if session is None:
         # Fallback if cache fails
         session = FindingModelCreationSession(session_id=new_session_id)
 
+    logger.debug(f"Created new session: {new_session_id}")
     return session
 
 

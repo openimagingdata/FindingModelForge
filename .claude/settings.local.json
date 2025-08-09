@@ -21,7 +21,15 @@
       "Bash(git stash:*)",
       "Bash(git stash push:*)",
       "Bash(echo:*)",
-      "Bash(pre-commit run:*)"
+      "Bash(pre-commit run:*)",
+      "Bash(task test:*)",
+      "Bash(task dev)",
+      "mcp__serena__find_symbol",
+      "WebFetch(domain:flowbite.com)",
+      "mcp__serena__find_file",
+      "mcp__serena__list_dir",
+      "mcp__serena__replace_symbol_body",
+      "mcp__serena__replace_regex"
     ],
     "deny": []
   },

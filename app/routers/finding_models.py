@@ -221,7 +221,10 @@ async def generate_model(
         if author:
             finding_model.contributors = [author]
         if source and (organization := database.organizations.get(source)):
-            finding_model.contributors.append(organization) if finding_model.contributors else [organization]
+            if finding_model.contributors:
+                finding_model.contributors.append(organization)
+            else:
+                finding_model.contributors = [organization]
 
         # Generate JSON for the model
         finding_model_json = finding_model.model_dump_json(indent=2, exclude_none=True)
@@ -292,11 +295,8 @@ async def get_creation_step(
         if step_number == 3:  # Similar models review
             context["similar_models"] = session.similar_models
         elif step_number == 5 and session.final_model:  # Final display
-            # Render the model display component
-            display_html = templates.get_template("components/finding_model_display.html").render(
-                finding_model=session.final_model
-            )
-            context["model_display_html"] = display_html
+            # Don't pass model_display_html so the template uses session_data.final_model
+            pass
 
         html_content = templates.get_template(template_name).render(**context)
         return HTMLResponse(content=html_content)
@@ -518,16 +518,56 @@ async def process_step_2(
 
         await session_manager.update_session(session)
 
-        # Move to step 3
-        context = {
-            "request": request,
-            "current_step": 3,
-            "session_data": session,
-            "similar_models": session.similar_models,
-        }
-        html_content = templates.get_template("components/finding_model_creation/step_similar_review.html").render(
-            **context
-        )
+        # If no similar models found, skip to step 4 (attributes editing)
+        if not session.similar_models:
+            # Generate stub markdown for attributes
+            stub_markdown = f"""### presence
+
+Presence of {session.name or "the finding"}
+
+- absent: {(session.name or "Finding").capitalize()} is not visible
+- present: {(session.name or "Finding").capitalize()} is clearly visible
+- indeterminate: Presence of {session.name or "finding"} cannot be determined
+- unknown: Presence of {session.name or "finding"} is unknown
+
+### change from prior
+
+How the {session.name or "finding"} has changed compared to prior imaging
+
+- unchanged: {(session.name or "Finding").capitalize()} is unchanged from prior imaging
+- stable: {(session.name or "Finding").capitalize()} is stable
+- new: New {(session.name or "finding").capitalize()} not seen on prior imaging
+- resolved: {(session.name or "Finding").capitalize()} seen on a prior exam has resolved
+- increased: {(session.name or "Finding").capitalize()} has increased
+- decreased: {(session.name or "Finding").capitalize()} has decreased
+- larger: {(session.name or "Finding").capitalize()} is larger
+- smaller: {(session.name or "Finding").capitalize()} is smaller
+"""
+            session.attributes_markdown = stub_markdown
+            session.current_step = 4
+            await session_manager.update_session(session)
+
+            # Skip to step 4
+            context = {
+                "request": request,
+                "current_step": 4,
+                "session_data": session,
+            }
+            html_content = templates.get_template("components/finding_model_creation/step_attributes_edit.html").render(
+                **context
+            )
+        else:
+            # Move to step 3 to review similar models
+            context = {
+                "request": request,
+                "current_step": 3,
+                "session_data": session,
+                "similar_models": session.similar_models,
+            }
+            html_content = templates.get_template("components/finding_model_creation/step_similar_review.html").render(
+                **context
+            )
+
         return HTMLResponse(content=html_content)
 
     except Exception as e:
@@ -785,20 +825,23 @@ async def process_step_4(
         if author:
             finding_model.contributors = [author]
         if source and (organization := database.organizations.get(source)):
-            finding_model.contributors.append(organization) if finding_model.contributors else [organization]
+            if finding_model.contributors:
+                finding_model.contributors.append(organization)
+            else:
+                finding_model.contributors = [organization]
 
-        # Store in session as dict for template rendering
-        session.final_model = finding_model.model_dump()
+        # Store in session for template rendering - serialize to dict but handle HttpUrl types
+        session.final_model = finding_model.model_dump(mode="json", exclude_none=True)
         session.current_step = 5
         await session_manager.update_session(session)
 
-        # Generate display HTML
-        display_html = templates.get_template("components/finding_model_display.html").render(
-            finding_model=finding_model
-        )
-
-        # Move to step 5
-        context = {"request": request, "current_step": 5, "session_data": session, "model_display_html": display_html}
+        # Move to step 5 - pass the actual finding_model object to template
+        context = {
+            "request": request,
+            "current_step": 5,
+            "session_data": session,
+            "finding_model": finding_model,  # Pass the actual Pydantic model object
+        }
         html_content = templates.get_template("components/finding_model_creation/step_final_display.html").render(
             **context
         )

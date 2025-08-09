@@ -65,7 +65,7 @@ async def dashboard_redirect() -> RedirectResponse:
 
 @router.get("/create-finding-model", response_class=HTMLResponse)
 async def create_finding_model_page(request: Request, current_user: OptionalUserDep) -> HTMLResponse:
-    """Finding model creation page."""
+    """Finding model creation page - now using HTMX workflow."""
     logger.info(f"Accessing finding model creation for user: {current_user.login if current_user else 'Guest'}")
 
     if not current_user:
@@ -78,9 +78,10 @@ async def create_finding_model_page(request: Request, current_user: OptionalUser
             },
         )
 
+    # Use the new HTMX-based template
     return templates.TemplateResponse(
         request=request,
-        name="create_finding_model.html",
+        name="create_finding_model_htmx.html",
         context={"user": current_user, "title": "Create Finding Model"},
     )
 

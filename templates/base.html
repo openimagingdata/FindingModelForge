@@ -51,7 +51,7 @@
     <!-- Footer -->
     {% include 'components/footer.html' %}
 
-    <!-- Bundled JavaScript (includes Alpine.js, Flowbite, SimpleDatatables, and app utilities) -->
+    <!-- Bundled JavaScript (includes HTMX, Alpine.js, Flowbite, SimpleDatatables, and app utilities) -->
     <script src="{{ url_for('static', path=vite_asset()) }}" defer></script>
 
     {% block scripts %}{% endblock %}
