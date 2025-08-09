@@ -173,7 +173,7 @@ tasks:
     cmds:
       - echo "🧪 Running Finding Model Forge tests..."
       - echo "📋 Running tests with coverage..."
-      - uv run pytest --cov=app --cov-report=term-missing --cov-report=html
+      - uv run pytest -m "not playwright" --cov=app --cov-report=term-missing --cov-report=html
       - echo "✅ All tests passed!"
     silent: true
 
@@ -181,7 +181,7 @@ tasks:
     desc: "Run unit tests only (fast, for development)"
     cmds:
       - echo "⚡ Running unit tests (excluding integration tests)..."
-      - uv run pytest -m "not integration" --cov=app --cov-report=term-missing
+      - uv run pytest -m "not integration and not playwright" --no-cov -q
       - echo "✅ Unit tests passed!"
     silent: true
 
@@ -189,8 +189,26 @@ tasks:
     desc: "Run integration tests only"
     cmds:
       - echo "🔗 Running integration tests..."
-      - uv run pytest -m "integration" --cov=app --cov-report=term-missing
+      - uv run pytest -m "integration and not playwright" --no-cov -q
       - echo "✅ Integration tests passed!"
+    silent: true
+
+  test-playwright:
+    desc: "Run Playwright browser integration tests"
+    cmds:
+      - echo "🎭 Running Playwright integration tests..."
+      - echo "💡 Make sure the development server is running on localhost:8000"
+      - uv run pytest tests/test_integration_htmx_playwright.py -v --no-cov
+      - echo "✅ Playwright tests passed!"
+    silent: true
+
+  test-playwright-headed:
+    desc: "Run Playwright tests with visible browser (for debugging)"
+    cmds:
+      - echo "🎭 Running Playwright debug test with visible browser..."
+      - echo "💡 Make sure the development server is running on localhost:8000"
+      - PLAYWRIGHT_HEADLESS=false uv run pytest tests/test_integration_htmx_playwright.py::TestHTMXFindingModelCreationWorking::test_complete_htmx_workflow_debug -v --no-cov -s
+      - echo "✅ Playwright debug test completed!"
     silent: true
 
   test-full:

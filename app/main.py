@@ -8,7 +8,7 @@ from .cache import CacheConfig, RedisCache
 from .config import logger, settings
 from .database import Database
 from .health import router as health_router
-from .routers import auth, finding_models, pages, static, users
+from .routers import auth, finding_models, pages, static, test_auth, users
 
 
 @asynccontextmanager
@@ -91,6 +91,9 @@ def create_app() -> FastAPI:
     app.include_router(static.router, tags=["static"])
     app.include_router(pages.router, tags=["pages"])
     app.include_router(finding_models.router, prefix="/api/finding-models", tags=["finding-models"])
+
+    # Test-only authentication routes (development/test only)
+    app.include_router(test_auth.router, tags=["test-auth"])
 
     return app
 

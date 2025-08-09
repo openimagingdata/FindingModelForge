@@ -26,6 +26,8 @@ dev = [
     "ruff>=0.7.0",
     "mypy>=1.11.0",
     "pre-commit>=3.8.0",
+    "playwright>=1.40.0",
+    "pytest-playwright>=0.4.0",
 ]
 
 [tool.ruff]
@@ -75,19 +77,34 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "-ra -q --cov=app --cov-report=term-missing"
+addopts = [
+    "-ra",
+    "-q",
+    "--strict-markers",
+    "--strict-config",
+    "--cov=app",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-fail-under=75",
+]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 markers = [
     "integration: marks tests as integration tests (requiring external services like Redis)",
+    "unit: marks tests as unit tests",
+    "slow: marks tests as slow tests",
+    "playwright: marks tests requiring Playwright browser automation",
 ]
 filterwarnings = [
     "ignore:Support for class-based.*:DeprecationWarning:pydantic.*",
 ]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
 
 [tool.coverage.run]
 source = ["app"]
-omit = ["tests/*"]
+omit = ["tests/*", "scripts/*", "playwright.config.py", "app/routers/test_auth.py"]
 
 [tool.coverage.report]
 exclude_lines = [
