@@ -1,5 +1,16 @@
 # Claude Code Instructions for FindingModelForge
 
+# ⚠️ CRITICAL UI REMINDERS ⚠️
+**ALWAYS use Flowbite components and patterns. Do NOT create custom CSS classes or JavaScript.**
+**ALWAYS use Alpine.js for interactivity. Do NOT write ad hoc JavaScript.**
+
+## Before writing ANY UI code:
+1. ✅ Check https://flowbite.com/docs/components/ FIRST
+2. ✅ Use their exact HTML structure and CSS classes
+3. ✅ Use Alpine.js `x-data`, `x-model`, computed properties for reactivity
+4. ✅ Never deviate from established patterns without explicit approval
+5. ❌ Do NOT create custom validation, modal, or interaction code
+
 ## Project Overview
 
 FindingModelForge is a FastAPI-based web application for creating and managing medical imaging finding models. These
@@ -125,12 +136,23 @@ async def create_model(
 
 ### Frontend Components
 
-**CRITICAL: Always follow Flowbite documentation patterns exactly**
+**CRITICAL: Use Flowbite's data-attribute patterns, NOT custom JavaScript**
+**CRITICAL: Use Alpine.js low-impact patterns, NOT ad hoc JavaScript**
 
-1. **Use Flowbite's official markup and CSS classes** - Never invent custom styling
-2. **Consult Flowbite documentation** before implementing any UI component
-3. **Copy exact HTML structure** from Flowbite examples
-4. **Use data-attribute patterns** for interactive components
+## UI Development Process (MANDATORY):
+1. **Check Flowbite docs FIRST**: https://flowbite.com/docs/components/
+2. **Copy exact HTML structure** from Flowbite examples
+3. **Use their CSS classes verbatim** - Do NOT modify or create custom ones
+4. **For interactivity**: Use Alpine.js `x-data`, `x-model`, computed getters
+5. **For components**: Use Flowbite's data-attribute driven components
+
+## Alpine.js Patterns (REQUIRED):
+- ✅ Use `x-model` for two-way data binding
+- ✅ Use computed properties (`get propertyName()`) for reactive logic
+- ✅ Use simple data objects, not complex validation frameworks
+- ✅ Let Alpine handle DOM updates automatically
+- ❌ Do NOT write manual DOM manipulation
+- ❌ Do NOT create custom event handlers beyond Alpine patterns
 
 ```html
 <!-- ✅ CORRECT: Official Flowbite stepper from docs -->
@@ -529,9 +551,17 @@ task run-container
 2. **Async First**: Use async/await for all I/O
 3. **Error Handling**: Proper exception handling with HTTPException
 4. **Logging**: Use Loguru with appropriate levels
-5. **UI Components**: Use Flowbite's built-in functionality
-6. **Testing**: Write tests for new features
-7. **Security**: Never commit secrets, use env vars
+5. **UI Components**: ⚠️ **CRITICAL** - Use Flowbite's exact patterns from docs, NO custom CSS/JS
+6. **Alpine.js**: ⚠️ **CRITICAL** - Use `x-model`, computed properties, NO ad hoc JavaScript
+7. **Testing**: Write tests for new features
+8. **Security**: Never commit secrets, use env vars
+
+## UI Development Rules (NON-NEGOTIABLE)
+- ❌ **NEVER** create custom form validation logic
+- ❌ **NEVER** write manual DOM manipulation
+- ❌ **NEVER** deviate from Flowbite CSS classes
+- ✅ **ALWAYS** check Flowbite docs before writing UI code
+- ✅ **ALWAYS** use Alpine.js declarative patterns
 
 ## Debugging Tips
 

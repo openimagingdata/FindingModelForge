@@ -1,0 +1,75 @@
+{# Alpine.js Form Validation Macros #}
+
+{# Simple Alpine.js form validation #}
+{% macro validation_data() %}
+{
+    name: '',
+    description: '', 
+    attributesMarkdown: '',
+    
+    get isNameValid() {
+        return this.name.length >= 3 && /^[a-z0-9-]+$/.test(this.name);
+    },
+    
+    get isDescriptionValid() {
+        return this.description.length >= 10 && this.description.length <= 1000;
+    },
+    
+    get isAttributesValid() {
+        return this.attributesMarkdown.length >= 20;
+    },
+    
+    get canSubmit() {
+        // Check based on which fields are present in the form
+        if (this.$refs.name) return this.isNameValid;
+        if (this.$refs.description && this.$refs.attributesMarkdown) return this.isDescriptionValid && this.isAttributesValid;
+        if (this.$refs.description) return this.isDescriptionValid;
+        return true;
+    }
+}
+{% endmacro %}
+
+{# Legacy alias for backwards compatibility #}
+{% macro validation_component() %}
+{{ validation_data() }}
+{% endmacro %}
+
+{# Flowbite-style input field #}
+{% macro validated_input(name, label, value="", type="text", placeholder="", required=false, minlength=null, maxlength=null, pattern=null, pattern_message=null, extra_classes="", show_counter=false) %}
+<div class="mb-5">
+    <label for="{{ name }}" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+        {{ label }}
+        {% if required %}<span class="text-red-500">*</span>{% endif %}
+    </label>
+    <input type="{{ type }}"
+           id="{{ name }}"
+           name="{{ name }}"
+           x-model="{{ name }}"
+           value="{{ value }}"
+           class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 {{ extra_classes }}"
+           {% if placeholder %}placeholder="{{ placeholder }}"{% endif %}
+           {% if required %}required{% endif %}
+           {% if minlength %}minlength="{{ minlength }}"{% endif %}
+           {% if maxlength %}maxlength="{{ maxlength }}"{% endif %}
+           {% if pattern %}pattern="{{ pattern }}"{% endif %}>
+</div>
+{% endmacro %}
+
+{# Flowbite-style textarea field #}
+{% macro validated_textarea(name, label, value="", rows=4, placeholder="", required=false, minlength=null, maxlength=null, extra_classes="") %}
+<div class="mb-5">
+    <label for="{{ name }}" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+        {{ label }}
+        {% if required %}<span class="text-red-500">*</span>{% endif %}
+    </label>
+    <textarea id="{{ name }}"
+              name="{{ name }}"
+              x-model="{{ name }}"
+              rows="{{ rows }}"
+              class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 {{ extra_classes }}"
+              {% if placeholder %}placeholder="{{ placeholder }}"{% endif %}
+              {% if required %}required{% endif %}
+              {% if minlength %}minlength="{{ minlength }}"{% endif %}
+              {% if maxlength %}maxlength="{{ maxlength }}"{% endif %}>{{ value }}</textarea>
+</div>
+{% endmacro %}

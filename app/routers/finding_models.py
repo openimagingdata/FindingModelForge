@@ -1,7 +1,7 @@
 # ruff: noqa: B008
 """Finding Model creation and management routes."""
 
-from fastapi import APIRouter, Form, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from findingmodel import FindingInfo
@@ -31,7 +31,37 @@ from app.models import (
     NameAvailabilityResponse,
     SimilarModelsAnalysis,
     SimilarModelsRequest,
+    StepNameForm,
+    StepDescriptionForm,
+    StepAttributesForm,
 )
+
+def render_step_template(
+    request: Request,
+    step_number: int,
+    session: FindingModelCreationSession,
+    **extra_context
+) -> str:
+    """Helper function to render step templates with common context."""
+    step_templates = {
+        1: "components/finding_model_creation/step_1_enter_name.html",
+        2: "components/finding_model_creation/step_2_edit_description.html", 
+        3: "components/finding_model_creation/step_3_review_overlap.html",
+        4: "components/finding_model_creation/step_4_edit_attributes.html",
+        5: "components/finding_model_creation/step_5_review_model.html",
+    }
+    
+    if step_number not in step_templates:
+        raise ValueError(f"Invalid step number: {step_number}")
+    
+    context = {
+        "request": request,
+        "current_step": step_number,
+        "session_data": session,
+        **extra_context
+    }
+    
+    return templates.get_template(step_templates[step_number]).render(**context)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -267,38 +297,18 @@ async def get_creation_step(
 ) -> HTMLResponse:
     """Get a specific step in the creation workflow."""
     try:
-        # Map step numbers to templates
-        step_templates = {
-            1: "components/finding_model_creation/step_1_enter_name.html",
-            2: "components/finding_model_creation/step_2_edit_description.html",
-            3: "components/finding_model_creation/step_3_review_overlap.html",
-            4: "components/finding_model_creation/step_4_edit_attributes.html",
-            5: "components/finding_model_creation/step_5_review_model.html",
-        }
-
-        if step_number not in step_templates:
-            raise HTTPException(status_code=404, detail="Step not found")
-
-        template_name = step_templates[step_number]
-
         # Update session step
         session.current_step = step_number
-
-        # Prepare template context
-        context = {
-            "request": request,
-            "current_step": step_number,
-            "session_data": session,
-        }
-
+        
         # Add step-specific context
+        extra_context = {}
         if step_number == 3:  # Similar models review
-            context["similar_models"] = session.similar_models
+            extra_context["similar_models"] = session.similar_models
         elif step_number == 5 and session.final_model:  # Final display
             # Don't pass model_display_html so the template uses session_data.final_model
             pass
-
-        html_content = templates.get_template(template_name).render(**context)
+        
+        html_content = render_step_template(request, step_number, session, **extra_context)
         return HTMLResponse(content=html_content)
 
     except Exception as e:
@@ -316,65 +326,23 @@ async def process_step_1(
     session: CreationSessionDep,
     session_manager: SessionManagerDep,
     index: FindingIndexDep,
-    name: str = Form(...),
+    form_data: StepNameForm = Depends(),
 ) -> HTMLResponse:
     """Process step 1: Check name and generate description."""
     try:
-        # Validate input
-        name = name.strip()
-        if not name:
-            context = {
-                "request": request,
-                "current_step": 1,
-                "session_data": session,
-                "name_check_result": {"available": False, "message": "Finding name cannot be empty"},
-                "form_data": {"name": name},
-            }
-            html_content = templates.get_template("components/finding_model_creation/step_1_enter_name.html").render(
-                **context
-            )
-            return HTMLResponse(content=html_content)
+        # FastAPI + Pydantic already validated the form data
+        name = form_data.name
 
-        # Validate name format (basic rules)
-        if len(name) < 3:
-            context = {
-                "request": request,
-                "current_step": 1,
-                "session_data": session,
-                "name_check_result": {"available": False, "message": "Finding name must be at least 3 characters long"},
-                "form_data": {"name": name},
-            }
-            html_content = templates.get_template("components/finding_model_creation/step_1_enter_name.html").render(
-                **context
-            )
-            return HTMLResponse(content=html_content)
 
-        if len(name) > 100:
-            context = {
-                "request": request,
-                "current_step": 1,
-                "session_data": session,
-                "name_check_result": {"available": False, "message": "Finding name cannot exceed 100 characters"},
-                "form_data": {"name": name},
-            }
-            html_content = templates.get_template("components/finding_model_creation/step_1_enter_name.html").render(
-                **context
-            )
-            return HTMLResponse(content=html_content)
+
+
 
         # Check name availability
         existing_entry = await index.get(name)
         if existing_entry:
-            context = {
-                "request": request,
-                "current_step": 1,
-                "session_data": session,
-                "name_check_result": {"available": False, "message": f"Name '{name}' already exists in the index"},
-                "form_data": {"name": name},
-            }
-            html_content = templates.get_template("components/finding_model_creation/step_1_enter_name.html").render(
-                **context
-            )
+            session.error_message = f"Name '{name}' already exists in the index"
+            await session_manager.update_session(session)
+            html_content = render_step_template(request, 1, session, form_data={"name": form_data.name})
             return HTMLResponse(content=html_content)
 
         # Generate finding info
@@ -388,14 +356,7 @@ async def process_step_1(
         await session_manager.update_session(session)
 
         # Move to step 2
-        context = {
-            "request": request,
-            "current_step": 2,
-            "session_data": session,
-        }
-        html_content = templates.get_template("components/finding_model_creation/step_2_edit_description.html").render(
-            **context
-        )
+        html_content = render_step_template(request, 2, session)
         return HTMLResponse(content=html_content)
 
     except Exception as e:
@@ -403,16 +364,7 @@ async def process_step_1(
         session.error_message = f"Error generating description: {str(e)}"
         await session_manager.update_session(session)
 
-        context = {
-            "request": request,
-            "current_step": 1,
-            "session_data": session,
-            "form_data": {"name": name},
-            "error_message": session.error_message,
-        }
-        html_content = templates.get_template("components/finding_model_creation/step_1_enter_name.html").render(
-            **context
-        )
+        html_content = render_step_template(request, 1, session, form_data={"name": form_data.name}, error_message=session.error_message)
         return HTMLResponse(content=html_content, status_code=500)
 
 
@@ -423,83 +375,13 @@ async def process_step_2(
     session: CreationSessionDep,
     session_manager: SessionManagerDep,
     index: FindingIndexDep,
-    description: str = Form(...),
-    synonyms: str = Form("[]"),  # JSON string
+    form_data: StepDescriptionForm = Depends(),
 ) -> HTMLResponse:
     """Process step 2: Update description and find similar models."""
     try:
-        import json
-
-        # Validate description
-        description = description.strip()
-        if not description:
-            context = {
-                "request": request,
-                "current_step": 2,
-                "session_data": session,
-                "error_message": "Description cannot be empty",
-                "form_data": {"description": description, "synonyms": synonyms},
-            }
-            html_content = templates.get_template(
-                "components/finding_model_creation/step_2_edit_description.html"
-            ).render(**context)
-            return HTMLResponse(content=html_content)
-
-        if len(description) < 10:
-            context = {
-                "request": request,
-                "current_step": 2,
-                "session_data": session,
-                "error_message": "Description must be at least 10 characters long",
-                "form_data": {"description": description, "synonyms": synonyms},
-            }
-            html_content = templates.get_template(
-                "components/finding_model_creation/step_2_edit_description.html"
-            ).render(**context)
-            return HTMLResponse(content=html_content)
-
-        if len(description) > 1000:
-            context = {
-                "request": request,
-                "current_step": 2,
-                "session_data": session,
-                "error_message": "Description cannot exceed 1000 characters",
-                "form_data": {"description": description, "synonyms": synonyms},
-            }
-            html_content = templates.get_template(
-                "components/finding_model_creation/step_2_edit_description.html"
-            ).render(**context)
-            return HTMLResponse(content=html_content)
-
-        # Parse and validate synonyms JSON
-        try:
-            synonyms_list = json.loads(synonyms) if synonyms else []
-            if not isinstance(synonyms_list, list):
-                raise ValueError("Synonyms must be a list")
-
-            # Validate individual synonyms
-            validated_synonyms = []
-            for synonym in synonyms_list:
-                if not isinstance(synonym, str):
-                    continue
-                synonym = synonym.strip()
-                if synonym and len(synonym) <= 50:  # Skip empty and overly long synonyms
-                    validated_synonyms.append(synonym)
-
-            synonyms_list = validated_synonyms
-
-        except (json.JSONDecodeError, ValueError):
-            context = {
-                "request": request,
-                "current_step": 2,
-                "session_data": session,
-                "error_message": "Invalid synonyms format. Please check the synonym list.",
-                "form_data": {"description": description, "synonyms": synonyms},
-            }
-            html_content = templates.get_template(
-                "components/finding_model_creation/step_2_edit_description.html"
-            ).render(**context)
-            return HTMLResponse(content=html_content)
+        # FastAPI + Pydantic already validated the form data
+        description = form_data.description
+        synonyms_list = form_data.synonyms  # Already parsed and validated by Pydantic
 
         # Update session
         session.description = description
@@ -661,136 +543,14 @@ async def process_step_4(
     session: CreationSessionDep,
     session_manager: SessionManagerDep,
     database: DatabaseDep,
-    description: str = Form(...),
-    synonyms: str = Form("[]"),  # JSON string
-    attributes_markdown: str = Form(...),
+    form_data: StepAttributesForm = Depends(),
 ) -> HTMLResponse:
     """Process step 4: Generate final model."""
     try:
-        import json
-
-        # Validate description
-        description = description.strip()
-        if not description:
-            context = {
-                "request": request,
-                "current_step": 4,
-                "session_data": session,
-                "error_message": "Description cannot be empty",
-                "form_data": {
-                    "description": description,
-                    "synonyms": synonyms,
-                    "attributes_markdown": attributes_markdown,
-                },
-            }
-            html_content = templates.get_template(
-                "components/finding_model_creation/step_4_edit_attributes.html"
-            ).render(**context)
-            return HTMLResponse(content=html_content)
-
-        if len(description) < 10:
-            context = {
-                "request": request,
-                "current_step": 4,
-                "session_data": session,
-                "error_message": "Description must be at least 10 characters long",
-                "form_data": {
-                    "description": description,
-                    "synonyms": synonyms,
-                    "attributes_markdown": attributes_markdown,
-                },
-            }
-            html_content = templates.get_template(
-                "components/finding_model_creation/step_4_edit_attributes.html"
-            ).render(**context)
-            return HTMLResponse(content=html_content)
-
-        if len(description) > 1000:
-            context = {
-                "request": request,
-                "current_step": 4,
-                "session_data": session,
-                "error_message": "Description cannot exceed 1000 characters",
-                "form_data": {
-                    "description": description,
-                    "synonyms": synonyms,
-                    "attributes_markdown": attributes_markdown,
-                },
-            }
-            html_content = templates.get_template(
-                "components/finding_model_creation/step_4_edit_attributes.html"
-            ).render(**context)
-            return HTMLResponse(content=html_content)
-
-        # Validate attributes markdown
-        attributes_markdown = attributes_markdown.strip()
-        if not attributes_markdown:
-            context = {
-                "request": request,
-                "current_step": 4,
-                "session_data": session,
-                "error_message": "Attributes definition cannot be empty",
-                "form_data": {
-                    "description": description,
-                    "synonyms": synonyms,
-                    "attributes_markdown": attributes_markdown,
-                },
-            }
-            html_content = templates.get_template(
-                "components/finding_model_creation/step_4_edit_attributes.html"
-            ).render(**context)
-            return HTMLResponse(content=html_content)
-
-        if len(attributes_markdown) < 20:
-            context = {
-                "request": request,
-                "current_step": 4,
-                "session_data": session,
-                "error_message": "Attributes definition is too short. Please provide more detailed attributes.",
-                "form_data": {
-                    "description": description,
-                    "synonyms": synonyms,
-                    "attributes_markdown": attributes_markdown,
-                },
-            }
-            html_content = templates.get_template(
-                "components/finding_model_creation/step_4_edit_attributes.html"
-            ).render(**context)
-            return HTMLResponse(content=html_content)
-
-        # Parse and validate synonyms JSON
-        try:
-            synonyms_list = json.loads(synonyms) if synonyms else []
-            if not isinstance(synonyms_list, list):
-                raise ValueError("Synonyms must be a list")
-
-            # Validate individual synonyms
-            validated_synonyms = []
-            for synonym in synonyms_list:
-                if not isinstance(synonym, str):
-                    continue
-                synonym = synonym.strip()
-                if synonym and len(synonym) <= 50:  # Skip empty and overly long synonyms
-                    validated_synonyms.append(synonym)
-
-            synonyms_list = validated_synonyms
-
-        except (json.JSONDecodeError, ValueError):
-            context = {
-                "request": request,
-                "current_step": 4,
-                "session_data": session,
-                "error_message": "Invalid synonyms format. Please check the synonym list.",
-                "form_data": {
-                    "description": description,
-                    "synonyms": synonyms,
-                    "attributes_markdown": attributes_markdown,
-                },
-            }
-            html_content = templates.get_template(
-                "components/finding_model_creation/step_4_edit_attributes.html"
-            ).render(**context)
-            return HTMLResponse(content=html_content)
+        # FastAPI + Pydantic already validated the form data
+        description = form_data.description
+        synonyms_list = form_data.synonyms  # Already parsed and validated by Pydantic
+        attributes_markdown = form_data.attributes_markdown
 
         # Update session
         session.description = description
