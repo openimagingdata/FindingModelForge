@@ -1,0 +1,54 @@
+{# Step 4: Attributes Edit Component #}
+{% extends "components/finding_model_creation/step_base.html" %}
+{% from "macros/create_workflow_elements.html" import textarea_field, navigation_buttons %}
+{% from "macros/synonym_manager.html" import synonym_manager, synonym_data %}
+
+{% set step_title = "Edit Attributes" %}
+{% set step_description = "Customize the attributes for your finding model. The basic attributes (presence and change from prior) are included, and you can add additional specific attributes." %}
+
+{% block step_content %}
+    <form hx-post="/api/finding-models/create/step/4"
+          hx-target="#step-container"
+          hx-swap="innerHTML"
+          x-data='{{ synonym_data(session_data.synonyms or []) }}'>
+
+        <div class="space-y-4">
+            {# Read-only name field #}
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Finding Name</label>
+                <input type="text"
+                       value="{{ session_data.name }}"
+                       readonly
+                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-gray-50 dark:bg-gray-600 text-gray-500 dark:text-gray-400">
+            </div>
+
+            {{ textarea_field(
+                name="description",
+                label="Description",
+                value=session_data.description or '',
+                rows=4
+            ) }}
+
+            {{ synonym_manager() }}
+
+            {# Attributes markdown with special styling #}
+            <div>
+                <label for="attributes-markdown" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Attributes Markdown
+                </label>
+                <textarea name="attributes_markdown"
+                          id="attributes-markdown"
+                          rows="20"
+                          required
+                          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white font-mono text-sm"
+                          placeholder="Attributes markdown will be loaded here...">{{ session_data.attributes_markdown or '' }}</textarea>
+            </div>
+
+            {{ navigation_buttons(
+                back_step=3,
+                submit_text="Generate Final Model",
+                submit_loading="Generating..."
+            ) }}
+        </div>
+    </form>
+{% endblock %}

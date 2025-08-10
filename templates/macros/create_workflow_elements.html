@@ -1,0 +1,102 @@
+{# Common HTMX form elements and patterns #}
+
+{# HTMX form wrapper macro #}
+{% macro htmx_form(step_number, method="post", extra_classes="") %}
+<form method="{{ method }}"
+      action="/api/finding-models/create/step/{{ step_number }}"
+      hx-post="/api/finding-models/create/step/{{ step_number }}"
+      hx-target="#step-container"
+      hx-swap="innerHTML"
+      class="{{ extra_classes }}">
+    {{ caller() }}
+</form>
+{% endmacro %}
+
+{# Submit button with HTMX indicator #}
+{% macro submit_button(text="Continue", loading_text="Processing...", extra_classes="", disabled=false) %}
+<button type="submit"
+        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed {{ extra_classes }}"
+        {% if disabled %}disabled{% endif %}>
+    <span class="htmx-indicator">
+        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        {{ loading_text }}
+    </span>
+    <span>{{ text }}</span>
+</button>
+{% endmacro %}
+
+{# Back button for navigation #}
+{% macro back_button(step_number, text="← Back", extra_classes="") %}
+<button type="button"
+        hx-get="/api/finding-models/create/step/{{ step_number }}"
+        hx-target="#step-container"
+        hx-swap="innerHTML"
+        class="px-4 py-2 text-gray-600 dark:text-gray-400 font-medium rounded-md border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors {{ extra_classes }}">
+    {{ text }}
+</button>
+{% endmacro %}
+
+{# Standard form input field #}
+{% macro input_field(name, label, value="", type="text", placeholder="", required=false, extra_classes="") %}
+<div>
+    <label for="{{ name }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        {{ label }}
+    </label>
+    <input type="{{ type }}"
+           id="{{ name }}"
+           name="{{ name }}"
+           value="{{ value }}"
+           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white {{ extra_classes }}"
+           {% if placeholder %}placeholder="{{ placeholder }}"{% endif %}
+           {% if required %}required{% endif %}>
+</div>
+{% endmacro %}
+
+{# Standard textarea field #}
+{% macro textarea_field(name, label, value="", rows=4, placeholder="", required=false, extra_classes="") %}
+<div>
+    <label for="{{ name }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        {{ label }}
+    </label>
+    <textarea id="{{ name }}"
+              name="{{ name }}"
+              rows="{{ rows }}"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white {{ extra_classes }}"
+              {% if placeholder %}placeholder="{{ placeholder }}"{% endif %}
+              {% if required %}required{% endif %}>{{ value }}</textarea>
+</div>
+{% endmacro %}
+
+{# Navigation button group #}
+{% macro navigation_buttons(back_step=none, back_text="← Back", submit_text="Continue", submit_loading="Processing...") %}
+<div class="flex justify-between pt-4">
+    {% if back_step %}
+        {{ back_button(back_step, back_text) }}
+    {% else %}
+        <div></div>
+    {% endif %}
+    {{ submit_button(submit_text, submit_loading) }}
+</div>
+{% endmacro %}
+
+{# Status indicator for availability checks #}
+{% macro status_indicator(success, message) %}
+{% if success %}
+    <div class="mt-2 text-sm text-green-600 dark:text-green-400 flex items-center">
+        <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+        </svg>
+        {{ message }}
+    </div>
+{% else %}
+    <div class="mt-2 text-sm text-red-600 dark:text-red-400 flex items-center">
+        <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+        </svg>
+        {{ message }}
+    </div>
+{% endif %}
+{% endmacro %}

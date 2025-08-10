@@ -1,0 +1,32 @@
+{# Step 1: Name Input Component #}
+{% extends "components/finding_model_creation/step_base.html" %}
+{% from "macros/create_workflow_elements.html" import htmx_form, input_field, submit_button, status_indicator %}
+
+{% set step_title = "Finding Model Name" %}
+{% set step_description = "Enter a unique name for your finding model. We'll generate a description for you to review and edit." %}
+
+{% block step_content %}
+    {% call htmx_form(1) %}
+        <div class="space-y-4">
+            {{ input_field(
+                name="name",
+                label="Finding Name",
+                value=form_data.name if form_data else '',
+                placeholder="e.g., pulmonary-nodule, brain-aneurysm, liver-lesion",
+                required=true
+            ) }}
+
+            {# Name availability feedback #}
+            {% if name_check_result %}
+                {{ status_indicator(
+                    name_check_result.available,
+                    "Name is available" if name_check_result.available else name_check_result.message
+                ) }}
+            {% endif %}
+
+            <div class="flex justify-end pt-4">
+                {{ submit_button("Generate Description", "Generating...") }}
+            </div>
+        </div>
+    {% endcall %}
+{% endblock %}

@@ -1,0 +1,46 @@
+{# Step 2: Description Edit Component #}
+{% extends "components/finding_model_creation/step_base.html" %}
+{% from "macros/create_workflow_elements.html" import input_field, textarea_field, navigation_buttons %}
+{% from "macros/synonym_manager.html" import synonym_manager, synonym_data %}
+
+{% set step_title = "Edit Description" %}
+{% set step_description = "Review and edit the AI-generated description for your finding model." %}
+
+{% block step_content %}
+    <form hx-post="/api/finding-models/create/step/2"
+          hx-target="#step-container"
+          hx-swap="innerHTML"
+          x-data='{{ synonym_data(session_data.synonyms or []) }}'>
+
+        <div class="space-y-4">
+            {# Read-only name field #}
+            <div>
+                <label for="finding-name-readonly" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Finding Name
+                </label>
+                <input type="text"
+                       id="finding-name-readonly"
+                       name="name"
+                       value="{{ session_data.name }}"
+                       readonly
+                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-gray-50 dark:bg-gray-600 text-gray-500 dark:text-gray-400">
+            </div>
+
+            {{ textarea_field(
+                name="description",
+                label="Description",
+                value=session_data.description or '',
+                rows=3,
+                required=true
+            ) }}
+
+            {{ synonym_manager() }}
+
+            {{ navigation_buttons(
+                back_step=1,
+                submit_text="Check for Similar",
+                submit_loading="Checking..."
+            ) }}
+        </div>
+    </form>
+{% endblock %}

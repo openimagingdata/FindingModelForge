@@ -1,20 +1,11 @@
 {# Step 3: Similar Models Review Component #}
-<div class="space-y-6">
-    {# Include the stepper #}
-    {% include "components/finding_model_creation/stepper.html" %}
+{% extends "components/finding_model_creation/step_base.html" %}
+{% from "macros/create_workflow_elements.html" import back_button, submit_button %}
 
-    {# Error and success messages #}
-    {% from "macros/flowbite_components.html" import alert %}
-    {% if session_data.error_message %}
-        {{ alert(session_data.error_message, type="error", dismissible=false) }}
-    {% endif %}
-    {% if session_data.success_message %}
-        {{ alert(session_data.success_message, type="success", dismissible=false) }}
-    {% endif %}
+{% set step_title = "Review Similar Models" %}
+{% set step_description = "We found some existing models that might be similar to yours. Review them to ensure your model is unique." %}
 
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
-    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Review Similar Models</h2>
-    <p class="text-gray-600 dark:text-gray-400 mb-6">We found some existing models that might be similar to yours. Review them to ensure your model is unique.</p>
+{% block step_content %}
 
     {% if similar_models and similar_models|length > 0 %}
         <div class="space-y-4 mb-6">
@@ -47,14 +38,11 @@
         </div>
     {% endif %}
 
+{% endblock %}
+
+{% block step_navigation %}
     <div class="flex justify-between pt-4">
-        <button type="button"
-                hx-get="/api/finding-models/create/step/2"
-                hx-target="#step-container"
-                hx-swap="innerHTML"
-                class="px-4 py-2 text-gray-600 dark:text-gray-400 font-medium rounded-md border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
-            ← Back
-        </button>
+        {{ back_button(2) }}
         <button type="button"
                 hx-post="/api/finding-models/create/step/3"
                 hx-target="#step-container"
@@ -70,5 +58,4 @@
             <span>Continue to Edit Attributes</span>
         </button>
     </div>
-    </div>
-</div>
+{% endblock %}

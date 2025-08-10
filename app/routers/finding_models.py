@@ -269,11 +269,11 @@ async def get_creation_step(
     try:
         # Map step numbers to templates
         step_templates = {
-            1: "components/finding_model_creation/step_name_input.html",
-            2: "components/finding_model_creation/step_description_edit.html",
-            3: "components/finding_model_creation/step_similar_review.html",
-            4: "components/finding_model_creation/step_attributes_edit.html",
-            5: "components/finding_model_creation/step_final_display.html",
+            1: "components/finding_model_creation/step_1_enter_name.html",
+            2: "components/finding_model_creation/step_2_edit_description.html",
+            3: "components/finding_model_creation/step_3_review_overlap.html",
+            4: "components/finding_model_creation/step_4_edit_attributes.html",
+            5: "components/finding_model_creation/step_5_review_model.html",
         }
 
         if step_number not in step_templates:
@@ -330,7 +330,7 @@ async def process_step_1(
                 "name_check_result": {"available": False, "message": "Finding name cannot be empty"},
                 "form_data": {"name": name},
             }
-            html_content = templates.get_template("components/finding_model_creation/step_name_input.html").render(
+            html_content = templates.get_template("components/finding_model_creation/step_1_enter_name.html").render(
                 **context
             )
             return HTMLResponse(content=html_content)
@@ -344,7 +344,7 @@ async def process_step_1(
                 "name_check_result": {"available": False, "message": "Finding name must be at least 3 characters long"},
                 "form_data": {"name": name},
             }
-            html_content = templates.get_template("components/finding_model_creation/step_name_input.html").render(
+            html_content = templates.get_template("components/finding_model_creation/step_1_enter_name.html").render(
                 **context
             )
             return HTMLResponse(content=html_content)
@@ -357,7 +357,7 @@ async def process_step_1(
                 "name_check_result": {"available": False, "message": "Finding name cannot exceed 100 characters"},
                 "form_data": {"name": name},
             }
-            html_content = templates.get_template("components/finding_model_creation/step_name_input.html").render(
+            html_content = templates.get_template("components/finding_model_creation/step_1_enter_name.html").render(
                 **context
             )
             return HTMLResponse(content=html_content)
@@ -372,7 +372,7 @@ async def process_step_1(
                 "name_check_result": {"available": False, "message": f"Name '{name}' already exists in the index"},
                 "form_data": {"name": name},
             }
-            html_content = templates.get_template("components/finding_model_creation/step_name_input.html").render(
+            html_content = templates.get_template("components/finding_model_creation/step_1_enter_name.html").render(
                 **context
             )
             return HTMLResponse(content=html_content)
@@ -393,7 +393,7 @@ async def process_step_1(
             "current_step": 2,
             "session_data": session,
         }
-        html_content = templates.get_template("components/finding_model_creation/step_description_edit.html").render(
+        html_content = templates.get_template("components/finding_model_creation/step_2_edit_description.html").render(
             **context
         )
         return HTMLResponse(content=html_content)
@@ -410,7 +410,7 @@ async def process_step_1(
             "form_data": {"name": name},
             "error_message": session.error_message,
         }
-        html_content = templates.get_template("components/finding_model_creation/step_name_input.html").render(
+        html_content = templates.get_template("components/finding_model_creation/step_1_enter_name.html").render(
             **context
         )
         return HTMLResponse(content=html_content, status_code=500)
@@ -441,7 +441,7 @@ async def process_step_2(
                 "form_data": {"description": description, "synonyms": synonyms},
             }
             html_content = templates.get_template(
-                "components/finding_model_creation/step_description_edit.html"
+                "components/finding_model_creation/step_2_edit_description.html"
             ).render(**context)
             return HTMLResponse(content=html_content)
 
@@ -454,7 +454,7 @@ async def process_step_2(
                 "form_data": {"description": description, "synonyms": synonyms},
             }
             html_content = templates.get_template(
-                "components/finding_model_creation/step_description_edit.html"
+                "components/finding_model_creation/step_2_edit_description.html"
             ).render(**context)
             return HTMLResponse(content=html_content)
 
@@ -467,7 +467,7 @@ async def process_step_2(
                 "form_data": {"description": description, "synonyms": synonyms},
             }
             html_content = templates.get_template(
-                "components/finding_model_creation/step_description_edit.html"
+                "components/finding_model_creation/step_2_edit_description.html"
             ).render(**context)
             return HTMLResponse(content=html_content)
 
@@ -497,7 +497,7 @@ async def process_step_2(
                 "form_data": {"description": description, "synonyms": synonyms},
             }
             html_content = templates.get_template(
-                "components/finding_model_creation/step_description_edit.html"
+                "components/finding_model_creation/step_2_edit_description.html"
             ).render(**context)
             return HTMLResponse(content=html_content)
 
@@ -553,9 +553,9 @@ How the {session.name or "finding"} has changed compared to prior imaging
                 "current_step": 4,
                 "session_data": session,
             }
-            html_content = templates.get_template("components/finding_model_creation/step_attributes_edit.html").render(
-                **context
-            )
+            html_content = templates.get_template(
+                "components/finding_model_creation/step_4_edit_attributes.html"
+            ).render(**context)
         else:
             # Move to step 3 to review similar models
             context = {
@@ -564,9 +564,9 @@ How the {session.name or "finding"} has changed compared to prior imaging
                 "session_data": session,
                 "similar_models": session.similar_models,
             }
-            html_content = templates.get_template("components/finding_model_creation/step_similar_review.html").render(
-                **context
-            )
+            html_content = templates.get_template(
+                "components/finding_model_creation/step_3_review_overlap.html"
+            ).render(**context)
 
         return HTMLResponse(content=html_content)
 
@@ -581,7 +581,7 @@ How the {session.name or "finding"} has changed compared to prior imaging
             "session_data": session,
             "error_message": session.error_message,
         }
-        html_content = templates.get_template("components/finding_model_creation/step_description_edit.html").render(
+        html_content = templates.get_template("components/finding_model_creation/step_2_edit_description.html").render(
             **context
         )
         return HTMLResponse(content=html_content, status_code=500)
@@ -631,7 +631,7 @@ How the {session.name or "finding"} has changed compared to prior imaging
             "current_step": 4,
             "session_data": session,
         }
-        html_content = templates.get_template("components/finding_model_creation/step_attributes_edit.html").render(
+        html_content = templates.get_template("components/finding_model_creation/step_4_edit_attributes.html").render(
             **context
         )
         return HTMLResponse(content=html_content)
@@ -648,7 +648,7 @@ How the {session.name or "finding"} has changed compared to prior imaging
             "similar_models": session.similar_models,
             "error_message": session.error_message,
         }
-        html_content = templates.get_template("components/finding_model_creation/step_similar_review.html").render(
+        html_content = templates.get_template("components/finding_model_creation/step_3_review_overlap.html").render(
             **context
         )
         return HTMLResponse(content=html_content, status_code=500)
@@ -683,9 +683,9 @@ async def process_step_4(
                     "attributes_markdown": attributes_markdown,
                 },
             }
-            html_content = templates.get_template("components/finding_model_creation/step_attributes_edit.html").render(
-                **context
-            )
+            html_content = templates.get_template(
+                "components/finding_model_creation/step_4_edit_attributes.html"
+            ).render(**context)
             return HTMLResponse(content=html_content)
 
         if len(description) < 10:
@@ -700,9 +700,9 @@ async def process_step_4(
                     "attributes_markdown": attributes_markdown,
                 },
             }
-            html_content = templates.get_template("components/finding_model_creation/step_attributes_edit.html").render(
-                **context
-            )
+            html_content = templates.get_template(
+                "components/finding_model_creation/step_4_edit_attributes.html"
+            ).render(**context)
             return HTMLResponse(content=html_content)
 
         if len(description) > 1000:
@@ -717,9 +717,9 @@ async def process_step_4(
                     "attributes_markdown": attributes_markdown,
                 },
             }
-            html_content = templates.get_template("components/finding_model_creation/step_attributes_edit.html").render(
-                **context
-            )
+            html_content = templates.get_template(
+                "components/finding_model_creation/step_4_edit_attributes.html"
+            ).render(**context)
             return HTMLResponse(content=html_content)
 
         # Validate attributes markdown
@@ -736,9 +736,9 @@ async def process_step_4(
                     "attributes_markdown": attributes_markdown,
                 },
             }
-            html_content = templates.get_template("components/finding_model_creation/step_attributes_edit.html").render(
-                **context
-            )
+            html_content = templates.get_template(
+                "components/finding_model_creation/step_4_edit_attributes.html"
+            ).render(**context)
             return HTMLResponse(content=html_content)
 
         if len(attributes_markdown) < 20:
@@ -753,9 +753,9 @@ async def process_step_4(
                     "attributes_markdown": attributes_markdown,
                 },
             }
-            html_content = templates.get_template("components/finding_model_creation/step_attributes_edit.html").render(
-                **context
-            )
+            html_content = templates.get_template(
+                "components/finding_model_creation/step_4_edit_attributes.html"
+            ).render(**context)
             return HTMLResponse(content=html_content)
 
         # Parse and validate synonyms JSON
@@ -787,9 +787,9 @@ async def process_step_4(
                     "attributes_markdown": attributes_markdown,
                 },
             }
-            html_content = templates.get_template("components/finding_model_creation/step_attributes_edit.html").render(
-                **context
-            )
+            html_content = templates.get_template(
+                "components/finding_model_creation/step_4_edit_attributes.html"
+            ).render(**context)
             return HTMLResponse(content=html_content)
 
         # Update session
@@ -842,7 +842,7 @@ async def process_step_4(
             "session_data": session,
             "finding_model": finding_model,  # Pass the actual Pydantic model object
         }
-        html_content = templates.get_template("components/finding_model_creation/step_final_display.html").render(
+        html_content = templates.get_template("components/finding_model_creation/step_5_review_model.html").render(
             **context
         )
         return HTMLResponse(content=html_content)
@@ -858,7 +858,7 @@ async def process_step_4(
             "session_data": session,
             "error_message": session.error_message,
         }
-        html_content = templates.get_template("components/finding_model_creation/step_attributes_edit.html").render(
+        html_content = templates.get_template("components/finding_model_creation/step_4_edit_attributes.html").render(
             **context
         )
         return HTMLResponse(content=html_content, status_code=500)
@@ -886,7 +886,7 @@ async def restart_creation(
             "current_step": 1,
             "session_data": new_session,
         }
-        html_content = templates.get_template("components/finding_model_creation/step_name_input.html").render(
+        html_content = templates.get_template("components/finding_model_creation/step_1_enter_name.html").render(
             **context
         )
 
