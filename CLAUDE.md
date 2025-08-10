@@ -70,7 +70,15 @@ for core functionality.
 ├── templates/               # Jinja2 templates
 │   ├── base.html           # Base template with Tailwind/Alpine
 │   ├── components/         # Reusable UI components
+│   │   ├── finding_model_complete_display.html  # Full model display + JSON
+│   │   ├── finding_model_display.html           # Basic model display
+│   │   └── finding_model_creation/              # Multi-step creation workflow
 │   ├── macros/             # Jinja2 macros for components
+│   │   ├── json_accordion.html         # Flowbite JSON accordion
+│   │   ├── form_validation.html        # Alpine.js form validation
+│   │   ├── synonym_manager.html        # Interactive synonym management
+│   │   ├── app_components.html         # General app components
+│   │   └── flowbite_components.html    # Flowbite component wrappers
 │   └── *.html              # Page templates
 ├── static/                 # Static assets
 │   ├── css/               # Compiled Tailwind CSS
@@ -337,6 +345,204 @@ grep -r "badge" templates/macros/
 {% from "macros/app_components.html" import render_finding_model %}
 
 {{ render_finding_model(model_data) }}
+```
+
+## Reusable Components & Macros
+
+The application uses a component-based architecture with reusable Jinja2 macros and templates for consistency and maintainability.
+
+### Finding Model Display Components
+
+**Complete Display Component**
+- **File**: `templates/components/finding_model_complete_display.html`
+- **Purpose**: Full finding model display with formatted view + JSON accordion
+- **Usage**: Use everywhere finding models need to be displayed
+```jinja
+{% include 'components/finding_model_complete_display.html' %}
+```
+
+**Basic Display Component**
+- **File**: `templates/components/finding_model_display.html`
+- **Purpose**: Formatted finding model display only (no JSON)
+- **Usage**: When you only need the visual display without JSON export
+```jinja
+{% include 'components/finding_model_display.html' %}
+```
+
+### JSON Accordion Macro
+
+**File**: `templates/macros/json_accordion.html`
+- **Purpose**: Proper Flowbite accordion with JSON display, copy, and download functionality
+- **Features**: Dynamic rounded corners, hover effects, proper Flowbite styling
+- **Usage**:
+```jinja
+{% from 'macros/json_accordion.html' import json_accordion %}
+{{ json_accordion(finding_model, "unique-id", "Custom Title") }}
+```
+
+### Form Validation Macros
+
+**File**: `templates/macros/form_validation.html`
+- **Purpose**: Alpine.js form validation with computed properties
+- **Features**: Reactive validation, field-specific checks, form state management
+- **Usage**:
+```jinja
+{% from 'macros/form_validation.html' import validation_data, validated_input, validated_textarea %}
+
+<div x-data='{{ validation_data(initial_name="", initial_description="") }}'>
+  {{ validated_input("name", "Finding Name", minlength=3, maxlength=200) }}
+  {{ validated_textarea("description", "Description", rows=4, required=true) }}
+</div>
+```
+
+### Synonym Management Macro
+
+**File**: `templates/macros/synonym_manager.html`
+- **Purpose**: Interactive synonym add/remove with Alpine.js
+- **Features**: Visual badges, add/remove functionality, JSON serialization for forms
+- **Usage**:
+```jinja
+{% from 'macros/synonym_manager.html' import synonym_manager, synonym_data %}
+
+<div x-data='{{ synonym_data(initial_synonyms) }}'>
+  {{ synonym_manager() }}
+</div>
+```
+
+### Component Guidelines
+
+1. **Always use existing components** before creating new ones
+2. **Follow Flowbite patterns exactly** - no custom styling
+3. **Use Alpine.js reactively** with `x-model`, computed properties, and minimal JavaScript
+4. **Macro parameters should be intuitive** and well-documented
+5. **Components must be responsive** and support dark mode
+6. **Include accessibility attributes** (ARIA, semantic HTML)
+
+### Creating New Components
+
+When creating new reusable components:
+
+1. **Check existing macros first** - extend rather than duplicate
+2. **Use Flowbite documentation** as the source of truth for HTML structure
+3. **Place in appropriate directory**:
+   - `templates/components/` - Full page sections or complex components
+   - `templates/macros/` - Simple, parameterized macros
+4. **Document parameters and usage** with Jinja comments
+5. **Test with different data** and edge cases
+6. **Ensure proper error handling** for missing or invalid data
+
+Example new macro structure:
+```jinja
+{# Purpose: Brief description of what this macro does #}
+{# Parameters:
+   - param1: Description of parameter 1
+   - param2: Description of parameter 2 (optional, defaults to "value")
+#}
+{% macro my_component(param1, param2="default") %}
+  <!-- Flowbite-compliant HTML structure -->
+  <div class="exact-flowbite-classes">
+    {{ param1 }}
+  </div>
+{% endmacro %}
+```
+
+## HTMX Multi-Step Workflow Patterns
+
+The finding model creation workflow demonstrates best practices for HTMX-driven multi-step forms.
+
+### Session Management
+
+**Server-side session storage** with Redis caching:
+```python
+# In app/dependencies.py
+@dataclass
+class FindingModelCreationSession:
+    session_id: str
+    current_step: int = 1
+    name: str | None = None
+    description: str | None = None
+    synonyms: list[str] = field(default_factory=list)
+    # ... other fields
+```
+
+**Session dependency injection**:
+```python
+async def get_creation_session(
+    session_id: str = Form(default=""),
+    session_manager: SessionManagerDep = Depends(get_session_manager)
+) -> FindingModelCreationSession:
+    # Automatic session creation/retrieval
+```
+
+### Step Template Consolidation
+
+**Single helper function** for rendering all steps:
+```python
+def render_step_template(
+    request: Request,
+    step_number: int,
+    session: FindingModelCreationSession,
+    **extra_context: Any
+) -> str:
+    step_templates = {
+        1: "components/finding_model_creation/step_1_enter_name.html",
+        2: "components/finding_model_creation/step_2_edit_description.html",
+        # ... etc
+    }
+    context = {"request": request, "current_step": step_number, "session_data": session, **extra_context}
+    return templates.get_template(step_templates[step_number]).render(**context)
+```
+
+### Form Validation Patterns
+
+**FastAPI Form validation**:
+```python
+@router.post("/create/step/1")
+async def process_step_1(
+    name: str = Form(min_length=3, max_length=200),  # Built-in validation
+    session: CreationSessionDep,
+) -> HTMLResponse:
+    # Validation errors automatically return 422
+```
+
+**Manual validation with proper error handling**:
+```python
+def parse_synonyms(synonyms: str) -> list[str]:
+    if not synonyms.strip():
+        return []
+    try:
+        parsed = json.loads(synonyms)
+        if not isinstance(parsed, list):
+            raise ValueError("Must be a JSON array")
+        return [s.strip() for s in parsed if isinstance(s, str) and s.strip()]
+    except (json.JSONDecodeError, ValueError) as e:
+        raise HTTPException(status_code=422, detail=f"Invalid format: {str(e)}")
+```
+
+### HTMX Integration
+
+**Automatic component reinitialization**:
+```javascript
+// In src/js/main.js
+document.addEventListener('htmx:afterSwap', function(event) {
+  initFlowbite()  // Reinitialize Flowbite components
+  if (window.Alpine && event.detail.elt) {
+    Alpine.initTree(event.detail.elt)  // Process new Alpine.js components
+  }
+})
+```
+
+**Template structure for HTMX swapping**:
+```html
+<!-- Base template with swap target -->
+<div id="step-container" class="max-w-4xl mx-auto">
+  <!-- Step content gets swapped here -->
+</div>
+
+<!-- Step templates return just the content -->
+<form hx-post="/api/step/2" hx-target="#step-container" hx-swap="innerHTML">
+  <!-- Form content -->
+</form>
 ```
 
 ## Development Workflow
