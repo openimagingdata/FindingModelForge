@@ -367,9 +367,9 @@ class TestHTMXFindingModelCreationWorking:
                 assert attr_count > 0, "❌ Attributes section not found!"
 
                 # 3. JSON accordion
-                json_accordion = page.locator("#accordion-final-json")
-                json_button = page.locator("button[data-accordion-target='#accordion-final-json-body-1']")
-                json_content = page.locator("#accordion-final-json-body-1 pre code")
+                json_accordion = page.locator("#finding-model-json")
+                json_button = page.locator("button[data-accordion-target='#finding-model-json-body-1']")
+                json_content = page.locator("#finding-model-json-body-1 pre code")
                 accordion_count = await json_accordion.count()
                 button_count = await json_button.count()
                 content_count = await json_content.count()

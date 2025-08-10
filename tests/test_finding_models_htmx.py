@@ -13,7 +13,7 @@ from app.cache import RedisCache
 from app.database import Database, UserRepo
 from app.dependencies import FindingModelCreationSession, SessionManager
 from app.main import app
-from app.models import SimilarModelsAnalysis, User
+from app.models import User
 
 
 @pytest.fixture
@@ -257,7 +257,10 @@ class TestHTMXStepEndpoints:
         mock_create_info.return_value = mock_finding_info
 
         # Mock similar models search
-        mock_analysis = SimilarModelsAnalysis(similar_models=[], recommendation="create_new", confidence=0.9)
+        mock_analysis = MagicMock()
+        mock_analysis.similar_models = []
+        mock_analysis.recommendation = "create_new"
+        mock_analysis.confidence = 0.9
         mock_find_similar.return_value = mock_analysis
 
         response = authenticated_client_with_cache.post(
@@ -312,7 +315,10 @@ class TestHTMXStepEndpoints:
         mock_cache.set = AsyncMock(return_value=None)
 
         # Mock similar models search
-        mock_analysis = SimilarModelsAnalysis(similar_models=[], recommendation="create_new", confidence=0.9)
+        mock_analysis = MagicMock()
+        mock_analysis.similar_models = []
+        mock_analysis.recommendation = "create_new"
+        mock_analysis.confidence = 0.9
         mock_find_similar.return_value = mock_analysis
 
         response = authenticated_client_with_cache.post(

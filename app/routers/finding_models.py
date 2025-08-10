@@ -5,7 +5,7 @@ import json
 from typing import Any
 
 from fastapi import APIRouter, Form, HTTPException, Request, status
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from findingmodel import FindingInfo
 from findingmodel.tools import (
@@ -25,16 +25,32 @@ from app.dependencies import (
     FindingModelCreationSession,
     SessionManagerDep,
 )
-from app.models import (
-    FindingInfoEditRequest,
-    FindingInfoRequest,
-    FindingInfoResponse,
-    FindingNameCheck,
-    GenerateModelRequest,
-    NameAvailabilityResponse,
-    SimilarModelsAnalysis,
-    SimilarModelsRequest,
-)
+
+
+def generate_default_attributes_markdown(finding_name: str) -> str:
+    """Generate default attributes markdown template for a finding."""
+    return f"""### presence
+
+Presence of {finding_name}
+
+- absent: {finding_name.capitalize()} is not visible
+- present: {finding_name.capitalize()} is clearly visible
+- indeterminate: Presence of {finding_name} cannot be determined
+- unknown: Presence of {finding_name} is unknown
+
+### change from prior
+
+How the {finding_name} has changed compared to prior imaging
+
+- unchanged: {finding_name.capitalize()} is unchanged from prior imaging
+- stable: {finding_name.capitalize()} is stable
+- new: New {finding_name} not seen on prior imaging
+- resolved: {finding_name.capitalize()} seen on a prior exam has resolved
+- increased: {finding_name.capitalize()} has increased
+- decreased: {finding_name.capitalize()} has decreased
+- larger: {finding_name.capitalize()} is larger
+- smaller: {finding_name.capitalize()} is smaller
+"""
 
 
 def parse_synonyms(synonyms: str) -> list[str]:
@@ -77,223 +93,6 @@ router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 
 
-@router.post("/check-name", response_model=NameAvailabilityResponse)
-async def check_finding_name(
-    request: FindingNameCheck,
-    current_user: CurrentUserDep,
-    index: FindingIndexDep,
-) -> NameAvailabilityResponse:
-    """Check if a finding name already exists in the index."""
-    try:
-        # Use Index.get() to look for exact match on name/synonym
-        existing_entry = await index.get(request.name)
-
-        if existing_entry:
-            return NameAvailabilityResponse(
-                available=False, message=f"Name '{request.name}' already exists in the index"
-            )
-
-        return NameAvailabilityResponse(available=True, message="Name is available")
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to check name availability",
-        ) from e
-
-
-@router.post("/create-info", response_model=FindingInfoResponse)
-async def create_finding_info(
-    request: FindingInfoRequest,
-    current_user: CurrentUserDep,
-) -> FindingInfoResponse:
-    """Create finding information from just a name using AI generation."""
-    try:
-        logger.debug(f"Creating finding info for name: {request.name}")
-
-        # Use create_info_from_name to generate FindingInfo from the name
-        finding_info = await create_info_from_name(request.name)
-
-        logger.debug(f"Generated finding info: {finding_info}")
-
-        return FindingInfoResponse(
-            name=request.name,  # Use the user-provided name
-            description=finding_info.description,  # Use AI-generated description
-            synonyms=finding_info.synonyms,  # Use AI-generated synonyms
-        )
-
-    except Exception as e:
-        logger.error(f"Error in create_finding_info: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error creating finding info: {str(e)}"
-        ) from e
-
-
-@router.post("/find-similar", response_model=SimilarModelsAnalysis)
-async def find_similar(
-    request: SimilarModelsRequest,
-    current_user: CurrentUserDep,
-    index: FindingIndexDep,
-) -> SimilarModelsAnalysis:
-    """Find similar models to avoid duplicates."""
-    try:
-        logger.debug(f"Finding similar models for name: {request.name[:100]}...")
-        logger.debug(f"Description: {request.description[:100]}")
-        logger.debug(f"Synonyms: {request.synonyms}")
-
-        # Use find_similar_models to look for overlaps
-        analysis = await find_similar_models(
-            finding_name=request.name,
-            description=request.description,
-            synonyms=request.synonyms or [],
-            index=index,
-        )
-
-        logger.debug(f"Analysis result: {analysis}")
-
-        from app.models import SimilarModelResponse
-
-        similar_models = [
-            SimilarModelResponse(
-                oifm_id=model["oifm_id"],
-                name=model["name"],
-                description=model.get("description"),
-                synonyms=model.get("synonyms"),
-            )
-            for model in analysis.similar_models
-        ]
-
-        logger.debug(f"Found {len(similar_models)} similar models")
-
-        return SimilarModelsAnalysis(
-            similar_models=similar_models,
-            recommendation=analysis.recommendation,
-            confidence=analysis.confidence,
-        )
-
-    except Exception as e:
-        logger.error(f"Error in find_similar: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error finding similar models: {str(e)}"
-        ) from e
-
-
-@router.post("/generate-stub")
-async def generate_stub_markdown(
-    request: FindingInfoEditRequest,
-    current_user: CurrentUserDep,
-) -> JSONResponse:
-    """Generate basic attributes markdown stub for editing."""
-    try:
-        # Generate a basic attributes markdown template for the user to edit
-        stub_markdown = f"""## Attributes
-
-### presence
-
-Whether {request.name} is visible on the imaging study
-
-- absent: {request.name.capitalize()} is not visible
-- present: {request.name.capitalize()} is clearly visible
-- indeterminate: Presence of {request.name} cannot be determined
-- unknown: Presence of {request.name} is unknown
-
-### change from prior
-
-How the {request.name} has changed compared to prior imaging
-
-- unchanged: {request.name.capitalize()} is unchanged from prior imaging
-- stable: {request.name.capitalize()} is stable
-- new: New {request.name.capitalize()} not seen on prior imaging
-- resolved: {request.name.capitalize()} seen on a prior exam has resolved
-- increased: {request.name.capitalize()} has increased
-- decreased: {request.name.capitalize()} has decreased
-- larger: {request.name.capitalize()} is larger
-- smaller: {request.name.capitalize()} is smaller
-"""
-        return JSONResponse(content={"markdown": stub_markdown})
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error generating stub markdown: {str(e)}"
-        ) from e
-
-
-@router.post("/generate-model")
-async def generate_model(
-    request: Request,
-    model_request: GenerateModelRequest,
-    current_user: CurrentUserDep,
-    database: DatabaseDep,
-) -> JSONResponse:
-    """Generate the final finding model from FindingInfo and attributes markdown."""
-    try:
-        # Create a FindingInfo object from the request
-        finding_info = FindingInfo(
-            name=model_request.name,
-            description=model_request.description,
-            synonyms=model_request.synonyms or [],
-        )
-
-        # Combine the FindingInfo with the attributes markdown to create complete markdown
-        complete_markdown = f"""# {model_request.name}
-
-## Description
-{model_request.description}
-
-{model_request.attributes_markdown}
-"""
-
-        # Generate the final FindingModel using findingmodel tools
-        finding_model_generated = await create_model_from_markdown(finding_info, markdown_text=complete_markdown)
-
-        assert database.finding_index, "FindingIndex must be initialized in the database"
-        author = database.people.get(current_user.login)
-        logger.info(f"Generating finding model for user: {current_user.login}, author: {author}")
-        # Add IDs and standard codes to the model
-        if author:
-            source = author.organization_code
-        elif current_user.organizations:
-            source = current_user.organizations[0]
-        else:
-            source = "OIDM"
-        finding_model = add_ids_to_model(finding_model_generated, source=source)
-        add_standard_codes_to_model(finding_model)
-        if author:
-            finding_model.contributors = [author]
-        if source and (organization := database.organizations.get(source)):
-            if finding_model.contributors:
-                finding_model.contributors.append(organization)
-            else:
-                finding_model.contributors = [organization]
-
-        # Generate JSON for the model
-        finding_model_json = finding_model.model_dump_json(indent=2, exclude_none=True)
-
-        # Generate filename for downloads
-        filename = f"{model_request.name.replace(' ', '_').lower()}.fm.json"
-
-        # Render the HTML component
-        display_html = templates.get_template("components/finding_model_full_display.html").render(
-            finding_model=finding_model,
-            finding_model_json=finding_model_json,
-            finding_model_filename=filename,
-        )
-
-        return JSONResponse(
-            content={
-                "model": finding_model.model_dump(mode="json", exclude_none=True),
-                "display_html": display_html,
-                "filename": filename,
-                "success": True,
-            }
-        )
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error generating finding model: {str(e)}"
-        ) from e
-
-
 # ===== HTMX ENDPOINTS FOR STEP-BY-STEP CREATION =====
 
 
@@ -314,6 +113,11 @@ async def get_creation_step(
         extra_context = {}
         if step_number == 3:  # Similar models review
             extra_context["similar_models"] = session.similar_models
+        elif step_number == 4:  # Attributes editing
+            # Generate default attributes markdown if not already set
+            if not session.attributes_markdown:
+                session.attributes_markdown = generate_default_attributes_markdown(session.name or "the finding")
+                await session_manager.update_session(session)
         elif step_number == 5 and session.final_model:  # Final display
             # Don't pass model_display_html so the template uses session_data.final_model
             pass
@@ -388,7 +192,7 @@ async def process_step_2(
     index: FindingIndexDep,
     synonyms: str = Form(default=""),
     description: str = Form(min_length=10, max_length=1000),
-) -> HTMLResponse:
+) -> Response:
     """Process step 2: Update description and find similar models."""
     try:
         # Parse synonyms manually
@@ -412,56 +216,15 @@ async def process_step_2(
 
         await session_manager.update_session(session)
 
-        # If no similar models found, skip to step 4 (attributes editing)
+        # If no similar models found, redirect to step 4 (attributes editing)
         if not session.similar_models:
-            # Generate stub markdown for attributes
-            stub_markdown = f"""### presence
-
-Presence of {session.name or "the finding"}
-
-- absent: {(session.name or "Finding").capitalize()} is not visible
-- present: {(session.name or "Finding").capitalize()} is clearly visible
-- indeterminate: Presence of {session.name or "finding"} cannot be determined
-- unknown: Presence of {session.name or "finding"} is unknown
-
-### change from prior
-
-How the {session.name or "finding"} has changed compared to prior imaging
-
-- unchanged: {(session.name or "Finding").capitalize()} is unchanged from prior imaging
-- stable: {(session.name or "Finding").capitalize()} is stable
-- new: New {(session.name or "finding").capitalize()} not seen on prior imaging
-- resolved: {(session.name or "Finding").capitalize()} seen on a prior exam has resolved
-- increased: {(session.name or "Finding").capitalize()} has increased
-- decreased: {(session.name or "Finding").capitalize()} has decreased
-- larger: {(session.name or "Finding").capitalize()} is larger
-- smaller: {(session.name or "Finding").capitalize()} is smaller
-"""
-            session.attributes_markdown = stub_markdown
             session.current_step = 4
             await session_manager.update_session(session)
-
-            # Skip to step 4
-            logger.info(f"Step 2->4: Session synonyms before rendering: {session.synonyms}")
-            context = {
-                "request": request,
-                "current_step": 4,
-                "session_data": session,
-            }
-            html_content = templates.get_template(
-                "components/finding_model_creation/step_4_edit_attributes.html"
-            ).render(**context)
+            # Redirect to step 4
+            return RedirectResponse(url="/api/finding-models/create/step/4", status_code=303)
         else:
             # Move to step 3 to review similar models
-            context = {
-                "request": request,
-                "current_step": 3,
-                "session_data": session,
-                "similar_models": session.similar_models,
-            }
-            html_content = templates.get_template(
-                "components/finding_model_creation/step_3_review_overlap.html"
-            ).render(**context)
+            html_content = render_step_template(request, 3, session, similar_models=session.similar_models)
 
         return HTMLResponse(content=html_content)
 
@@ -470,15 +233,7 @@ How the {session.name or "finding"} has changed compared to prior imaging
         session.error_message = f"Error finding similar models: {str(e)}"
         await session_manager.update_session(session)
 
-        context = {
-            "request": request,
-            "current_step": 2,
-            "session_data": session,
-            "error_message": session.error_message,
-        }
-        html_content = templates.get_template("components/finding_model_creation/step_2_edit_description.html").render(
-            **context
-        )
+        html_content = render_step_template(request, 2, session, error_message=session.error_message)
         return HTMLResponse(content=html_content, status_code=500)
 
 
@@ -489,46 +244,14 @@ async def process_step_3(
     session: CreationSessionDep,
     session_manager: SessionManagerDep,
 ) -> HTMLResponse:
-    """Process step 3: Generate stub markdown for attributes."""
+    """Process step 3: Review similar models and proceed to attributes editing."""
     try:
-        # Generate stub markdown
-        stub_markdown = f"""### presence
-
-Presence of {session.name or "the finding"}
-
-- absent: {(session.name or "Finding").capitalize()} is not visible
-- present: {(session.name or "Finding").capitalize()} is clearly visible
-- indeterminate: Presence of {session.name or "finding"} cannot be determined
-- unknown: Presence of {session.name or "finding"} is unknown
-
-### change from prior
-
-How the {session.name or "finding"} has changed compared to prior imaging
-
-- unchanged: {(session.name or "Finding").capitalize()} is unchanged from prior imaging
-- stable: {(session.name or "Finding").capitalize()} is stable
-- new: New {(session.name or "finding").capitalize()} not seen on prior imaging
-- resolved: {(session.name or "Finding").capitalize()} seen on a prior exam has resolved
-- increased: {(session.name or "Finding").capitalize()} has increased
-- decreased: {(session.name or "Finding").capitalize()} has decreased
-- larger: {(session.name or "Finding").capitalize()} is larger
-- smaller: {(session.name or "Finding").capitalize()} is smaller
-"""
-
         # Update session
-        session.attributes_markdown = stub_markdown
         session.current_step = 4
         await session_manager.update_session(session)
 
         # Move to step 4
-        context = {
-            "request": request,
-            "current_step": 4,
-            "session_data": session,
-        }
-        html_content = templates.get_template("components/finding_model_creation/step_4_edit_attributes.html").render(
-            **context
-        )
+        html_content = render_step_template(request, 4, session)
         return HTMLResponse(content=html_content)
 
     except Exception as e:
@@ -536,15 +259,8 @@ How the {session.name or "finding"} has changed compared to prior imaging
         session.error_message = f"Error generating attributes: {str(e)}"
         await session_manager.update_session(session)
 
-        context = {
-            "request": request,
-            "current_step": 3,
-            "session_data": session,
-            "similar_models": session.similar_models,
-            "error_message": session.error_message,
-        }
-        html_content = templates.get_template("components/finding_model_creation/step_3_review_overlap.html").render(
-            **context
+        html_content = render_step_template(
+            request, 3, session, similar_models=session.similar_models, error_message=session.error_message
         )
         return HTMLResponse(content=html_content, status_code=500)
 
@@ -609,15 +325,7 @@ async def process_step_4(
         await session_manager.update_session(session)
 
         # Move to step 5 - pass the actual finding_model object to template
-        context = {
-            "request": request,
-            "current_step": 5,
-            "session_data": session,
-            "finding_model": finding_model,  # Pass the actual Pydantic model object
-        }
-        html_content = templates.get_template("components/finding_model_creation/step_5_review_model.html").render(
-            **context
-        )
+        html_content = render_step_template(request, 5, session, finding_model=finding_model)
         return HTMLResponse(content=html_content)
 
     except Exception as e:
@@ -625,15 +333,7 @@ async def process_step_4(
         session.error_message = f"Error generating final model: {str(e)}"
         await session_manager.update_session(session)
 
-        context = {
-            "request": request,
-            "current_step": 4,
-            "session_data": session,
-            "error_message": session.error_message,
-        }
-        html_content = templates.get_template("components/finding_model_creation/step_4_edit_attributes.html").render(
-            **context
-        )
+        html_content = render_step_template(request, 4, session, error_message=session.error_message)
         return HTMLResponse(content=html_content, status_code=500)
 
 
@@ -654,14 +354,7 @@ async def restart_creation(
             new_session = FindingModelCreationSession(session_id=new_session_id)
 
         # Return step 1
-        context = {
-            "request": request,
-            "current_step": 1,
-            "session_data": new_session,
-        }
-        html_content = templates.get_template("components/finding_model_creation/step_1_enter_name.html").render(
-            **context
-        )
+        html_content = render_step_template(request, 1, new_session)
 
         # Set new session cookie in response
         response = HTMLResponse(content=html_content)

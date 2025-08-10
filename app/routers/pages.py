@@ -287,16 +287,6 @@ async def finding_model_display(
         ) from e
 
 
-@router.get("/test-htmx", response_class=HTMLResponse)
-async def test_htmx_page(request: Request, current_user: OptionalUserDep) -> HTMLResponse:
-    """HTMX integration test page."""
-    return templates.TemplateResponse(
-        request=request,
-        name="test_htmx_page.html",
-        context={"user": current_user, "title": "HTMX Test Page"},
-    )
-
-
 @router.get("/test-htmx-simple", response_class=HTMLResponse)
 async def test_htmx_simple(request: Request) -> HTMLResponse:
     """Simple HTMX test endpoint that returns HTML."""
