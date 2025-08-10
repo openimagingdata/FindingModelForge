@@ -1,7 +1,10 @@
 # ruff: noqa: B008
 """Finding Model creation and management routes."""
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+import json
+from typing import Any
+
+from fastapi import APIRouter, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from findingmodel import FindingInfo
@@ -31,37 +34,44 @@ from app.models import (
     NameAvailabilityResponse,
     SimilarModelsAnalysis,
     SimilarModelsRequest,
-    StepNameForm,
-    StepDescriptionForm,
-    StepAttributesForm,
 )
 
+
+def parse_synonyms(synonyms: str) -> list[str]:
+    """Parse synonyms from JSON string."""
+    if not synonyms.strip():
+        return []
+
+    try:
+        synonyms_parsed = json.loads(synonyms)
+        if not isinstance(synonyms_parsed, list) and not all(s and isinstance(s, str) for s in synonyms_parsed):
+            raise ValueError("Synonyms must be a JSON array of strings")
+        return [s.strip() for s in synonyms_parsed]
+    except (json.JSONDecodeError, ValueError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Invalid synonyms format: {str(e)}"
+        ) from e
+
+
 def render_step_template(
-    request: Request,
-    step_number: int,
-    session: FindingModelCreationSession,
-    **extra_context
+    request: Request, step_number: int, session: FindingModelCreationSession, **extra_context: Any
 ) -> str:
     """Helper function to render step templates with common context."""
     step_templates = {
         1: "components/finding_model_creation/step_1_enter_name.html",
-        2: "components/finding_model_creation/step_2_edit_description.html", 
+        2: "components/finding_model_creation/step_2_edit_description.html",
         3: "components/finding_model_creation/step_3_review_overlap.html",
         4: "components/finding_model_creation/step_4_edit_attributes.html",
         5: "components/finding_model_creation/step_5_review_model.html",
     }
-    
+
     if step_number not in step_templates:
         raise ValueError(f"Invalid step number: {step_number}")
-    
-    context = {
-        "request": request,
-        "current_step": step_number,
-        "session_data": session,
-        **extra_context
-    }
-    
+
+    context = {"request": request, "current_step": step_number, "session_data": session, **extra_context}
+
     return templates.get_template(step_templates[step_number]).render(**context)
+
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -299,7 +309,7 @@ async def get_creation_step(
     try:
         # Update session step
         session.current_step = step_number
-        
+
         # Add step-specific context
         extra_context = {}
         if step_number == 3:  # Similar models review
@@ -307,7 +317,7 @@ async def get_creation_step(
         elif step_number == 5 and session.final_model:  # Final display
             # Don't pass model_display_html so the template uses session_data.final_model
             pass
-        
+
         html_content = render_step_template(request, step_number, session, **extra_context)
         return HTMLResponse(content=html_content)
 
@@ -326,23 +336,22 @@ async def process_step_1(
     session: CreationSessionDep,
     session_manager: SessionManagerDep,
     index: FindingIndexDep,
-    form_data: StepNameForm = Depends(),
+    name: str = Form(min_length=3, max_length=200),
 ) -> HTMLResponse:
     """Process step 1: Check name and generate description."""
     try:
+        logger.info(f"Step 1 processing started for user {current_user.login}")
+        logger.info(f"Received name: '{name}' (length: {len(name)})")
+
         # FastAPI + Pydantic already validated the form data
-        name = form_data.name
-
-
-
-
+        # name is already validated by Form() parameter
 
         # Check name availability
         existing_entry = await index.get(name)
         if existing_entry:
             session.error_message = f"Name '{name}' already exists in the index"
             await session_manager.update_session(session)
-            html_content = render_step_template(request, 1, session, form_data={"name": form_data.name})
+            html_content = render_step_template(request, 1, session, form_data={"name": name})
             return HTMLResponse(content=html_content)
 
         # Generate finding info
@@ -364,7 +373,9 @@ async def process_step_1(
         session.error_message = f"Error generating description: {str(e)}"
         await session_manager.update_session(session)
 
-        html_content = render_step_template(request, 1, session, form_data={"name": form_data.name}, error_message=session.error_message)
+        html_content = render_step_template(
+            request, 1, session, form_data={"name": name}, error_message=session.error_message
+        )
         return HTMLResponse(content=html_content, status_code=500)
 
 
@@ -375,13 +386,14 @@ async def process_step_2(
     session: CreationSessionDep,
     session_manager: SessionManagerDep,
     index: FindingIndexDep,
-    form_data: StepDescriptionForm = Depends(),
+    synonyms: str = Form(default=""),
+    description: str = Form(min_length=10, max_length=1000),
 ) -> HTMLResponse:
     """Process step 2: Update description and find similar models."""
     try:
-        # FastAPI + Pydantic already validated the form data
-        description = form_data.description
-        synonyms_list = form_data.synonyms  # Already parsed and validated by Pydantic
+        # Parse synonyms manually
+        synonyms_list = parse_synonyms(synonyms)
+        logger.info(f"Step 2: Parsed synonyms: {synonyms_list}")
 
         # Update session
         session.description = description
@@ -430,6 +442,7 @@ How the {session.name or "finding"} has changed compared to prior imaging
             await session_manager.update_session(session)
 
             # Skip to step 4
+            logger.info(f"Step 2->4: Session synonyms before rendering: {session.synonyms}")
             context = {
                 "request": request,
                 "current_step": 4,
@@ -543,14 +556,14 @@ async def process_step_4(
     session: CreationSessionDep,
     session_manager: SessionManagerDep,
     database: DatabaseDep,
-    form_data: StepAttributesForm = Depends(),
+    synonyms: str = Form(default=""),
+    description: str = Form(min_length=10, max_length=1000),
+    attributes_markdown: str = Form(min_length=20),
 ) -> HTMLResponse:
     """Process step 4: Generate final model."""
     try:
-        # FastAPI + Pydantic already validated the form data
-        description = form_data.description
-        synonyms_list = form_data.synonyms  # Already parsed and validated by Pydantic
-        attributes_markdown = form_data.attributes_markdown
+        # Parse synonyms manually
+        synonyms_list = parse_synonyms(synonyms)
 
         # Update session
         session.description = description

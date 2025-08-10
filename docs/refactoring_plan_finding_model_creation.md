@@ -20,18 +20,21 @@ The current `create_finding_model.html` template has several architectural issue
 ## Current Issues Analysis
 
 ### File Structure
+
 - Single 691-line template file
 - Inline JavaScript (280+ lines)
 - Complex state management in Alpine.js
 - No component reusability
 
 ### Flowbite Compliance
+
 - Custom progress indicator instead of Flowbite stepper
 - Ad hoc Tailwind classes instead of Flowbite form components
 - Inconsistent button patterns
 - Custom error handling instead of Flowbite alerts
 
 ### Architecture
+
 - Heavy client-side business logic
 - Complex API orchestration in JavaScript
 - State management prone to loss
@@ -42,6 +45,7 @@ The current `create_finding_model.html` template has several architectural issue
 ### 1. File Structure Refactoring
 
 **New Structure:**
+
 ```
 templates/
 ├── create_finding_model.html (main orchestrator, ~50 lines)
@@ -58,12 +62,14 @@ templates/
 ### 2. HTMX Integration
 
 **Technology Addition:**
+
 - Add HTMX to project dependencies
 - Each step becomes an HTMX endpoint returning HTML fragments
 - Form submissions trigger server-side processing
 - Use `hx-get`, `hx-post`, `hx-target` for seamless updates
 
 **Benefits:**
+
 - Server-driven interactions
 - Reduced JavaScript complexity
 - Progressive enhancement
@@ -72,6 +78,7 @@ templates/
 ### 3. Server-Side Architecture
 
 **New Endpoints:**
+
 ```python
 # New endpoints in app/routers/finding_models.py
 @router.get("/create/step/{step_number}")  # Returns step HTML
@@ -80,6 +87,7 @@ templates/
 ```
 
 **Session Management:**
+
 - Store creation state in Redis/database
 - Each step validates and saves progress
 - Enables reliable back/forward navigation
@@ -87,6 +95,7 @@ templates/
 ### 4. Flowbite Compliance
 
 **Components to Implement:**
+
 - **Progress Indicator**: Replace custom with Flowbite stepper component (`data-stepper`)
 - **Forms**: Use Flowbite form components with proper validation states
 - **Buttons**: Use Flowbite button patterns (`btn-primary`, `btn-secondary`)
@@ -94,21 +103,24 @@ templates/
 - **Loading States**: Flowbite spinner components
 
 **Before/After Example:**
+
 ```html
 <!-- Before: Custom progress indicator -->
 <div class="flex items-center justify-between">
   <div class="flex space-x-4">
     <div class="flex-shrink-0 w-8 h-8 rounded-full..." :class="...">
-
-<!-- After: Flowbite stepper -->
-<ol class="flex items-center w-full text-sm font-medium text-center" data-stepper>
-  <li class="flex md:w-full items-center" data-stepper-item>
+      <!-- After: Flowbite stepper -->
+      <ol class="flex items-center w-full text-sm font-medium text-center" data-stepper>
+        <li class="flex md:w-full items-center" data-stepper-item></li>
+      </ol>
+    </div>
+  </div>
+</div>
 ```
 
 ### 5. Alpine.js Simplification
 
-**Current State:** 280+ lines of complex logic
-**Target State:** ~50 lines for UI interactions only
+**Current State:** 280+ lines of complex logic **Target State:** ~50 lines for UI interactions only
 
 ```javascript
 // Before: Complex state management
@@ -133,17 +145,12 @@ x-data="{
 
 ```html
 <!-- Step navigation -->
-<button hx-get="/create/step/2"
-        hx-target="#step-container"
-        hx-indicator="#loading"
-        class="btn btn-primary">
+<button hx-get="/create/step/2" hx-target="#step-container" hx-indicator="#loading" class="btn btn-primary">
   Next Step
 </button>
 
 <!-- Form submission -->
-<form hx-post="/create/step/1"
-      hx-target="#step-container"
-      hx-swap="outerHTML">
+<form hx-post="/create/step/1" hx-target="#step-container" hx-swap="outerHTML">
   <!-- Flowbite form components -->
 </form>
 
@@ -156,30 +163,35 @@ x-data="{
 ## Implementation Phases
 
 ### Phase 1: Foundation (Setup HTMX & Structure)
+
 - [ ] Add HTMX to the project (via CDN or npm)
 - [ ] Create new component directory structure
 - [ ] Create session-based state management utilities
 - [ ] Set up basic routing structure
 
 ### Phase 2: Server Endpoints
+
 - [ ] Create step-specific FastAPI endpoints
 - [ ] Implement session-based progress tracking
 - [ ] Move validation logic to server
 - [ ] Add proper error handling
 
 ### Phase 3: Component Refactoring
+
 - [ ] Break down monolithic template into components
 - [ ] Replace custom components with Flowbite patterns
 - [ ] Implement proper Flowbite stepper
 - [ ] Add Flowbite form components
 
 ### Phase 4: HTMX Integration
+
 - [ ] Replace Alpine.js API calls with HTMX requests
 - [ ] Implement progressive enhancement
 - [ ] Add loading states and transitions
 - [ ] Test all user interactions
 
 ### Phase 5: Testing & Polish
+
 - [ ] Test all user flows end-to-end
 - [ ] Ensure accessibility compliance
 - [ ] Performance optimization
@@ -188,24 +200,28 @@ x-data="{
 ## Success Criteria
 
 ### Code Quality
+
 - [ ] Main template under 100 lines
 - [ ] Each component under 50 lines
 - [ ] No business logic in Alpine.js
 - [ ] All UI follows Flowbite patterns
 
 ### Performance
+
 - [ ] Reduced JavaScript bundle size
 - [ ] Server-side rendering for better initial load
 - [ ] Progressive enhancement working
 - [ ] Proper loading states
 
 ### Maintainability
+
 - [ ] Clear component separation
 - [ ] Reusable macros
 - [ ] Consistent patterns throughout
 - [ ] Good error handling
 
 ### User Experience
+
 - [ ] Reliable state persistence
 - [ ] Clear progress indication
 - [ ] Proper error messages
@@ -214,11 +230,13 @@ x-data="{
 ## Files to Modify/Create
 
 ### New Files
+
 - `templates/components/finding_model_creation/step_*.html` (5 files)
 - `templates/macros/creation_components.html`
 - `docs/finding_model_creation_flow.md` (user documentation)
 
 ### Modified Files
+
 - `templates/create_finding_model.html` (major refactoring)
 - `app/routers/finding_models.py` (new endpoints)
 - `app/dependencies.py` (session management)
@@ -244,5 +262,4 @@ x-data="{
 
 ---
 
-*Last Updated: 2025-01-08*
-*Status: Planning Phase*
+_Last Updated: 2025-01-08_ _Status: Planning Phase_

@@ -7,20 +7,19 @@
 {% set step_description = "Enter a unique name for your finding model. We'll generate a description for you to review and edit." %}
 
 {% block step_content %}
-    <div x-data="{{ validation_data() | safe }}">
+    <div x-data='{{ validation_data(initial_name=form_data.name if form_data else "") }}'>
         {% call htmx_form(1) %}
             <div class="space-y-4">
                 {{ validated_input(
                     name="name",
                     label="Finding Name",
                     value=form_data.name if form_data else '',
-                    placeholder="e.g., pulmonary-nodule, brain-aneurysm, liver-lesion",
+                    placeholder="e.g., Pulmonary Nodule, Brain Aneurysm, liver-lesion",
                     required=true,
-                    pattern="[a-z0-9-]+",
                     minlength=3,
                     maxlength=200
                 ) }}
-                
+
                 {# Name availability feedback #}
                 {% if name_check_result %}
                     {{ status_indicator(

@@ -1,28 +1,36 @@
 {# Alpine.js Form Validation Macros #}
 
 {# Simple Alpine.js form validation #}
-{% macro validation_data() %}
+{% macro validation_data(initial_name='', initial_description='', initial_attributes='') %}
 {
-    name: '',
-    description: '', 
-    attributesMarkdown: '',
-    
+    name: {{ initial_name | tojson }},
+    description: {{ initial_description | tojson }},
+    attributes_markdown: {{ initial_attributes | tojson }},
+
     get isNameValid() {
-        return this.name.length >= 3 && /^[a-z0-9-]+$/.test(this.name);
+        return this.name.length >= 3 && this.name.length <= 200;
     },
-    
+
     get isDescriptionValid() {
         return this.description.length >= 10 && this.description.length <= 1000;
     },
-    
+
     get isAttributesValid() {
-        return this.attributesMarkdown.length >= 20;
+        return this.attributes_markdown.length >= 20;
     },
-    
+
     get canSubmit() {
         // Check based on which fields are present in the form
         if (this.$refs.name) return this.isNameValid;
-        if (this.$refs.description && this.$refs.attributesMarkdown) return this.isDescriptionValid && this.isAttributesValid;
+        if (this.$refs.description && this.$refs.attributes_markdown) return this.isDescriptionValid && this.isAttributesValid;
+        if (this.$refs.description) return this.isDescriptionValid;
+        return true;
+    },
+
+    isFormValid() {
+        // Same logic as canSubmit but as a method for button bindings
+        if (this.$refs.name) return this.isNameValid;
+        if (this.$refs.description && this.$refs.attributes_markdown) return this.isDescriptionValid && this.isAttributesValid;
         if (this.$refs.description) return this.isDescriptionValid;
         return true;
     }

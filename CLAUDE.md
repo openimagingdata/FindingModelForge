@@ -1,10 +1,12 @@
 # Claude Code Instructions for FindingModelForge
 
 # ⚠️ CRITICAL UI REMINDERS ⚠️
-**ALWAYS use Flowbite components and patterns. Do NOT create custom CSS classes or JavaScript.**
-**ALWAYS use Alpine.js for interactivity. Do NOT write ad hoc JavaScript.**
+
+**ALWAYS use Flowbite components and patterns. Do NOT create custom CSS classes or JavaScript.** **ALWAYS use Alpine.js
+for interactivity. Do NOT write ad hoc JavaScript.**
 
 ## Before writing ANY UI code:
+
 1. ✅ Check https://flowbite.com/docs/components/ FIRST
 2. ✅ Use their exact HTML structure and CSS classes
 3. ✅ Use Alpine.js `x-data`, `x-model`, computed properties for reactivity
@@ -136,10 +138,11 @@ async def create_model(
 
 ### Frontend Components
 
-**CRITICAL: Use Flowbite's data-attribute patterns, NOT custom JavaScript**
-**CRITICAL: Use Alpine.js low-impact patterns, NOT ad hoc JavaScript**
+**CRITICAL: Use Flowbite's data-attribute patterns, NOT custom JavaScript** **CRITICAL: Use Alpine.js low-impact
+patterns, NOT ad hoc JavaScript**
 
 ## UI Development Process (MANDATORY):
+
 1. **Check Flowbite docs FIRST**: https://flowbite.com/docs/components/
 2. **Copy exact HTML structure** from Flowbite examples
 3. **Use their CSS classes verbatim** - Do NOT modify or create custom ones
@@ -147,6 +150,7 @@ async def create_model(
 5. **For components**: Use Flowbite's data-attribute driven components
 
 ## Alpine.js Patterns (REQUIRED):
+
 - ✅ Use `x-model` for two-way data binding
 - ✅ Use computed properties (`get propertyName()`) for reactive logic
 - ✅ Use simple data objects, not complex validation frameworks
@@ -157,14 +161,24 @@ async def create_model(
 ```html
 <!-- ✅ CORRECT: Official Flowbite stepper from docs -->
 <ol class="flex items-center w-full text-sm font-medium text-center text-gray-500 dark:text-gray-400 sm:text-base">
-    <li class="flex md:w-full items-center text-blue-600 dark:text-blue-500 sm:after:content-[''] after:w-full after:h-1 after:border-b after:border-gray-200 after:border-1 after:hidden sm:after:inline-block after:mx-6 xl:after:mx-10 dark:after:border-gray-700">
-        <span class="flex items-center">
-            <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 me-2.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z"/>
-            </svg>
-            Personal Info
-        </span>
-    </li>
+  <li
+    class="flex md:w-full items-center text-blue-600 dark:text-blue-500 sm:after:content-[''] after:w-full after:h-1 after:border-b after:border-gray-200 after:border-1 after:hidden sm:after:inline-block after:mx-6 xl:after:mx-10 dark:after:border-gray-700"
+  >
+    <span class="flex items-center">
+      <svg
+        class="w-3.5 h-3.5 sm:w-4 sm:h-4 me-2.5"
+        aria-hidden="true"
+        xmlns="http://www.w3.org/2000/svg"
+        fill="currentColor"
+        viewBox="0 0 20 20"
+      >
+        <path
+          d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z"
+        />
+      </svg>
+      Personal Info
+    </span>
+  </li>
 </ol>
 
 <!-- ❌ WRONG: Made-up custom styling -->
@@ -190,6 +204,7 @@ async def create_model(
 ```
 
 **Before implementing any component:**
+
 1. Visit https://flowbite.com/docs/components/
 2. Find the exact component you need
 3. Copy the official HTML structure and CSS classes
@@ -227,6 +242,7 @@ x-data='{
    - `:value` only sets HTML attribute (not submitted)
 
 2. **Computed Properties**: Use JavaScript getters for automatic updates
+
    ```javascript
    get "derivedValue"() { return this.sourceValue.toUpperCase(); }
    ```
@@ -234,6 +250,7 @@ x-data='{
 3. **Form Scope**: Put `x-data` on form element when form needs access to data
 
 4. **Event Handling**: Use `.stop.prevent` modifiers to control event flow
+
    ```html
    @click.stop.prevent="handleClick()"
    ```
@@ -270,6 +287,7 @@ x-data='{
 4. **Maintain component index** - Keep track of available reusable components
 
 **Component Discovery Process:**
+
 ```bash
 # Search for existing display components
 find templates/ -name "*.html" | grep -E "(display|card|list)"
@@ -279,6 +297,7 @@ grep -r "badge" templates/macros/
 ```
 
 **Reuse Patterns:**
+
 ```jinja
 {# ✅ CORRECT: Reuse existing component #}
 {% set finding_model = session_data.final_model %}
@@ -296,6 +315,7 @@ grep -r "badge" templates/macros/
 ```
 
 **Available Component Index:**
+
 - `components/finding_model_display.html` - Complete finding model display with attributes
 - `components/finding_model_creation/` - Multi-step creation workflow components
 - `macros/flowbite_components.html` - Flowbite UI component macros
@@ -303,6 +323,7 @@ grep -r "badge" templates/macros/
 - `macros/synonym_manager.html` - Synonym management component (Alpine.js + HTMX)
 
 **Before creating new display code:**
+
 1. Check if a similar component exists in `templates/components/`
 2. Check if relevant macros exist in `templates/macros/`
 3. Consider if existing components can be extended/adapted
@@ -557,6 +578,7 @@ task run-container
 8. **Security**: Never commit secrets, use env vars
 
 ## UI Development Rules (NON-NEGOTIABLE)
+
 - ❌ **NEVER** create custom form validation logic
 - ❌ **NEVER** write manual DOM manipulation
 - ❌ **NEVER** deviate from Flowbite CSS classes

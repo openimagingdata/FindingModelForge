@@ -1,8 +1,6 @@
-import json
 from datetime import datetime
-from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 
 class UserBase(BaseModel):
@@ -191,49 +189,4 @@ class FindingModelCreationStep(BaseModel):
     data: dict[str, str] = Field(default_factory=dict)
 
 
-# Base class with synonym validation
-class BaseFormWithSynonyms(BaseModel):
-    """Base form with synonym parsing logic."""
-    synonyms: list[str] = Field(default_factory=list)
-
-    @field_validator("synonyms", mode="before")
-    @classmethod
-    def parse_synonyms(cls, v: Any) -> list[str]:
-        """Parse synonyms from JSON string or return list as-is."""
-        if isinstance(v, str):
-            try:
-                parsed = json.loads(v) if v.strip() else []
-                if not isinstance(parsed, list):
-                    return []
-                # Filter and validate individual synonyms
-                return [
-                    s.strip() 
-                    for s in parsed 
-                    if isinstance(s, str) and s.strip() and len(s.strip()) <= 50
-                ]
-            except (json.JSONDecodeError, ValueError):
-                return []
-        elif isinstance(v, list):
-            return [
-                s.strip() 
-                for s in v 
-                if isinstance(s, str) and s.strip() and len(s.strip()) <= 50
-            ]
-        return []
-
-
-# Step form models with proper Pydantic validation
-class StepNameForm(BaseModel):
-    """Form data for step 1: name input."""
-    name: str = Field(min_length=3, max_length=200, pattern=r"^[a-z0-9-]+$")
-
-
-class StepDescriptionForm(BaseFormWithSynonyms):
-    """Form data for step 2: description edit."""
-    description: str = Field(min_length=10, max_length=1000)
-
-
-class StepAttributesForm(BaseFormWithSynonyms):
-    """Form data for step 4: attributes edit."""
-    description: str = Field(min_length=10, max_length=1000)
-    attributes_markdown: str = Field(min_length=20)
+# Removed unused step form models - now using Form() parameters directly in routes

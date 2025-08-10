@@ -199,9 +199,7 @@ class TestHTMXStepEndpoints:
             "/api/finding-models/create/step/1", data={"session_id": "test-123", "name": "a"}
         )
 
-        assert response.status_code == 200
-        content = response.text
-        assert "at least 3 characters" in content.lower()
+        assert response.status_code == 422
 
     def test_step_1_invalid_name_too_long(
         self, authenticated_client_with_cache: TestClient, mock_cache: MagicMock
@@ -211,14 +209,12 @@ class TestHTMXStepEndpoints:
         mock_cache.get = AsyncMock(return_value=session_data)
         mock_cache.set = AsyncMock(return_value=None)
 
-        long_name = "a" * 101  # Over 100 characters
+        long_name = "a" * 201  # Over 200 characters (our current limit)
         response = authenticated_client_with_cache.post(
             "/api/finding-models/create/step/1", data={"session_id": "test-123", "name": long_name}
         )
 
-        assert response.status_code == 200
-        content = response.text
-        assert "cannot exceed 100 characters" in content.lower()
+        assert response.status_code == 422
 
     def test_step_1_name_unavailable(self, authenticated_client_with_cache: TestClient, mock_cache: MagicMock) -> None:
         """Test step 1 with unavailable name."""
@@ -296,10 +292,7 @@ class TestHTMXStepEndpoints:
             },
         )
 
-        assert response.status_code == 200
-        content = response.text
-        # Should return to the description edit template (validation fails)
-        assert "Edit Description" in content
+        assert response.status_code == 422
 
     @patch("app.routers.finding_models.find_similar_models")
     def test_step_3_success(
@@ -407,10 +400,7 @@ class TestHTMXStepEndpoints:
             },
         )
 
-        assert response.status_code == 200
-        content = response.text
-        # Should return to the attributes edit template (validation fails)
-        assert "Edit Attributes" in content
+        assert response.status_code == 422
 
     def test_step_invalid_session(self, authenticated_client_with_cache: TestClient, mock_cache: MagicMock) -> None:
         """Test step endpoint with invalid session."""
@@ -424,9 +414,8 @@ class TestHTMXStepEndpoints:
             data={"session_id": "nonexistent", "name": "ab"},  # Too short
         )
 
-        # Should get error about name too short
-        assert response.status_code == 200
-        assert "at least 3 characters" in response.text.lower()
+        # Should get 422 for validation error
+        assert response.status_code == 422
 
     def test_step_invalid_step_number(self, authenticated_client_with_cache: TestClient, mock_cache: MagicMock) -> None:
         """Test step endpoint with invalid step number."""
