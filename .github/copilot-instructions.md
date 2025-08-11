@@ -106,19 +106,26 @@ Use `uv mypy` for type checking.
 - Use Tailwind utility classes with custom dark theme
 - Alpine.js for progressive enhancement
 
-#### Flowbite Component Guidelines
+#### UI & Component Guidelines (MANDATORY)
 
-**CRITICAL: Always use Flowbite's built-in functionality instead of custom implementations**
+🚨 **CRITICAL: NO custom JS/CSS. ALWAYS use Flowbite and Alpine.js.**
 
-1. **Use Data Attributes**: All Flowbite components work via data attributes (e.g., `data-accordion="collapse"`,
-   `data-modal-target`)
-2. **Follow Official Patterns**: Reference Flowbite documentation and existing working components in the codebase
-3. **Avoid Custom JavaScript**: Never create custom `toggleAccordion()`, `showModal()`, etc. - use Flowbite's API
-4. **Use Websearch and Context7 Documentation**: Always check web search and Context7 for up-to-date Flowbite patterns
-   before implementing
-5. **Initialize Properly**: Use `initFlowbite()` for dynamically injected content, not custom initialization
-6. **Copy Working Examples**: Look at existing components like `finding_model_display.html` accordion for proven
-   patterns
+**Before writing ANY UI code:**
+1. ✅ Check https://flowbite.com/docs/components/ FIRST
+2. ✅ Use their exact HTML structure and CSS classes
+3. ✅ Use Alpine.js `x-data`, `x-model`, computed properties for reactivity
+4. ✅ Never deviate from established patterns without explicit approval
+5. ❌ Do NOT create custom validation, modal, or interaction code
+
+**Component/Macro Usage:**
+- Always check for existing macros/components before creating new ones.
+- Key macros: `flowbite_components.html`, `app_components.html`, `layout_components.html` (see `docs/UI_COMPONENT_MACROS.md`).
+- Use `{% from ... import ... %}` and `{% include ... %}` for reuse.
+
+**Component Discovery Checklist:**
+1. Search `templates/components/` and `templates/macros/` for similar functionality
+2. Reuse or extend existing macros/components
+3. Only create new ones if truly needed, and document them
 
 **Example of CORRECT Flowbite usage:**
 
@@ -141,6 +148,34 @@ Use `uv mypy` for type checking.
   }
 </script>
 ```
+
+**Alpine.js & HTMX Patterns:**
+- Use Alpine.js for all UI interactivity (`x-data`, `x-model`, computed properties)
+- Never write ad hoc JavaScript or manual DOM manipulation
+- HTMX is used for multi-step forms and server-driven UI (e.g., finding model creation)
+- Alpine.js is only for local UI state, not for business logic or API orchestration
+## Profile Page Features
+
+- The profile page (`/profile`) uses in-place editing, Alpine.js validation, and Flowbite components for all UI.
+- Organization management uses badges, real-time validation, and no duplicate orgs (see `docs/PROFILE_PAGE_FEATURES.md`).
+## Redis Cache Implementation
+
+- The cache is always present and gracefully degrades if Redis is unavailable (see `docs/REDIS_CACHE_IMPLEMENTATION.md`).
+- Used for user, GitHub, and finding model data.
+- All cache operations are safe no-ops if Redis is down; no conditional logic needed in app code.
+## Finding Model Creation Workflow
+
+- Multi-step creation is modularized into separate templates (see `docs/refactoring_plan_finding_model_creation.md`).
+- HTMX is used for step transitions and server-driven UI.
+- All business logic is server-side; Alpine.js is only for UI state.
+- Flowbite stepper and form components are required for all steps.
+## Before You Code Checklist
+
+1. Check Flowbite docs for the component you need
+2. Check for existing macros/components in `templates/`
+3. Use Alpine.js for interactivity, never ad hoc JS
+4. Never write custom JS/CSS unless absolutely necessary and approved
+5. Update documentation and tests when adding or changing macros/components
 
 ### Docker & Deployment
 

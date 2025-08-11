@@ -2,10 +2,10 @@
   "editor.detectIndentation": true,
   "python.analysis.typeCheckingMode": "standard",
 
-  "python.testing.pytestArgs": ["test"],
+  "python.testing.pytestArgs": ["tests"],
   "python.testing.unittestEnabled": false,
   "python.testing.pytestEnabled": true,
-  "python.testing.pytestPath": ".venv/bin/pytest",
+  "python.testing.pytestPath": "uv run pytest",
   "python.analysis.extraPaths": ["src"],
   "python.envFile": ".env",
   "python.terminal.activateEnvironment": true,
