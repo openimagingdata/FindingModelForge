@@ -98,6 +98,24 @@ task build-frontend  # Build CSS and JS assets
 - Async/await patterns for I/O operations
 - Comprehensive error handling and logging
 
+### Draft Workflow (Finding Models)
+
+- Drafts are created and autosaved during the multi-step creation flow (notably from Step 4 onwards).
+- Each draft stores: user id, name, inputs (description, synonyms, attributes_markdown), generated JSON, status, and an
+  action log.
+- Status transitions: draft -> submitted -> under-review | added | declined. After submit, editing is locked.
+- Resuming: entering the same finding name after submit takes the user directly to the final display view.
+- Redis cache is always available in code paths and degrades gracefully if unavailable (no conditional logic required).
+
+### UI Guidelines
+
+- Flowbite components first; keep to their HTML structure and data-attributes.
+- Alpine.js for local state and interactivity (`x-data`, `x-model`, `x-show`, computed methods). Avoid custom vanilla
+  JS.
+- Use Jinja2 macros in `templates/macros` where possible (see `flowbite_components.html`, `layout_components.html`,
+  `json_accordion.html`).
+- HTMX is used for server-driven fragments in multi-step forms.
+
 ### Preferred Libraries
 
 - **Data**
@@ -120,6 +138,7 @@ task build-frontend  # Build CSS and JS assets
   - [`alpinejs`](https://alpinejs.dev/) - Lightweight JavaScript framework for interactivity
   - [`flowbite`](https://flowbite.com/) - Pre-built UI components with data-attribute patterns
   - [`vite`](https://vitejs.dev/) - Modern frontend build system with hot reload
+  - [`htmx`](https://htmx.org/) - Server-driven interactivity for multi-step flows
 
 - **Logging**
   - [`loguru`](https://github.com/Delgan/loguru) - Application logging and debugging infrastructure

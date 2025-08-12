@@ -1,12 +1,14 @@
 """Test configuration and fixtures."""
 
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
 
-from app.database import Database, UserRepo
+from app.database import Database, DraftRepo, UserRepo
 from app.main import app
+from app.models import FindingModelDraft, FindingModelInputs
 
 
 @pytest.fixture
@@ -18,6 +20,36 @@ def client() -> TestClient:
     # Create a mock UserRepo
     mock_user_repo = MagicMock(spec=UserRepo)
     mock_database.user_repo = mock_user_repo
+
+    # Create a mock DraftRepo with minimal async behavior
+    mock_draft_repo = MagicMock(spec=DraftRepo)
+
+    # Async helpers returning reasonable defaults
+    async def _find_editable_by_name(user_id: int, name: str):  # type: ignore[no-untyped-def]
+        return None
+
+    async def _save_draft(  # type: ignore[no-untyped-def]
+        user_id: int,
+        name: str,
+        inputs,
+        draft_id: str | None = None,
+        generated_json: str | None = None,
+    ):
+        return FindingModelDraft(
+            id="mock-id",
+            user_id=user_id,
+            name=name,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            inputs=inputs if isinstance(inputs, FindingModelInputs) else FindingModelInputs(**inputs.model_dump()),
+            generated_json=generated_json,
+            status="draft",
+            action_log=[],
+        )
+
+    mock_draft_repo.find_editable_by_name = AsyncMock(side_effect=_find_editable_by_name)
+    mock_draft_repo.save_draft = AsyncMock(side_effect=_save_draft)
+    mock_database.draft_repo = mock_draft_repo
 
     # Create a mock finding_index
     from findingmodel.index import Index

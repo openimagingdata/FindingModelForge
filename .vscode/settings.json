@@ -36,5 +36,9 @@
   "files.associations": {
     "*.html": "jinja-html",
     "*.css": "tailwindcss"
-  }
+  },
+  "mypy-type-checker.importStrategy": "fromEnvironment",
+  "mypy-type-checker.args": [
+    "--config-file=pyproject.toml"
+  ]
 }

@@ -1,0 +1,8 @@
+{# Small fragment showing draft submitted status #}
+<div class="flex items-center gap-3">
+  <span class="inline-flex items-center gap-1 rounded-md bg-green-100 px-2 py-1 text-sm font-medium text-green-800 dark:bg-green-900/30 dark:text-green-200">
+    Draft submitted
+  </span>
+  <span class="text-xs text-gray-500">Submitted: {{ draft.updated_at.strftime('%Y-%m-%d %H:%M') }}</span>
+  <span class="text-xs text-gray-500">Status: {{ draft.status }}</span>
+</div>

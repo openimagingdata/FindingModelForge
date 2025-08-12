@@ -9,7 +9,7 @@
             <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
                 {{ finding_model.name }}
             </h2>
-            {% if finding_model.oifm_id %}
+            {% if (show_ids is not defined or show_ids) and finding_model.oifm_id %}
                 {{ id_badge("ID: " + finding_model.oifm_id) }}
             {% endif %}
         </div>
@@ -76,7 +76,7 @@
                             {% endif %}
                         </div>
                     </div>
-                    {% if attribute.id or attribute.oifma_id %}
+                    {% if (show_ids is not defined or show_ids) and (attribute.id or attribute.oifma_id) %}
                         <div class="flex-shrink-0 ml-2">
                             {{ id_badge(attribute.id or attribute.oifma_id) }}
                         </div>

@@ -19,73 +19,16 @@
                     <p class="mt-2 text-gray-600 dark:text-gray-400">Loading creation workflow...</p>
                 </div>
             </div>
+            <!-- Kick off the creation workflow without custom JS -->
+            <div
+                hx-post="/api/finding-models/create/restart"
+                hx-trigger="load"
+                hx-target="#step-container"
+                hx-swap="innerHTML"
+            ></div>
         </div>
 
 
     </div>
 </div>
-
-<script>
-// Initialize the creation workflow when page loads
-document.addEventListener('DOMContentLoaded', function() {
-    // Start a new session and load step 1
-    fetch('/api/finding-models/create/restart', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        credentials: 'same-origin'
-    })
-    .then(response => {
-        if (response.ok) {
-            return response.text();
-        } else if (response.status === 401) {
-            window.location.href = '/login';
-            return null;
-        } else {
-            throw new Error('Failed to start creation workflow');
-        }
-    })
-    .then(html => {
-        if (html) {
-            const container = document.getElementById('step-container');
-            container.innerHTML = html;
-
-            // Process the new content with HTMX so it can attach event handlers
-            if (window.htmx) {
-                htmx.process(container);
-            }
-
-            // Process with Alpine.js
-            if (window.Alpine) {
-                Alpine.initTree(container);
-            }
-
-            if (typeof initFlowbite === 'function') {
-                initFlowbite();
-            }
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        document.getElementById('step-container').innerHTML = `
-            <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-md p-4">
-                <div class="flex">
-                    <div class="flex-shrink-0">
-                        <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
-                        </svg>
-                    </div>
-                    <div class="ml-3">
-                        <h3 class="text-sm font-medium text-red-800 dark:text-red-200">Error</h3>
-                        <p class="mt-1 text-sm text-red-700 dark:text-red-300">Failed to start creation workflow. Please try refreshing the page.</p>
-                    </div>
-                </div>
-            </div>
-        `;
-    });
-});
-
-
-</script>
 {% endblock %}

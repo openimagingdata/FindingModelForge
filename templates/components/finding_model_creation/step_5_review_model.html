@@ -6,15 +6,35 @@
 {% set step_description = "Your finding model has been generated successfully. Review the details below and download the JSON file." %}
 
 {% block step_navigation %}
-    <div class="flex justify-between mb-6">
-        {{ back_button(4) }}
-        <button type="button"
-                hx-post="/api/finding-models/create/restart"
-                hx-target="#step-container"
-                hx-swap="innerHTML"
-                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
-            Create Another
-        </button>
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
+        {% if session_data.draft_status != 'submitted' %}
+            {{ back_button(4) }}
+        {% endif %}
+        <div class="flex items-center gap-2 md:gap-3">
+            {% if session_data.draft_status == 'submitted' %}
+                <span class="inline-flex items-center gap-2 rounded-md bg-green-100 px-3 py-1.5 text-sm font-medium text-green-800 dark:bg-green-900/30 dark:text-green-200">
+                    <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                    <span>Submitted{% if session_data.submitted_display_time %} • {{ session_data.submitted_display_time }}{% endif %}</span>
+                </span>
+            {% else %}
+                <button
+                    type="button"
+                    hx-post="/api/finding-models/drafts/{{ session_data.draft_id or 'new' }}/submit"
+                    hx-target="#step-container"
+                    hx-swap="innerHTML"
+                    class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors"
+                    {% if not session_data.draft_id %}disabled title="Save draft before submitting"{% endif %}>
+                    Submit to Repository
+                </button>
+            {% endif %}
+            <button type="button"
+                    hx-post="/api/finding-models/create/restart"
+                    hx-target="#step-container"
+                    hx-swap="innerHTML"
+                    class="px-4 py-2 bg-gray-700 hover:bg-gray-800 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                Create Another
+            </button>
+        </div>
     </div>
 {% endblock %}
 
@@ -24,6 +44,8 @@
         {{ model_display_html | safe }}
     {% elif finding_model %}
         {# Use the consolidated complete display component #}
+    {% set show_ids = session_data.draft_id and (session_data.draft_status == 'submitted') %}
+        {% set show_json = show_ids %}
         {% include 'components/finding_model_complete_display.html' %}
     {% else %}
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">

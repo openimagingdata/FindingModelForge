@@ -11,7 +11,7 @@ from findingmodel.index import Index
 from pydantic import BaseModel
 
 from .cache import RedisCache
-from .database import Database, UserRepo
+from .database import Database, DraftRepo, UserRepo
 
 
 def get_database(request: Request) -> Database:
@@ -30,6 +30,16 @@ def get_user_repo(database: DatabaseDep) -> UserRepo:
 
 
 UserRepoDep = Annotated[UserRepo, Depends(get_user_repo)]
+
+
+def get_draft_repo(database: DatabaseDep) -> DraftRepo:
+    """Get DraftRepo instance from the database."""
+    if database.draft_repo is None:
+        raise RuntimeError("Database not initialized or DraftRepo not available")
+    return database.draft_repo
+
+
+DraftRepoDep = Annotated[DraftRepo, Depends(get_draft_repo)]
 
 
 def get_finding_index(database: DatabaseDep) -> Index:
@@ -82,6 +92,9 @@ class FindingModelCreationSession(BaseModel):
     similar_models: list[dict[str, Any]] = []
     attributes_markdown: str | None = None
     final_model: dict[str, Any] | None = None
+    draft_id: str | None = None
+    draft_status: str | None = None
+    submitted_display_time: str | None = None
     error_message: str | None = None
     success_message: str | None = None
 

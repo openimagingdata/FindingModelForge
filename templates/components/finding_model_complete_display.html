@@ -2,9 +2,11 @@
 {% from 'macros/json_accordion.html' import json_accordion %}
 
 <div class="space-y-6">
-    {# Formatted Display #}
-    {% include 'components/finding_model_display.html' %}
+        {# Formatted Display #}
+        {% include 'components/finding_model_display.html' %}
 
-    {# JSON Data Accordion #}
-    {{ json_accordion(finding_model, "finding-model-json", "JSON Data") }}
+        {# JSON Data Accordion - show only when allowed (e.g., after submit) #}
+        {% if show_json is not defined or show_json %}
+            {{ json_accordion(finding_model, "finding-model-json", "JSON Data") }}
+        {% endif %}
 </div>

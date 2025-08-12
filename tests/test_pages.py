@@ -497,3 +497,107 @@ def test_finding_model_display_http_error(client: TestClient) -> None:
             assert response.status_code == 500
         finally:
             app.dependency_overrides.clear()
+
+
+def test_finding_model_partial_success(client: TestClient) -> None:
+    """Test finding model partial route returns component HTML."""
+    # Load test data
+    test_data_path = Path(__file__).parent / "data" / "abdominal_abscess.fm.json"
+    test_finding_model_data = test_data_path.read_text()
+
+    # Mock IndexEntry
+    mock_index_entry = MagicMock()
+    mock_index_entry.filename = "abdominal_abscess.fm.json"
+    mock_index_entry.name = "abdominal abscess"
+
+    # Mock HTTP response
+    mock_response = MagicMock()
+    mock_response.text = test_finding_model_data
+    mock_response.raise_for_status.return_value = None
+
+    # Mock AsyncClient.get as an async function
+    mock_get = AsyncMock(return_value=mock_response)
+
+    # Mock the finding index
+    mock_index = MagicMock()
+    mock_index.get = AsyncMock(return_value=mock_index_entry)
+
+    # Mock cache miss then set
+    mock_cache = MagicMock()
+    mock_cache.get_finding_model = AsyncMock(return_value=None)
+    mock_cache.set_finding_model = AsyncMock()
+
+    from app.dependencies import get_cache, get_finding_index
+    from app.main import app
+
+    app.dependency_overrides[get_finding_index] = lambda: mock_index
+    app.dependency_overrides[get_cache] = lambda: mock_cache
+
+    with patch("app.routers.pages.httpx.AsyncClient") as mock_async_client:
+        mock_client = MagicMock()
+        mock_client.get = mock_get
+        mock_async_client.return_value.__aenter__.return_value = mock_client
+        mock_async_client.return_value.__aexit__.return_value = None
+
+        response = client.get("/finding-model/abdominal_abscess/partial")
+        assert response.status_code == 200
+        assert "components/finding_model_display.html" in response.text or "abdominal abscess" in response.text
+
+    app.dependency_overrides.clear()
+
+
+def test_finding_model_partial_not_found(client: TestClient) -> None:
+    from app.dependencies import get_finding_index
+    from app.main import app
+
+    mock_index = MagicMock()
+    mock_index.get = AsyncMock(return_value=None)
+    app.dependency_overrides[get_finding_index] = lambda: mock_index
+    try:
+        response = client.get("/finding-model/missing/partial")
+        assert response.status_code == 404
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_finding_model_partial_http_error(client: TestClient) -> None:
+    # Mock IndexEntry
+    mock_index_entry = MagicMock()
+    mock_index_entry.filename = "test_finding.fm.json"
+    mock_index_entry.name = "test finding"
+
+    # Mock HTTP error
+    mock_response = MagicMock()
+    mock_response.raise_for_status.side_effect = Exception("HTTP 404")
+
+    mock_get = AsyncMock(return_value=mock_response)
+
+    mock_index = MagicMock()
+    mock_index.get = AsyncMock(return_value=mock_index_entry)
+
+    mock_cache = MagicMock()
+    mock_cache.get_finding_model = AsyncMock(return_value=None)
+
+    from app.dependencies import get_cache, get_finding_index
+    from app.main import app
+
+    app.dependency_overrides[get_finding_index] = lambda: mock_index
+    app.dependency_overrides[get_cache] = lambda: mock_cache
+
+    with patch("app.routers.pages.httpx.AsyncClient") as mock_async_client:
+        mock_client = MagicMock()
+        mock_client.get = mock_get
+        mock_async_client.return_value.__aenter__.return_value = mock_client
+        mock_async_client.return_value.__aexit__.return_value = None
+
+        response = client.get("/finding-model/test-finding/partial")
+        # Partial route returns HTMLResponse with 500 on http error
+        assert response.status_code == 500
+
+    app.dependency_overrides.clear()
+
+
+def test_htmx_simple_endpoint(client: TestClient) -> None:
+    response = client.get("/test-htmx-simple")
+    assert response.status_code == 200
+    assert "HTMX Test Successful" in response.text

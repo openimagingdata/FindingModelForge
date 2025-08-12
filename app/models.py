@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -121,3 +122,39 @@ class FindingModelCreationStep(BaseModel):
 
 
 # Removed unused step form models - now using Form() parameters directly in routes
+
+
+# ===== Draft workflow models =====
+
+
+class FindingModelInputs(BaseModel):
+    """User-provided inputs for a finding model draft (excluding name)."""
+
+    description: str
+    synonyms: list[str] | None = None
+    attributes_markdown: str | None = None
+
+
+class LogEntry(BaseModel):
+    """Audit entry for draft actions."""
+
+    timestamp: datetime
+    user_id: int
+    action: str
+    details: dict[str, Any] | None = None
+
+
+class FindingModelDraft(BaseModel):
+    """Draft representation persisted in MongoDB."""
+
+    id: str
+    user_id: int
+    name: str
+    created_at: datetime
+    updated_at: datetime
+    inputs: FindingModelInputs
+    generated_json: str | None = None
+    status: Literal["draft", "submitted", "under-review", "added", "declined"] = "draft"
+    action_log: list[LogEntry] = Field(default_factory=list)
+
+    model_config = {"from_attributes": True}

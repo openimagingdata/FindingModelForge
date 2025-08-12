@@ -4,7 +4,10 @@ import os
 from typing import Any
 
 import pytest
+from motor.motor_asyncio import AsyncIOMotorClient
 from playwright.async_api import Page, async_playwright, expect
+
+from app.config import settings
 
 # Mark all tests in this file as integration tests requiring Playwright
 pytestmark = [pytest.mark.integration, pytest.mark.slow, pytest.mark.playwright]
@@ -13,7 +16,7 @@ pytestmark = [pytest.mark.integration, pytest.mark.slow, pytest.mark.playwright]
 class TestHTMXFindingModelCreationWorking:
     """Working integration tests for the HTMX finding model creation workflow."""
 
-    async def test_navigation_to_login_page(self):
+    async def test_navigation_to_login_page(self) -> None:
         """Test basic navigation to the create page (shows login requirement)."""
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=os.getenv("PLAYWRIGHT_HEADLESS", "true") != "false")
@@ -40,7 +43,7 @@ class TestHTMXFindingModelCreationWorking:
             finally:
                 await browser.close()
 
-    async def test_home_page_navigation(self):
+    async def test_home_page_navigation(self) -> None:
         """Test navigation around the public parts of the site."""
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=os.getenv("PLAYWRIGHT_HEADLESS", "true") != "false")
@@ -66,7 +69,7 @@ class TestHTMXFindingModelCreationWorking:
             finally:
                 await browser.close()
 
-    async def test_health_endpoint_via_browser(self):
+    async def test_health_endpoint_via_browser(self) -> None:
         """Test the health endpoint via browser navigation."""
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=os.getenv("PLAYWRIGHT_HEADLESS", "true") != "false")
@@ -90,7 +93,7 @@ class TestHTMXFindingModelCreationWorking:
             finally:
                 await browser.close()
 
-    async def test_authenticated_access_via_test_endpoint(self):
+    async def test_authenticated_access_via_test_endpoint(self) -> None:
         """Test that the test authentication endpoint allows access to protected routes."""
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=os.getenv("PLAYWRIGHT_HEADLESS", "true") != "false")
@@ -123,7 +126,7 @@ class TestHTMXFindingModelCreationWorking:
             finally:
                 await browser.close()
 
-    async def test_basic_htmx_form_interaction(self):
+    async def test_basic_htmx_form_interaction(self) -> None:
         """Test basic HTMX form interaction on the first step."""
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=os.getenv("PLAYWRIGHT_HEADLESS", "true") != "false")
@@ -160,7 +163,7 @@ class TestHTMXFindingModelCreationWorking:
             finally:
                 await browser.close()
 
-    async def test_complete_htmx_workflow_debug(self):
+    async def test_complete_htmx_workflow_debug(self) -> None:
         """Interactive test for debugging the complete HTMX workflow."""
         async with async_playwright() as p:
             # Only run this test in headed mode for debugging
@@ -173,8 +176,35 @@ class TestHTMXFindingModelCreationWorking:
             )
             page = await browser.new_page(viewport={"width": 1400, "height": 1000})
 
+            # Prepare database connection and clean any previous drafts for this finding name
+            mongo_url = settings.mongodb_uri
+            db_name = settings.mongodb_db
+            print(f"🔌 Connecting to MongoDB at {mongo_url} / db={db_name}")
+            client: Any = AsyncIOMotorClient(mongo_url)
+            db = client[db_name]
+            drafts = db["finding_model_drafts"]
+            test_user_id = int(os.getenv("TEST_AUTH_USER_ID", "999999"))
+
             try:
                 print("🚀 Starting HTMX workflow test...")
+
+                # Inspect and clean up any stale drafts for this run (user-based cleanup)
+                initial_user_count = await drafts.count_documents({"user_id": test_user_id})
+                initial_name_count = await drafts.count_documents({"name": "Debug Test Finding"})
+                print(f"📦 Existing drafts before cleanup: user={initial_user_count}, name={initial_name_count}")
+
+                deleted_user = await drafts.delete_many({"user_id": test_user_id})
+                deleted_name = await drafts.delete_many({"name": "Debug Test Finding"})
+                print(
+                    f"🧹 Deleted {deleted_user.deleted_count} by user and "
+                    f"{deleted_name.deleted_count} by name for db '{db_name}'"
+                )
+
+                # Double-check collection is now clean for this user
+                remaining_user = await drafts.count_documents({"user_id": test_user_id})
+                remaining_name = await drafts.count_documents({"name": "Debug Test Finding"})
+                print(f"📦 Remaining after cleanup: user={remaining_user}, name={remaining_name}")
+                assert remaining_user == 0, "❌ Drafts not fully cleaned up for test user before run"
 
                 # Step 1: Navigate and authenticate
                 print("🔐 Authenticating...")
@@ -283,6 +313,7 @@ class TestHTMXFindingModelCreationWorking:
                             break
 
                 if similar_found:
+                    final_clicked = False
                     await page.wait_for_timeout(2000)  # Brief pause
 
                     # Step 3: We should now be on the attributes editing page with "Generate Final Model" button
@@ -299,54 +330,97 @@ class TestHTMXFindingModelCreationWorking:
                         print("🏷️  Testing synonym management on edit attributes page...")
                         await self._test_synonym_management(page, "edit attributes page")
 
-                        # NOW look for and click Generate Final Model button
-                        print("🔍 Step 4: Looking for Generate Final Model button...")
+                        # NOW look for and click the Show/Generate Model button
+                        print("🔍 Step 4: Looking for Show/Generate Model button...")
                         final_selectors = [
+                            "button:has-text('Show Model')",
                             "button:has-text('Generate Final Model')",
                             "button:has-text('Generate Model')",
                             "button[type='submit']:not(:has-text('Check')):not(:has-text('Add'))",
                         ]
 
-                        final_clicked = False
+                        # already initialized above
                         for selector in final_selectors:
                             final_btn = page.locator(selector)
                             if await final_btn.count() > 0:
                                 await final_btn.first.click()
-                                print("🎯 Clicked Generate Final Model button")
+                                print("🎯 Clicked Show/Generate Model button")
                                 final_clicked = True
                                 break
 
                         if final_clicked:
                             # Wait for final model generation to complete - HTMX response
-                            print("⏳ Waiting for HTMX response after Generate Final Model...")
+                            print("⏳ Waiting for HTMX response after model generation...")
                             try:
                                 # Wait for the success heading to appear (indicates HTMX completed)
                                 await page.wait_for_selector(
                                     "h2:has-text('Your Finding Model is Ready!')", timeout=30000
                                 )
                                 print("✅ Final model generation completed!")
+
+                                # Verify a draft exists in DB with status 'draft' (pre-submit)
+                                latest = (
+                                    await drafts.find({"user_id": test_user_id, "name": "Debug Test Finding"})
+                                    .sort("updated_at", -1)
+                                    .limit(1)
+                                    .to_list(length=1)
+                                )
+                                assert latest, "❌ No draft found in DB after model generation"
+                                pre = latest[0]
+                                print(f"🗄️ Pre-submit draft: status={pre.get('status')} id={pre.get('_id')}")
+                                assert pre.get("status") == "draft", "❌ Pre-submit draft status should be 'draft'"
+                                assert pre.get("user_id") == test_user_id, "❌ Draft user_id mismatch"
+                                assert pre.get("name") == "Debug Test Finding", "❌ Draft name mismatch"
+                                assert pre.get("generated_json") in (None, ""), (
+                                    "❌ generated_json should be empty before submission"
+                                )
                             except Exception:
                                 print("⚠️ Final model generation may have timed out")
                                 await page.wait_for_timeout(3000)  # Fallback wait
                         else:
-                            print("❌ Generate Final Model button not found")
+                            print("❌ Show/Generate Model button not found")
 
                     except Exception:
                         print("⚠️ Attributes step may not have appeared")
 
                     if not final_clicked:
-                        print("❌ Generate Final Model button not found")
+                        print("❌ Show/Generate Model button not found")
                 else:
-                    print("❌ No Check for Similar button found or enabled")
+                    print("❌ No Check for Similar button found or enabled; trying alternate path...")
+                    # Try Step 3 path: Continue to Edit Attributes
+                    cont_btn = page.locator("button:has-text('Continue to Edit Attributes')")
+                    if await cont_btn.count() > 0:
+                        await cont_btn.first.click()
+                        await page.wait_for_timeout(1000)
+                        print("✅ Clicked Continue to Edit Attributes")
+                    else:
+                        print("ℹ️ Continue to Edit Attributes not found; proceeding to look for Show Model directly")
 
-                # Final page inspection - check for all expected elements
+                    # Now try to find and click Show/Generate Model on step 4
+                    final_selectors = [
+                        "button:has-text('Show Model')",
+                        "button:has-text('Generate Final Model')",
+                        "button:has-text('Generate Model')",
+                    ]
+                    final_clicked = False
+                    for selector in final_selectors:
+                        final_btn = page.locator(selector)
+                        if await final_btn.count() > 0:
+                            await final_btn.first.click()
+                            print("🎯 Clicked Show/Generate Model button (alternate path)")
+                            final_clicked = True
+                            break
+                    if not final_clicked:
+                        print("⚠️ Could not find Show/Generate Model button even via alternate path")
+
+                # Final page inspection before submission - ensure IDs/JSON are not visible yet
                 current_url = page.url
                 current_title = await page.title()
                 print(f"🏁 Final URL: {current_url}")
                 print(f"🏁 Final title: {current_title}")
 
-                # Check for key final page elements - and ASSERT they exist!
-                print("🔍 Checking for expected final page elements...")
+                # Check for key final page elements (pre-submit)
+                print("🔍 Pre-submit checks: ensure model is shown but no IDs/JSON...")
 
                 # 1. Success message and heading
                 success_heading = page.locator("h2:has-text('Your Finding Model is Ready!')")
@@ -366,58 +440,109 @@ class TestHTMXFindingModelCreationWorking:
                 assert desc_count > 0, "❌ Model description not found!"
                 assert attr_count > 0, "❌ Attributes section not found!"
 
-                # 3. JSON accordion
+                # 3. Ensure no IDs are visible before submit
+                id_label = page.locator("text=ID:")
+                id_label_count = await id_label.count()
+                print(f"📊 Pre-submit ID labels found: {id_label_count}")
+                assert id_label_count == 0, "❌ IDs should not be visible before submission"
+
+                # 4. Ensure JSON accordion is not present before submit
+                pre_json_accordion = page.locator("#finding-model-json")
+                pre_json_count = await pre_json_accordion.count()
+                print(f"📊 Pre-submit JSON accordion count: {pre_json_count}")
+                assert pre_json_count == 0, "❌ JSON should not be visible before submission"
+
+                # 5. Click Submit to Repository to trigger HTMX re-render with IDs/JSON
+                submit_btn = page.locator("button:has-text('Submit to Repository')")
+                submit_count = await submit_btn.count()
+                print(f"🟣 Submit button count: {submit_count}")
+                assert submit_count > 0, "❌ Submit to Repository button not found"
+                await submit_btn.first.click()
+
+                # Wait for HTMX response causing IDs/JSON to appear
+                await page.wait_for_timeout(1000)
+                try:
+                    await page.wait_for_selector("#finding-model-json", timeout=30000)
+                except Exception:
+                    print("⚠️ JSON accordion did not appear after submit within timeout")
+
+                # Verify draft status transitioned to 'submitted' in DB
+                latest = (
+                    await drafts.find({"user_id": test_user_id, "name": "Debug Test Finding"})
+                    .sort("updated_at", -1)
+                    .limit(1)
+                    .to_list(length=1)
+                )
+                assert latest, "❌ No draft found in DB after submit"
+                post = latest[0]
+                print(f"🗄️ Post-submit draft: status={post.get('status')} id={post.get('_id')}")
+                assert post.get("status") == "submitted", "❌ Post-submit draft status should be 'submitted'"
+                assert post.get("user_id") == test_user_id, "❌ Post-submit draft user_id mismatch"
+                assert post.get("name") == "Debug Test Finding", "❌ Post-submit draft name mismatch"
+                gj = post.get("generated_json")
+                assert gj and len(gj) > 10, "❌ Post-submit generated_json should be present and non-trivial"
+
+                # Post-submit checks
+                post_id_label_count = await page.locator("text=ID:").count()
+                print(f"📊 Post-submit ID labels found: {post_id_label_count}")
+                assert post_id_label_count > 0, "❌ IDs not shown after submission"
+
                 json_accordion = page.locator("#finding-model-json")
                 json_button = page.locator("button[data-accordion-target='#finding-model-json-body-1']")
                 json_content = page.locator("#finding-model-json-body-1 pre code")
                 accordion_count = await json_accordion.count()
                 button_count = await json_button.count()
                 content_count = await json_content.count()
-                print(f"📊 JSON accordion - Accordion: {accordion_count}, Button: {button_count}")
+                print(f"📊 Post-submit JSON accordion - Accordion: {accordion_count}, Button: {button_count}")
                 print(f"   Content: {content_count}")
-                assert accordion_count > 0, "❌ JSON accordion not found!"
-                assert button_count > 0, "❌ JSON accordion button not found!"
-                assert content_count > 0, "❌ JSON content not found!"
+                assert accordion_count > 0, "❌ JSON accordion not found after submission!"
+                assert button_count > 0, "❌ JSON accordion button not found after submission!"
+                assert content_count > 0, "❌ JSON content not found after submission!"
 
-                # 4. Copy and Download buttons
-                copy_btn = page.locator("button:has-text('Copy')")
-                download_btn = page.locator("button:has-text('Download')")
-                copy_count = await copy_btn.count()
-                download_count = await download_btn.count()
-                print(f"📊 Action buttons - Copy: {copy_count}, Download: {download_count}")
-                assert copy_count > 0, "❌ Copy button not found!"
-                assert download_count > 0, "❌ Download button not found!"
-
-                # 5. Navigation buttons
-                back_btn = page.locator("button:has-text('← Back')")
-                create_another_btn = page.locator("button:has-text('Create Another')")
-                back_count = await back_btn.count()
-                create_count = await create_another_btn.count()
-                print(f"📊 Navigation buttons - Back: {back_count}, Create Another: {create_count}")
-                assert back_count > 0, "❌ Back button not found!"
-                assert create_count > 0, "❌ Create Another button not found!"
-
-                # 6. Test the JSON content actually contains data
-                if await json_content.count() > 0:
-                    # Click accordion to expand it first
-                    if await json_button.count() > 0:
-                        await json_button.click()
-                        await page.wait_for_timeout(1000)
-
-                    json_text = await json_content.text_content()
-                    if json_text and len(json_text.strip()) > 10:
-                        print(f"✅ JSON content: {len(json_text)} characters of JSON data found")
-                        # Check if it looks like valid JSON
-                        if '"name"' in json_text and '"attributes"' in json_text:
-                            print("✅ JSON contains expected finding model structure")
-                        else:
-                            print("⚠️ JSON doesn't contain expected structure")
-                    else:
-                        print("❌ JSON content is empty or too short")
+                # Expand and validate JSON content briefly
+                if await json_button.count() > 0:
+                    await json_button.click()
+                    await page.wait_for_timeout(1000)
+                json_text = await json_content.text_content()
+                if json_text and len(json_text.strip()) > 10:
+                    print(f"✅ JSON content after submit: {len(json_text)} characters of JSON data found")
                 else:
-                    print("❌ No JSON content found")
+                    print("❌ JSON content after submit is empty or too short")
 
-                print("✅ Final page validation completed")
+                print("✅ Post-submit validation completed")
+
+                # ── Resume flow: returning to start with same name should jump to final display ─────────
+                print("🔁 Testing resume: navigate back to start and enter same name...")
+                # Return to create page (auth stays via cookies)
+                await page.goto("http://localhost:8000/create-finding-model")
+                await page.wait_for_load_state("networkidle")
+
+                # Ensure step 1 input is present
+                name_input = page.locator("input[name='name']")
+                await expect(name_input).to_be_visible(timeout=5000)
+                await name_input.fill("Debug Test Finding")
+                await page.wait_for_timeout(500)
+
+                # Click the primary button on step 1 to proceed (Generate Description)
+                gen_btn = page.locator("button:has-text('Generate Description')")
+                if await gen_btn.count() == 0:
+                    # Fallback to any submit button if text differs
+                    gen_btn = page.locator("button[type='submit']")
+                await gen_btn.first.click()
+
+                # Expect to land directly on the final model display for submitted draft
+                await page.wait_for_selector("h2:has-text('Your Finding Model is Ready!')", timeout=30000)
+                # IDs should be visible for submitted drafts
+                resumed_id_count = await page.locator("text=ID:").count()
+                print(f"📊 Resume check: ID labels found after re-entry: {resumed_id_count}")
+                assert resumed_id_count > 0, "❌ Resumed flow didn't show IDs on final display"
+
+                # JSON accordion should be present
+                await expect(page.locator("#finding-model-json")).to_be_visible(timeout=5000)
+                # Back button should not be visible after submit on step 5
+                back_btn_count = await page.locator("button:has-text('Back')").count()
+                print(f"📊 Resume check: Back button count on step 5: {back_btn_count}")
+                assert back_btn_count == 0, "❌ Back button should be hidden for submitted drafts"
 
             except Exception as e:
                 print(f"❌ Test failed with error: {e}")
@@ -427,6 +552,7 @@ class TestHTMXFindingModelCreationWorking:
             print("⏰ Keeping browser open for 10 seconds...")
             await page.wait_for_timeout(10000)  # Keep browser open for 10 seconds
             await browser.close()
+            client.close()
 
     async def _test_synonym_management(self, page: Page, context: str) -> None:
         """Test adding and removing synonyms using Alpine.js."""

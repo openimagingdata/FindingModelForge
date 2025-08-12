@@ -27,15 +27,15 @@
       "mcp__serena__find_symbol",
       "WebFetch(domain:flowbite.com)",
       "mcp__serena",
-      "WebFetch(domain:docs.anthropic.com)"
+      "WebFetch(domain:docs.anthropic.com)",
+      "mcp__playwright",
+      "mcp__sequential",
+      "mcp__context7",
+      "mcp__github"
     ],
     "deny": []
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": [
-    "serena"
-  ],
-  "disabledMcpjsonServers": [
-    "memory"
-  ]
+  "enabledMcpjsonServers": ["serena"],
+  "disabledMcpjsonServers": ["memory"]
 }

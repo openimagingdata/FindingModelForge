@@ -349,22 +349,27 @@ grep -r "badge" templates/macros/
 
 ## Reusable Components & Macros
 
-The application uses a component-based architecture with reusable Jinja2 macros and templates for consistency and maintainability.
+The application uses a component-based architecture with reusable Jinja2 macros and templates for consistency and
+maintainability.
 
 ### Finding Model Display Components
 
 **Complete Display Component**
+
 - **File**: `templates/components/finding_model_complete_display.html`
 - **Purpose**: Full finding model display with formatted view + JSON accordion
 - **Usage**: Use everywhere finding models need to be displayed
+
 ```jinja
 {% include 'components/finding_model_complete_display.html' %}
 ```
 
 **Basic Display Component**
+
 - **File**: `templates/components/finding_model_display.html`
 - **Purpose**: Formatted finding model display only (no JSON)
 - **Usage**: When you only need the visual display without JSON export
+
 ```jinja
 {% include 'components/finding_model_display.html' %}
 ```
@@ -372,9 +377,11 @@ The application uses a component-based architecture with reusable Jinja2 macros 
 ### JSON Accordion Macro
 
 **File**: `templates/macros/json_accordion.html`
+
 - **Purpose**: Proper Flowbite accordion with JSON display, copy, and download functionality
 - **Features**: Dynamic rounded corners, hover effects, proper Flowbite styling
 - **Usage**:
+
 ```jinja
 {% from 'macros/json_accordion.html' import json_accordion %}
 {{ json_accordion(finding_model, "unique-id", "Custom Title") }}
@@ -383,9 +390,11 @@ The application uses a component-based architecture with reusable Jinja2 macros 
 ### Form Validation Macros
 
 **File**: `templates/macros/form_validation.html`
+
 - **Purpose**: Alpine.js form validation with computed properties
 - **Features**: Reactive validation, field-specific checks, form state management
 - **Usage**:
+
 ```jinja
 {% from 'macros/form_validation.html' import validation_data, validated_input, validated_textarea %}
 
@@ -398,9 +407,11 @@ The application uses a component-based architecture with reusable Jinja2 macros 
 ### Synonym Management Macro
 
 **File**: `templates/macros/synonym_manager.html`
+
 - **Purpose**: Interactive synonym add/remove with Alpine.js
 - **Features**: Visual badges, add/remove functionality, JSON serialization for forms
 - **Usage**:
+
 ```jinja
 {% from 'macros/synonym_manager.html' import synonym_manager, synonym_data %}
 
@@ -432,6 +443,7 @@ When creating new reusable components:
 6. **Ensure proper error handling** for missing or invalid data
 
 Example new macro structure:
+
 ```jinja
 {# Purpose: Brief description of what this macro does #}
 {# Parameters:
@@ -453,6 +465,7 @@ The finding model creation workflow demonstrates best practices for HTMX-driven 
 ### Session Management
 
 **Server-side session storage** with Redis caching:
+
 ```python
 # In app/dependencies.py
 @dataclass
@@ -466,6 +479,7 @@ class FindingModelCreationSession:
 ```
 
 **Session dependency injection**:
+
 ```python
 async def get_creation_session(
     session_id: str = Form(default=""),
@@ -477,6 +491,7 @@ async def get_creation_session(
 ### Step Template Consolidation
 
 **Single helper function** for rendering all steps:
+
 ```python
 def render_step_template(
     request: Request,
@@ -496,6 +511,7 @@ def render_step_template(
 ### Form Validation Patterns
 
 **FastAPI Form validation**:
+
 ```python
 @router.post("/create/step/1")
 async def process_step_1(
@@ -506,6 +522,7 @@ async def process_step_1(
 ```
 
 **Manual validation with proper error handling**:
+
 ```python
 def parse_synonyms(synonyms: str) -> list[str]:
     if not synonyms.strip():
@@ -522,17 +539,19 @@ def parse_synonyms(synonyms: str) -> list[str]:
 ### HTMX Integration
 
 **Automatic component reinitialization**:
+
 ```javascript
 // In src/js/main.js
-document.addEventListener('htmx:afterSwap', function(event) {
-  initFlowbite()  // Reinitialize Flowbite components
+document.addEventListener("htmx:afterSwap", function (event) {
+  initFlowbite() // Reinitialize Flowbite components
   if (window.Alpine && event.detail.elt) {
-    Alpine.initTree(event.detail.elt)  // Process new Alpine.js components
+    Alpine.initTree(event.detail.elt) // Process new Alpine.js components
   }
 })
 ```
 
 **Template structure for HTMX swapping**:
+
 ```html
 <!-- Base template with swap target -->
 <div id="step-container" class="max-w-4xl mx-auto">

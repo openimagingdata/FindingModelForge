@@ -111,6 +111,7 @@ Use `uv mypy` for type checking.
 🚨 **CRITICAL: NO custom JS/CSS. ALWAYS use Flowbite and Alpine.js.**
 
 **Before writing ANY UI code:**
+
 1. ✅ Check https://flowbite.com/docs/components/ FIRST
 2. ✅ Use their exact HTML structure and CSS classes
 3. ✅ Use Alpine.js `x-data`, `x-model`, computed properties for reactivity
@@ -118,11 +119,14 @@ Use `uv mypy` for type checking.
 5. ❌ Do NOT create custom validation, modal, or interaction code
 
 **Component/Macro Usage:**
+
 - Always check for existing macros/components before creating new ones.
-- Key macros: `flowbite_components.html`, `app_components.html`, `layout_components.html` (see `docs/UI_COMPONENT_MACROS.md`).
+- Key macros: `flowbite_components.html`, `app_components.html`, `layout_components.html` (see
+  `docs/UI_COMPONENT_MACROS.md`).
 - Use `{% from ... import ... %}` and `{% include ... %}` for reuse.
 
 **Component Discovery Checklist:**
+
 1. Search `templates/components/` and `templates/macros/` for similar functionality
 2. Reuse or extend existing macros/components
 3. Only create new ones if truly needed, and document them
@@ -150,25 +154,32 @@ Use `uv mypy` for type checking.
 ```
 
 **Alpine.js & HTMX Patterns:**
+
 - Use Alpine.js for all UI interactivity (`x-data`, `x-model`, computed properties)
 - Never write ad hoc JavaScript or manual DOM manipulation
 - HTMX is used for multi-step forms and server-driven UI (e.g., finding model creation)
 - Alpine.js is only for local UI state, not for business logic or API orchestration
+
 ## Profile Page Features
 
 - The profile page (`/profile`) uses in-place editing, Alpine.js validation, and Flowbite components for all UI.
-- Organization management uses badges, real-time validation, and no duplicate orgs (see `docs/PROFILE_PAGE_FEATURES.md`).
+- Organization management uses badges, real-time validation, and no duplicate orgs (see
+  `docs/PROFILE_PAGE_FEATURES.md`).
+
 ## Redis Cache Implementation
 
-- The cache is always present and gracefully degrades if Redis is unavailable (see `docs/REDIS_CACHE_IMPLEMENTATION.md`).
+- The cache is always present and gracefully degrades if Redis is unavailable (see
+  `docs/REDIS_CACHE_IMPLEMENTATION.md`).
 - Used for user, GitHub, and finding model data.
 - All cache operations are safe no-ops if Redis is down; no conditional logic needed in app code.
+
 ## Finding Model Creation Workflow
 
 - Multi-step creation is modularized into separate templates (see `docs/refactoring_plan_finding_model_creation.md`).
 - HTMX is used for step transitions and server-driven UI.
 - All business logic is server-side; Alpine.js is only for UI state.
 - Flowbite stepper and form components are required for all steps.
+
 ## Before You Code Checklist
 
 1. Check Flowbite docs for the component you need

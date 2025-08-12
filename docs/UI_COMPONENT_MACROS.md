@@ -1,132 +1,149 @@
-# Jinja2 Macros for FindingModelForge
+# UI Component Macros Index
 
-This directory contains reusable Jinja2 macros that provide consistent UI components throughout the application. All
-macros follow Flowbite design patterns and include proper dark mode support.
+Reusable Jinja2 macros for consistent, Flowbite-compliant UI with Alpine.js interactivity. Import only what you use to
+keep templates clean.
 
-## Usage
-
-Import macros at the top of your template:
+## How to import
 
 ```jinja
 {% from "macros/flowbite_components.html" import breadcrumb, action_button, flowbite_badge %}
-{% from "macros/layout_components.html" import page_header %}
-{% from "macros/app_components.html" import finding_model_card %}
+{% from "macros/layout_components.html" import hero_section, content_section, container %}
+{% from "macros/app_components.html" import required_badge, type_badge, attribute_value %}
+{% from "macros/creation_components.html" import creation_stepper, error_alert, success_alert %}
+{% from "macros/create_workflow_elements.html" import htmx_form, input_field, textarea_field, navigation_buttons %}
+{% from "macros/form_validation.html" import validation_data, validated_input, validated_textarea %}
+{% from "macros/synonym_manager.html" import synonym_manager, synonym_data %}
+{% from "macros/json_accordion.html" import json_accordion %}
 ```
 
-## Available Components
+## Core Flowbite Components (macros/flowbite_components.html)
 
-### Core Flowbite Components (`flowbite_components.html`)
+- Buttons
+  - flowbite_button(text, href="#", type="primary"|"secondary"|"success"|"warning"|"danger"|"dark",
+    size="xs"|"sm"|"default"|"lg", icon=None, icon_position="left"|"right", disabled=False, target_blank=False)
+  - action_button(text, type=..., size=..., icon=None, icon_position="left"|"right", disabled=False, classes="",
+    attributes="")
+- Badges & Cards
+  - flowbite_badge(text, color="default"|"gray"|"red"|"green"|"yellow"|"indigo"|"purple"|"pink"|"blue",
+    size="xs"|"sm"|"default", pill=False, href=None)
+  - flowbite_card(title, content, href=None, cta_text=None, cta_href=None, icon=None,
+    shadow="none"|"sm"|"default"|"md"|"lg")
+  - flowbite_icon_list(items, icon=None)
+- Alerts
+  - alert(message, type="info"|"success"|"warning"|"error", dismissible=False)
+- Navigation & Identity
+  - breadcrumb(items=[{ text, href?, icon? }])
+  - nav_link(text, href, icon=None, active=False)
+  - user_avatar(user, size="sm"|"default"|"lg", show_name=False)
+  - dropdown_menu(items=[{ text, href, target?, divider? }], trigger_content)
+- Progress
+  - progress_indicator(steps=[...], current_step=1)
+- Forms
+  - form_input(name, type="text", label=None, placeholder="", value="", required=False, disabled=False, readonly=False,
+    classes="", attributes="")
+  - form_textarea(name, label=None, placeholder="", value="", rows=3, required=False, disabled=False, readonly=False,
+    classes="", attributes="")
 
-#### Buttons
+Usage tip: Use attributes to pass Alpine.js directives (e.g., attributes='x-model="email"').
 
-- `flowbite_button(text, href, type, size, icon, icon_position, disabled, target_blank)` - Standard Flowbite button
-  (link)
-- `action_button(text, type, size, icon, icon_position, disabled, classes, attributes)` - Action button for forms/JS
+## Layout Components (macros/layout_components.html)
 
-#### Navigation
+- hero_section(title, subtitle, description, cta_button, image_src=None, image_alt="", icon_src=None)
+- content_section(cards=[safe_html...], max_width="6xl")
+- two_column_layout(left_content, right_content, left_width="1/2", right_width="1/2")
+- three_column_layout(columns=[safe_html...])
+- container(content, max_width="7xl", padding="px-4 py-8")
 
-- `breadcrumb(items)` - Breadcrumb navigation with proper accessibility
-- `nav_link(text, href, icon, active)` - Navigation link component
+## App-Specific Components (macros/app_components.html)
 
-#### Badges & Alerts
+- Badges & Values
+  - required_badge()
+  - id_badge(id_value)
+  - type_badge(type_value) # maps common types to colored badges
+  - attribute_value(value) # renders a value as a badge, with tooltip when description present
+- Contributors & Icons
+  - contributor_avatar(contributor, size="sm"|"default"|"lg")
+  - github_icon(classes="w-5 h-5")
+  - checkmark_icon(color="green"|"blue"|"red"|"gray")
+  - arrow_right_icon()
 
-- `flowbite_badge(text, color, size, pill, href)` - Standard badge component
-- `alert(message, type, dismissible)` - Alert/notification component
+## Creation Workflow Components (macros/creation_components.html)
 
-#### Cards & Layout
+- creation_stepper(current_step=1) # Flowbite stepper for the 5-step create flow
+- step_loading_indicator() # HTMX indicator overlay
+- error_alert(error_message)
+- success_alert(success_message)
 
-- `flowbite_card(title, content, href, cta_text, cta_href, icon, shadow)` - Content card
-- `flowbite_icon_list(items, icon)` - List with custom icons
+## HTMX Form Elements (macros/create_workflow_elements.html)
 
-#### Forms
+- htmx_form(step_number, method="post", extra_classes="")
+  - Block macro: wraps form contents and wires hx-post to /api/finding-models/create/step/{step_number}
+  - Example:
+    ```jinja
+    {% call htmx_form(4) %}
+      {{ input_field('name', 'Name', required=true) }}
+      {{ navigation_buttons(back_step=3) }}
+    {% endcall %}
+    ```
+- submit_button(text="Continue", loading_text="Processing...", extra_classes="", disabled=False)
+- back_button(step_number, text="← Back", extra_classes="")
+- input_field(name, label, value="", type="text", placeholder="", required=False, extra_classes="")
+- textarea_field(name, label, value="", rows=4, placeholder="", required=False, extra_classes="")
+- navigation_buttons(back_step=None, back_text="← Back", submit_text="Continue", submit_loading="Processing...")
+- status_indicator(success: bool, message: str)
 
-- `form_input(name, type, label, placeholder, value, required, disabled, readonly, classes, attributes)` - Form input
-  field
-- `form_textarea(name, label, placeholder, value, rows, required, disabled, readonly, classes, attributes)` - Textarea
-  field
+## Alpine.js Validation (macros/form_validation.html)
 
-#### User Interface
+- validation_data(initial_name='', initial_description='', initial_attributes='')
+  - Returns an Alpine.js data object with computed validation states; bind via x-data="..."
+- validation_component() # legacy alias of validation_data()
+- validated_input(name, label, value="", type="text", placeholder="", required=False, minlength=None, maxlength=None,
+  pattern=None, pattern_message=None, extra_classes="", show_counter=False)
+- validated_textarea(name, label, value="", rows=4, placeholder="", required=False, minlength=None, maxlength=None,
+  extra_classes="")
 
-- `user_avatar(user, size, show_name)` - User avatar with fallback
-- `dropdown_menu(items, trigger_content)` - Dropdown menu with Alpine.js
-- `progress_indicator(steps, current_step)` - Multi-step progress indicator
-
-### Layout Components (`layout_components.html`)
-
-- `page_header(title, subtitle, actions)` - Standard page header with optional actions
-- `section_divider(title)` - Section divider with title
-- `container(content, max_width, padding)` - Responsive container wrapper
-
-### App-Specific Components (`app_components.html`)
-
-- `finding_model_card(model, show_actions)` - Finding model display card with metadata
-- `user_profile_card(user)` - User profile information display
-
-## Examples
-
-### Breadcrumb Navigation
+Example:
 
 ```jinja
-{% set home_icon %}
-    <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-        <path d="m19.707 9.293-2-2-7-7a1 1 0 0 0-1.414 0l-7 7-2 2a1 1 0 0 0 1.414 1.414L2 10.414V18a2 2 0 0 0 2 2h3a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h3a2 2 0 0 0 2-2v-7.586l.293.293a1 1 0 0 0 1.414-1.414Z"/>
-    </svg>
-{% endset %}
-
-{{ breadcrumb([
-    {"text": "Home", "href": url_for('index'), "icon": home_icon},
-    {"text": "Finding Models", "href": url_for('pages.finding_models_list')},
-    {"text": "Current Model"}
-]) }}
+<div x-data='{{ validation_data() | safe }}'>
+  {{ validated_input('name', 'Name', required=true, minlength=3, maxlength=200) }}
+  {{ validated_textarea('description', 'Description', required=true, minlength=10) }}
+  {{ action_button('Save', type='primary', attributes=':disabled="!isFormValid()"') }}
+  <input type="hidden" name="name" x-ref="name" :value="name">
+  <input type="hidden" name="description" x-ref="description" :value="description">
+</div>
 ```
 
-### Action Buttons
+## Synonym Manager (macros/synonym_manager.html)
+
+- synonym_manager() # badges UI for synonyms with add/remove
+- synonym_data(initial_synonyms) # Alpine.js data for synonyms state
+
+Example:
 
 ```jinja
-<!-- Primary action button -->
-{{ action_button("Save Changes", type="primary", attributes='@click="saveProfile()" :disabled="isSaving"') }}
-
-<!-- Secondary button -->
-{{ action_button("Cancel", type="secondary", attributes='@click="cancelEdit()"') }}
+<div x-data='{{ synonym_data([]) | safe }}'>
+  {{ synonym_manager() }}
+</div>
 ```
 
-### Form Inputs
+## JSON Accordion (macros/json_accordion.html)
 
-```jinja
-{{ form_input("email", type="email", label="Email Address", placeholder="Enter your email", required=true) }}
+- json_accordion(finding_model, accordion_id="json-accordion", title="JSON Data")
+  - Uses Flowbite accordion markup. Includes Download/Copy buttons wired to global helpers `downloadJSON` and
+    `copyToClipboard` provided by `src/js/main.js` (approved shared utilities).
 
-{{ form_textarea("bio", label="Biography", placeholder="Tell us about yourself", rows=4) }}
-```
+### Shared JS utilities
 
-### Badges
+- The global functions `downloadJSON(content, filename)` and `copyToClipboard(content)` are defined in `src/js/main.js`
+  and are approved for use by macros/components that need copy/download behavior. Do not add ad hoc JS—reuse these
+  utilities.
+- These utilities ship in the Vite bundle and are included via `templates/base.html`, so you don’t need to add extra
+  script tags.
 
-```jinja
-{{ flowbite_badge("Active", color="green") }}
-{{ flowbite_badge("Draft", color="yellow", pill=true) }}
-```
+## Best practices
 
-## Best Practices
-
-1. **Use appropriate macros**: Always prefer macros over inline HTML for repeated patterns
-2. **Consistent styling**: Macros ensure consistent Flowbite styling and dark mode support
-3. **Accessibility**: All macros include proper ARIA attributes and accessibility features
-4. **Customization**: Use the `classes` and `attributes` parameters for component-specific customization
-5. **Alpine.js integration**: Many macros support Alpine.js directives via the `attributes` parameter
-
-## File Organization
-
-- **`flowbite_components.html`**: Core UI components (buttons, badges, forms, etc.)
-- **`layout_components.html`**: Layout and structural components
-- **`app_components.html`**: Application-specific business components
-
-Import only the macros you need to keep templates clean and maintainable.
-
-## Migration Guide
-
-When refactoring templates to use macros:
-
-1. **Identify repeated patterns** - Look for similar HTML structures across templates
-2. **Choose appropriate macros** - Use existing macros or create new ones for common patterns
-3. **Update imports** - Add macro imports at the top of templates
-4. **Test thoroughly** - Ensure Alpine.js functionality and styling remain intact
-5. **Document new macros** - Update this README with any new macro additions
+- Always prefer these macros over hand-rolled HTML for repeated patterns.
+- Stick to Flowbite’s structure and classes; use Alpine.js for interactivity via attributes.
+- Avoid custom JS/CSS; when needed, wire through attributes and established macros.
+- Keep templates small: import only the macros you use.
