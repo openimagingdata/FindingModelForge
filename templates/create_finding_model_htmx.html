@@ -10,8 +10,8 @@
             <p class="text-gray-600 dark:text-gray-400">Build a new finding model through our guided workflow</p>
         </div>
 
-        <!-- HTMX Container for dynamic content -->
-        <div id="step-container">
+    <!-- HTMX Container for dynamic content -->
+    <div id="step-container">
             <!-- Initial content will be loaded here via HTMX -->
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
                 <div class="text-center py-8">
@@ -19,13 +19,35 @@
                     <p class="mt-2 text-gray-600 dark:text-gray-400">Loading creation workflow...</p>
                 </div>
             </div>
-            <!-- Kick off the creation workflow without custom JS -->
+
+            <!-- Kick off the creation workflow with a single, prioritized request:
+                 1) If draft_id is present -> resume that draft
+                 2) Else if name is present -> jump into step 1 with that name
+                 3) Else -> start fresh (restart) -->
+            {% if start_draft_id and start_draft_id|length > 0 %}
+            <div
+                hx-post="/api/finding-models/create/resume"
+                hx-trigger="load"
+                hx-target="#step-container"
+                hx-swap="innerHTML"
+                hx-vals='{"draft_id": {{ start_draft_id|tojson }} }'
+            ></div>
+            {% elif start_name and start_name|length >= 3 %}
+            <div
+                hx-post="/api/finding-models/create/step/1"
+                hx-trigger="load"
+                hx-target="#step-container"
+                hx-swap="innerHTML"
+                hx-vals='{"name": {{ start_name|tojson }} }'
+            ></div>
+            {% else %}
             <div
                 hx-post="/api/finding-models/create/restart"
                 hx-trigger="load"
                 hx-target="#step-container"
                 hx-swap="innerHTML"
             ></div>
+            {% endif %}
         </div>
 
 

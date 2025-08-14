@@ -544,6 +544,128 @@ class TestHTMXFindingModelCreationWorking:
                 print(f"📊 Resume check: Back button count on step 5: {back_btn_count}")
                 assert back_btn_count == 0, "❌ Back button should be hidden for submitted drafts"
 
+                # ── New: Visit My Forge (Profile) page and demonstrate submitted +
+                # unsubmitted draft workflow ──────────────────────────────────────
+                print("🏠 Navigating to My Forge (Profile) page...")
+                await page.goto("http://localhost:8000/profile")
+                await page.wait_for_load_state("networkidle")
+
+                # Seed an additional unsubmitted draft for the same user so My Forge shows both states
+                print("🌱 Seeding additional unsubmitted draft for demo...")
+                await drafts.delete_many({"user_id": test_user_id, "name": "PCL Demo Draft"})
+                from datetime import UTC, datetime  # local import to avoid top-level changes
+
+                now2 = datetime.now(UTC)
+                await drafts.insert_one(
+                    {
+                        "user_id": test_user_id,
+                        "name": "PCL Demo Draft",
+                        "status": "draft",
+                        "created_at": now2,
+                        "updated_at": now2,
+                        "inputs": {
+                            "description": (
+                                "A posterior cruciate ligament tear is an injury to the ligament located in the "
+                                "knee that connects the tibia to the femur, commonly referred to as a PCL tear."
+                            ),
+                            "synonyms": [
+                                "PCL tear",
+                                "posterior cruciate ligament injury",
+                            ],
+                            "attributes_markdown": (
+                                "### presence\n\n"
+                                "Presence of posterior cruciate ligament tear\n\n"
+                                "- absent: Posterior cruciate ligament tear is not visible\n"
+                                "- present: Posterior cruciate ligament tear is clearly visible\n"
+                                "- indeterminate: Presence of posterior cruciate ligament tear cannot be determined\n"
+                                "- unknown: Presence of posterior cruciate ligament tear is unknown\n\n"
+                                "### change from prior\n\n"
+                                "How the posterior cruciate ligament tear has changed compared to prior imaging\n\n"
+                                "- unchanged: Posterior cruciate ligament tear is unchanged from prior imaging\n"
+                                "- stable: Posterior cruciate ligament tear is stable\n"
+                                "- new: New posterior cruciate ligament tear not seen on prior imaging\n"
+                                "- resolved: Posterior cruciate ligament tear seen on a prior exam has resolved\n"
+                                "- increased: Posterior cruciate ligament tear has increased\n"
+                                "- decreased: Posterior cruciate ligament tear has decreased\n"
+                                "- larger: Posterior cruciate ligament tear is larger\n"
+                                "- smaller: Posterior cruciate ligament tear is smaller\n\n"
+                                "### severity\n\n"
+                                "- partial: The ligament is injured, but not completely torn\n"
+                                "- complete: The ligament is discontinuous\n"
+                            ),
+                        },
+                        "generated_json": None,
+                        "action_log": [],
+                    }
+                )
+
+                # Refresh My Forge and verify both cards present: the submitted one and the new draft
+                await page.reload()
+                await expect(page.locator("#drafts-grid")).to_be_visible(timeout=10000)
+                submitted_card = page.locator("#drafts-grid .draft-card:has-text('Debug Test Finding')")
+                draft_card = page.locator("#drafts-grid .draft-card:has-text('PCL Demo Draft')")
+                await expect(submitted_card).to_be_visible()
+                await expect(draft_card).to_be_visible()
+
+                # View submitted: JSON is present
+                print("👁️ Viewing submitted card (should show JSON)...")
+                await submitted_card.locator("a[title='View'], button[title='View']").first.click()
+                await page.wait_for_load_state("networkidle")
+                await expect(page.locator("#finding-model-json")).to_be_visible(timeout=10000)
+                await expect(page.locator("text=ID:")).to_be_visible()
+                await page.go_back()
+                await page.wait_for_selector("#drafts-grid")
+
+                # View unsubmitted: JSON is absent
+                print("👁️ Viewing unsubmitted draft (no JSON expected)...")
+                await draft_card.locator("a[title='View'], button[title='View']").first.click()
+                await page.wait_for_load_state("networkidle")
+                await expect(page.locator("#finding-model-json")).to_have_count(0)
+                await page.go_back()
+                await page.wait_for_selector("#drafts-grid")
+
+                # Edit unsubmitted and click Show Model without edits -> reuse path
+                print("✏️ Editing unsubmitted draft without changes (reuse path)...")
+                await draft_card.locator("a[title='Edit'], button[title='Edit']").first.click()
+                await page.wait_for_load_state("networkidle")
+                await expect(page.locator("button:has-text('Show Model')")).to_be_visible()
+                # Capture reuse header from POST /create/step/4
+                reuse_hdr: dict[str, str] = {}
+
+                def on_response_reuse(resp: Any) -> None:  # type: ignore[no-redef]
+                    try:
+                        if "/api/finding-models/create/step/4" in resp.url and resp.request.method == "POST":
+                            val = resp.headers.get("x-model-reused")
+                            if val is not None:
+                                reuse_hdr["x-model-reused"] = val
+                    except Exception:
+                        pass
+
+                page.on("response", on_response_reuse)  # type: ignore[arg-type]
+                await page.locator("button:has-text('Show Model')").click()
+                # Reuse path lands on step 5 quickly; ensure heading appears
+                await expect(page.locator("h2:has-text('Your Finding Model is Ready!')")).to_be_visible(timeout=20000)
+                # Confirm reuse
+                assert reuse_hdr.get("x-model-reused") == "1", f"Expected reuse in headed demo, got: {reuse_hdr}"
+                # Back to My Forge
+                await page.goto("http://localhost:8000/profile")
+                await page.wait_for_selector("#drafts-grid")
+
+                # Edit unsubmitted and make a change -> regenerate
+                print("✏️ Editing unsubmitted draft WITH changes (should regenerate)...")
+                await draft_card.locator("a[title='Edit'], button[title='Edit']").first.click()
+                await page.wait_for_load_state("networkidle")
+                await expect(page.locator("button:has-text('Show Model')")).to_be_visible()
+                # Change description to trigger non-reuse path
+                desc = page.locator("textarea#description")
+                await desc.fill("Updated PCL description for demo.")
+                # Click Show Model and expect to land on step 5 again
+                await page.locator("button:has-text('Show Model')").click()
+                await expect(page.locator("h2:has-text('Your Finding Model is Ready!')")).to_be_visible(timeout=30000)
+                # Verify updated description is reflected on the page
+                await expect(page.locator("body")).to_contain_text("Updated PCL description for demo.")
+                print("✅ Headed demo: regeneration path verified after edit")
+
             except Exception as e:
                 print(f"❌ Test failed with error: {e}")
                 print("🔍 Browser will stay open for debugging...")

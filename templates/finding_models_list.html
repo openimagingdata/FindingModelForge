@@ -5,7 +5,7 @@
 
 {% block content %}
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
-  <div class="container mx-auto px-4 py-8 max-w-6xl">
+    <div class="container mx-auto px-4 py-8 pb-16 max-w-5xl">
     <!-- Breadcrumb -->
     {% set home_icon %}
         <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -43,6 +43,15 @@
                     this.modelContent = '<div class=&quot;p-4 text-red-600&quot;>Error loading model</div>';
                 }
                 this.showingModel = true;
+                // Initialize Flowbite and Alpine for newly injected content
+                this.$nextTick(() => {
+                    if (window.initFlowbite) {
+                        try { window.initFlowbite(); } catch (e) { /* noop */ }
+                    }
+                    if (window.Alpine && this.$refs.modelContent) {
+                        try { Alpine.initTree(this.$refs.modelContent); } catch (e) { /* noop */ }
+                    }
+                });
             },
             hideModel() {
                 this.showingModel = false;
@@ -141,7 +150,7 @@
             </div>
 
             <!-- Model Content -->
-            <div x-html="modelContent"></div>
+            <div x-ref="modelContent" x-html="modelContent"></div>
         </div>
     </div>
   </div>

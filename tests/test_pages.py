@@ -546,6 +546,54 @@ def test_finding_model_partial_success(client: TestClient) -> None:
     app.dependency_overrides.clear()
 
 
+def test_finding_model_partial_hyphenated_slug(client: TestClient) -> None:
+    """Hyphenated slug like 'acro-osteolysis' should resolve and return HTML (no 404)."""
+    # Reuse existing sample data/file
+    test_data_path = Path(__file__).parent / "data" / "abdominal_abscess.fm.json"
+    test_finding_model_data = test_data_path.read_text()
+
+    # Mock IndexEntry (any filename is fine; we only assert non-404 response)
+    mock_index_entry = MagicMock()
+    mock_index_entry.filename = "abdominal_abscess.fm.json"
+    mock_index_entry.name = "acro osteolysis"
+
+    # Mock HTTP response
+    mock_response = MagicMock()
+    mock_response.text = test_finding_model_data
+    mock_response.raise_for_status.return_value = None
+
+    # Mock AsyncClient.get as an async function
+    mock_get = AsyncMock(return_value=mock_response)
+
+    # Mock the finding index: ensure it can be called with space-normalized name
+    mock_index = MagicMock()
+    mock_index.get = AsyncMock(return_value=mock_index_entry)
+
+    # Mock cache miss then set
+    mock_cache = MagicMock()
+    mock_cache.get_finding_model = AsyncMock(return_value=None)
+    mock_cache.set_finding_model = AsyncMock()
+
+    from app.dependencies import get_cache, get_finding_index
+    from app.main import app
+
+    app.dependency_overrides[get_finding_index] = lambda: mock_index
+    app.dependency_overrides[get_cache] = lambda: mock_cache
+
+    with patch("app.routers.pages.httpx.AsyncClient") as mock_async_client:
+        mock_client = MagicMock()
+        mock_client.get = mock_get
+        mock_async_client.return_value.__aenter__.return_value = mock_client
+        mock_async_client.return_value.__aexit__.return_value = None
+
+        response = client.get("/finding-model/acro-osteolysis/partial")
+        assert response.status_code == 200
+        # Ensure we attempted lookup with the space-normalized variant at least once
+        mock_index.get.assert_any_await("acro osteolysis")
+
+    app.dependency_overrides.clear()
+
+
 def test_finding_model_partial_not_found(client: TestClient) -> None:
     from app.dependencies import get_finding_index
     from app.main import app

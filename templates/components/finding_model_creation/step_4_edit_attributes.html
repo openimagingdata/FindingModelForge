@@ -18,7 +18,7 @@
                 </div>
         </div>
         {% endif %}
-        <form hx-post="/api/finding-models/create/step/4"
+    <form hx-post="/api/finding-models/create/step/4"
                             hx-target="#step-container"
                             hx-swap="innerHTML">
 
@@ -48,6 +48,9 @@
                     {{ synonym_manager() }}
                 </fieldset>
 
+                {# Include session_id so the server can retrieve the same creation session on POST #}
+                <input type="hidden" name="session_id" value="{{ session_data.session_id }}" />
+
                 {# Only include draft_id when it exists to avoid sending empty string #}
                 {% if session_data.draft_id %}
                 <input type="hidden" name="draft_id" value="{{ session_data.draft_id }}" />
@@ -65,15 +68,7 @@
                     extra_classes=("font-mono text-sm " + ("opacity-60" if session_data.draft_status == 'submitted' else ""))
                 ) }}
 
-                <div class="flex justify-between pt-4">
-                    <button type="button"
-                            hx-get="/api/finding-models/create/step/3"
-                            hx-target="#step-container"
-                            hx-swap="innerHTML"
-                            class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
-                        Back
-                    </button>
-
+                <div class="flex justify-end pt-4">
                     <div class="flex items-center gap-3">
                         <div id="draft-actions"></div>
                         {% if session_data.draft_status != 'submitted' %}
@@ -87,8 +82,6 @@
                         </div>
 
                         {% endif %}
-                        </div>
-
                         <button type="submit"
                                 :disabled="!isFormValid()"
                                 :class="{'opacity-50 cursor-not-allowed': !isFormValid()}"

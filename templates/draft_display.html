@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% from 'macros/flowbite_components.html' import breadcrumb %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+  <div class="container mx-auto px-4 py-8 pb-16 max-w-5xl">
+    {% set home_icon %}
+        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+            <path d="m19.707 9.293-2-2-7-7a1 1 0 0 0-1.414 0l-7 7-2 2a1 1 0 0 0 1.414 1.414L2 10.414V18a2 2 0 0 0 2 2h3a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h3a2 2 0 0 0 2-2v-7.586l.293.293a1 1 0 0 0 1.414-1.414Z"/>
+        </svg>
+    {% endset %}
+
+    {{ breadcrumb([
+        {"text": "Home", "href": url_for('index'), "icon": home_icon},
+        {"text": "Profile", "href": url_for('profile')},
+        {"text": draft.name }
+    ]) }}
+
+    {% if finding_model %}
+        {% include 'components/finding_model_complete_display.html' %}
+    {% else %}
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-3">{{ draft.name }}</h2>
+            <p class="text-gray-700 dark:text-gray-300 mb-4">This draft doesn’t have a generated model yet. You can continue editing to generate attributes and a preview model.</p>
+            <div class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                {% if draft.inputs and draft.inputs.description %}
+                    <p><span class="font-medium">Description:</span> {{ draft.inputs.description }}</p>
+                {% endif %}
+                {% if draft.inputs and draft.inputs.synonyms and draft.inputs.synonyms|length > 0 %}
+                    <p><span class="font-medium">Synonyms:</span> {{ draft.inputs.synonyms|join(', ') }}</p>
+                {% endif %}
+            </div>
+            <div class="mt-6">
+                <a href="/create-finding-model?draft_id={{ draft.id }}" class="inline-flex items-center px-4 py-2 rounded-lg text-white bg-primary-600 hover:bg-primary-700">Edit draft</a>
+            </div>
+        </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -8,7 +8,7 @@
 {% block step_navigation %}
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
         {% if session_data.draft_status != 'submitted' %}
-            {{ back_button(4) }}
+            {{ back_button(4, session_id=session_data.session_id, draft_id=session_data.draft_id) }}
         {% endif %}
         <div class="flex items-center gap-2 md:gap-3">
             {% if session_data.draft_status == 'submitted' %}

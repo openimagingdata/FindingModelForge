@@ -29,11 +29,11 @@
                         Finding Models
                     </a>
                     {% if user %}
-                    <a href="{{ url_for('create_finding_model_page') }}" class="inline-flex items-center text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400 px-3 py-2 text-sm font-medium transition-colors">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                        </svg>
-                        Create Model
+                    <a href="{{ url_for('profile') }}" class="inline-flex items-center text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400 px-3 py-2 text-sm font-medium transition-colors">
+                        <span class="mr-2 inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 dark:bg-primary-800 border border-blue-200 dark:border-primary-700">
+                            <img src="{{ url_for('static', path='images/hammer.svg') }}" alt="My Forge" class="w-3.5 h-3.5">
+                        </span>
+                        My Forge
                     </a>
                     {% endif %}
                 </div>
@@ -84,12 +84,8 @@
                          x-transition:leave-end="transform opacity-0 scale-95"
                          class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 border border-gray-200 dark:border-gray-700 z-50">
                         <a href="{{ url_for('profile') }}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
-                            Profile
+                            My Forge
                         </a>
-                        <a href="{{ user.html_url }}" target="_blank" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
-                            GitHub Profile
-                        </a>
-                        <div class="border-t border-gray-200 dark:border-gray-700"></div>
                         <a href="{{ url_for('logout') }}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                             Sign out
                         </a>
@@ -131,11 +127,11 @@
                 Finding Models
             </a>
             {% if user %}
-            <a href="{{ url_for('create_finding_model_page') }}" class="flex items-center px-3 py-2 text-base font-medium text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                </svg>
-                Create Model
+            <a href="{{ url_for('profile') }}" class="flex items-center px-3 py-2 text-base font-medium text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400">
+                <span class="mr-2 inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 dark:bg-primary-800 border border-blue-200 dark:border-primary-700">
+                    <img src="{{ url_for('static', path='images/hammer.svg') }}" alt="My Forge" class="w-3.5 h-3.5">
+                </span>
+                My Forge
             </a>
             <a href="{{ url_for('logout') }}" class="block px-3 py-2 text-base font-medium text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400">
                 Sign out

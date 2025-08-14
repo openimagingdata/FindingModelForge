@@ -47,6 +47,39 @@
     </a>
 {%- endmacro %}
 
+{# Flowbite Icon Button (icon-only) #}
+{% macro flowbite_icon_button(icon, color="blue", size="default", title=none, href=none, attributes="") -%}
+    {% set size_classes = {
+        "xs": "p-2 text-xs",
+        "sm": "p-2.5 text-sm",
+        "default": "p-2.5 text-sm",
+        "lg": "p-3.5 text-base"
+    } %}
+
+    {% set color_classes = {
+        "blue": "text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800",
+        "green": "text-white bg-green-700 hover:bg-green-800 focus:ring-4 focus:outline-none focus:ring-green-300 dark:bg-green-600 dark:hover:bg-green-700 dark:focus:ring-green-800",
+        "red": "text-white bg-red-700 hover:bg-red-800 focus:ring-4 focus:outline-none focus:ring-red-300 dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-800",
+        "yellow": "text-gray-800 bg-yellow-300 hover:bg-yellow-400 focus:ring-4 focus:outline-none focus:ring-yellow-200 dark:bg-yellow-600 dark:hover:bg-yellow-700 dark:text-white dark:focus:ring-yellow-800",
+        "gray": "text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 dark:focus:ring-gray-700",
+        "primary": "text-white bg-primary-600 hover:bg-primary-700 focus:ring-4 focus:outline-none focus:ring-primary-300 dark:focus:ring-primary-800"
+    } %}
+
+    {% set classes = ["inline-flex items-center justify-center rounded-lg", size_classes[size], color_classes[color], "text-center transition-colors"]|join(" ") %}
+
+    {% if href %}
+        <a href="{{ href }}" class="{{ classes }}" {% if title %}title="{{ title }}" aria-label="{{ title }}"{% endif %} {{ attributes|safe }}>
+            {{ icon|safe }}
+            {% if title %}<span class="sr-only">{{ title }}</span>{% endif %}
+        </a>
+    {% else %}
+        <button type="button" class="{{ classes }}" {% if title %}title="{{ title }}" aria-label="{{ title }}"{% endif %} {{ attributes|safe }}>
+            {{ icon|safe }}
+            {% if title %}<span class="sr-only">{{ title }}</span>{% endif %}
+        </button>
+    {% endif %}
+{%- endmacro %}
+
 {# Action Button (for forms and JS actions) #}
 {% macro action_button(text, type="primary", size="default", icon=none, icon_position="left", disabled=false, classes="", attributes="") -%}
     {% set base_classes = "inline-flex items-center font-medium rounded-md text-center transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2" %}

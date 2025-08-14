@@ -22,6 +22,7 @@ from findingmodel.tools import (
 
 from app.auth import CurrentUserDep
 from app.config import logger
+from app.vite_manifest import get_vite_asset_path
 from app.dependencies import (
     CreationSessionDep,
     DatabaseDep,
@@ -98,6 +99,8 @@ def render_step_template(
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
+# Ensure shared template globals are set (e.g., vite asset helper used by base.html)
+templates.env.globals["vite_asset"] = get_vite_asset_path
 
 
 # ===== HTMX ENDPOINTS FOR STEP-BY-STEP CREATION =====
@@ -122,6 +125,29 @@ async def get_creation_step(
         if step_number == 3:  # Similar models review
             extra_context["similar_models"] = session.similar_models
         elif step_number == 4:  # Attributes editing
+            # If request includes draft_id and our session lost state, adopt from draft
+            try:
+                draft_id = request.query_params.get("draft_id")
+            except Exception:
+                draft_id = None
+            if draft_id and not (session.description and session.attributes_markdown):
+                try:
+                    draft = await draft_repo.get_draft(draft_id=draft_id, user_id=current_user.id)
+                    if draft is not None and draft.inputs:
+                        session.name = draft.name
+                        session.description = draft.inputs.description or session.description
+                        session.synonyms = draft.inputs.synonyms or session.synonyms
+                        session.attributes_markdown = (
+                            draft.inputs.attributes_markdown
+                            if draft.inputs.attributes_markdown
+                            else session.attributes_markdown
+                        )
+                        session.draft_id = draft.id
+                        session.draft_status = draft.status
+                        await session_manager.update_session(session)
+                        logger.info("Adopted state from draft_id on GET step 4: %s", draft_id)
+                except Exception as e:
+                    logger.warning("Failed to adopt draft on GET step 4 via draft_id=%s: %s", draft_id, e)
             # Generate default attributes markdown if not already set
             if not session.attributes_markdown:
                 session.attributes_markdown = generate_default_attributes_markdown(session.name or "the finding")
@@ -293,8 +319,15 @@ async def process_step_2(
 ) -> Response:
     """Process step 2: Update description and find similar models."""
     try:
-        # Parse synonyms manually
-        synonyms_list = parse_synonyms(synonyms)
+        # Parse synonyms manually; if Alpine hasn't initialized yet, the hidden
+        # synonyms field may post as an empty string. In that case, fall back to
+        # the session's synonyms to preserve reuse behavior when inputs are unchanged.
+        raw_synonyms = synonyms
+        synonyms_list = parse_synonyms(raw_synonyms)
+        if (not raw_synonyms.strip()) and session.synonyms:
+            # Treat blank post as "no client value provided yet" rather than an intentional clear.
+            # If the user actually clears synonyms via UI, Alpine will send "[]", which is non-blank.
+            synonyms_list = session.synonyms
         logger.info(f"Step 2: Parsed synonyms: {synonyms_list}")
 
         # Update session
@@ -412,87 +445,160 @@ async def process_step_4(
     synonyms: str = Form(default=""),
     description: str = Form(min_length=10, max_length=1000),
     attributes_markdown: str = Form(min_length=20),
+    draft_id: str | None = Form(default=None),
 ) -> HTMLResponse:
     """Process step 4: Generate final model."""
     try:
         # Prevent edits if draft is submitted
         if session.draft_status == "submitted":
             raise HTTPException(status_code=403, detail="Editing is locked after submission")
-        # Parse synonyms manually
-        synonyms_list = parse_synonyms(synonyms)
 
-        # Update session
+        # Parse synonyms; if the hidden field hasn't been hydrated yet, fall back to session
+        raw_synonyms = synonyms
+        synonyms_list = parse_synonyms(raw_synonyms)
+        if (not raw_synonyms.strip()) and session.synonyms:
+            # Treat blank post as "no client value provided yet" rather than an intentional clear
+            synonyms_list = session.synonyms
+
+        # Update session with latest inputs
         session.description = description
         session.synonyms = synonyms_list
         session.attributes_markdown = attributes_markdown
 
-        # Generate final model
-        finding_info = FindingInfo(name=session.name or "", description=description, synonyms=synonyms_list)
+        # If the session lost draft_id but the form carries it, adopt so reuse can work
+        try:
+            incoming_draft_id = (draft_id or "").strip() or None
+        except Exception:
+            incoming_draft_id = None
+        if not getattr(session, "draft_id", None) and incoming_draft_id:
+            try:
+                existing_for_adopt = await draft_repo.get_draft(draft_id=incoming_draft_id, user_id=current_user.id)
+                if existing_for_adopt is not None:
+                    session.draft_id = existing_for_adopt.id
+                    if not getattr(session, "name", None):
+                        session.name = existing_for_adopt.name
+                    await session_manager.update_session(session)
+            except Exception as e:
+                logger.warning("Could not adopt draft_id from form (%s): %s", incoming_draft_id, e)
 
-        complete_markdown = f"""# {session.name}
+        # Optimization: reuse existing generated_json if inputs are unchanged
+        def _norm_syns(values: list[str] | None) -> list[str]:
+            return sorted([s.strip() for s in (values or []) if isinstance(s, str)])
+
+        def _norm_text(text: str | None) -> str:
+            t = text or ""
+            return t.replace("\r\n", "\n").replace("\r", "\n").strip()
+
+        reuse_existing = False
+        finding_model: FindingModelFull | None = None
+
+        if session.draft_id:
+            try:
+                existing = await draft_repo.get_draft(draft_id=session.draft_id, user_id=current_user.id)
+            except Exception:
+                existing = None
+
+            if existing and getattr(existing, "generated_json", None) and getattr(existing, "inputs", None):
+                ex_desc = existing.inputs.description or ""
+                ex_attrs = existing.inputs.attributes_markdown or ""
+                ex_syns = existing.inputs.synonyms or []
+
+                nd = _norm_text(description)
+                na = _norm_text(attributes_markdown)
+                ns = _norm_syns(synonyms_list)
+                ed = _norm_text(ex_desc)
+                ea = _norm_text(ex_attrs)
+                es = _norm_syns(ex_syns)
+
+                if nd == ed and na == ea and ns == es:
+                    try:
+                        finding_model = FindingModelFull.model_validate_json(existing.generated_json)  # type: ignore[arg-type]
+                        reuse_existing = True
+                        logger.info("Reusing stored generated_json for draft %s (inputs unchanged)", existing.id)
+                    except Exception as e:
+                        logger.warning("Failed to parse existing generated_json for reuse: %s", e)
+                        reuse_existing = False
+
+        if not reuse_existing:
+            # Generate final model
+            finding_info = FindingInfo(name=session.name or "", description=description, synonyms=synonyms_list)
+
+            complete_markdown = f"""# {session.name}
 
 ## Description
 {description}
 
 {attributes_markdown}
 """
+            finding_model_generated = await create_model_from_markdown(finding_info, markdown_text=complete_markdown)
 
-        finding_model_generated = await create_model_from_markdown(finding_info, markdown_text=complete_markdown)
+            # Add IDs and contributors
+            assert database.finding_index, "FindingIndex must be initialized in the database"
+            author = database.people.get(current_user.login)
+            source = (
+                author.organization_code
+                if author
+                else (current_user.organizations[0] if current_user.organizations else "OIDM")
+            )
 
-        # Add IDs and contributors
-        assert database.finding_index, "FindingIndex must be initialized in the database"
-        author = database.people.get(current_user.login)
-        source = (
-            author.organization_code
-            if author
-            else (current_user.organizations[0] if current_user.organizations else "OIDM")
-        )
+            fm = add_ids_to_model(finding_model_generated, source=source)
+            add_standard_codes_to_model(fm)
 
-        finding_model = add_ids_to_model(finding_model_generated, source=source)
-        add_standard_codes_to_model(finding_model)
+            if author:
+                fm.contributors = [author]
+            if source and (organization := database.organizations.get(source)):
+                if fm.contributors:
+                    fm.contributors.append(organization)
+                else:
+                    fm.contributors = [organization]
 
-        if author:
-            finding_model.contributors = [author]
-        if source and (organization := database.organizations.get(source)):
-            if finding_model.contributors:
-                finding_model.contributors.append(organization)
-            else:
-                finding_model.contributors = [organization]
+            finding_model = fm
 
-        # Store in session for template rendering - serialize to dict but handle HttpUrl types
+        # Store in session for template rendering
+        assert finding_model is not None, "finding_model must be set by this point"
         session.final_model = finding_model.model_dump(mode="json", exclude_none=True)
         session.current_step = 5
         await session_manager.update_session(session)
 
-        # Save draft including generated model JSON (best-effort)
+        # Save draft including generated model JSON when newly generated (best-effort)
         try:
-            # Build inputs from session
             inputs = FindingModelInputs(
                 description=session.description or "",
                 synonyms=session.synonyms,
                 attributes_markdown=session.attributes_markdown or "",
             )
-            generated_json = finding_model.model_dump_json()
             if session.name:
-                draft = await draft_repo.save_draft(
-                    user_id=current_user.id,
-                    name=session.name,
-                    inputs=inputs,
-                    draft_id=session.draft_id,
-                    generated_json=generated_json,
-                )
+                if reuse_existing:
+                    # Preserve existing generated_json; just update inputs if needed
+                    draft = await draft_repo.save_draft(
+                        user_id=current_user.id,
+                        name=session.name,
+                        inputs=inputs,
+                        draft_id=session.draft_id,
+                    )
+                else:
+                    generated_json = finding_model.model_dump_json()
+                    draft = await draft_repo.save_draft(
+                        user_id=current_user.id,
+                        name=session.name,
+                        inputs=inputs,
+                        draft_id=session.draft_id,
+                        generated_json=generated_json,
+                    )
                 session.draft_id = draft.id
                 session.draft_status = draft.status
                 await session_manager.update_session(session)
         except Exception as e:
-            logger.warning(f"Autosave with generated model failed: {e}")
+            logger.warning("Autosave with model %s failed: %s", "reuse" if reuse_existing else "generation", e)
 
         # Move to step 5 - pass the actual finding_model object to template
-        # In review step, hide IDs and JSON until submitted
         html_content = render_step_template(
             request, 5, session, finding_model=finding_model, show_ids=False, show_json=False
         )
-        return HTMLResponse(content=html_content)
+        # Include a diagnostic header to indicate whether we reused an existing generated JSON
+        resp = HTMLResponse(content=html_content, headers={"X-Model-Reused": "1" if reuse_existing else "0"})
+        logger.info("Exit: draft_id=%s reused=%s", getattr(session, "draft_id", None), reuse_existing)
+        return resp
 
     except Exception as e:
         logger.error(f"Error processing step 4: {str(e)}", exc_info=True)
@@ -662,11 +768,19 @@ async def delete_draft(
         if ok and session.draft_id == draft_id:
             session.draft_id = None
             await session_manager.update_session(session)
+        # Determine how many drafts remain for this user to support OOB updates
+        try:
+            remaining = await draft_repo.list_for_user(current_user.id)
+            remaining_count = len(remaining)
+        except Exception:
+            remaining_count = -1  # unknown
+
         html = templates.get_template("components/drafts/delete_result.html").render(
             request=request,
             deleted=ok,
+            remaining_count=remaining_count,
         )
-        return HTMLResponse(content=html)
+        return HTMLResponse(content=html, headers={"HX-Trigger-After-Settle": "drafts-changed"})
     except Exception as e:
         logger.error(f"Error deleting draft: {e}", exc_info=True)
         error_html = templates.get_template("components/error_display.html").render(
@@ -708,5 +822,124 @@ async def restart_creation(
         logger.error(f"Error restarting creation: {str(e)}", exc_info=True)
         error_html = templates.get_template("components/error_display.html").render(
             request=request, error_message=f"Error restarting creation: {str(e)}"
+        )
+        return HTMLResponse(content=error_html, status_code=500)
+
+
+@router.post("/create/resume")
+async def resume_creation(
+    request: Request,
+    current_user: CurrentUserDep,
+    session: CreationSessionDep,
+    session_manager: SessionManagerDep,
+    draft_repo: DraftRepoDep,
+    draft_id: str = Form(...),
+) -> HTMLResponse:
+    """Resume the creation process from a specific draft id.
+
+    If the draft is in 'draft' status, jump to step 4 (attributes editing) prefilled.
+    If the draft is 'submitted' and has generated_json, show step 5 review.
+    """
+    try:
+        draft = await draft_repo.get_draft(draft_id=draft_id, user_id=current_user.id)
+        if draft is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Draft not found")
+
+        # Populate session from the draft
+        session.name = draft.name
+        session.description = draft.inputs.description if draft.inputs else ""
+        session.synonyms = draft.inputs.synonyms if draft.inputs and draft.inputs.synonyms else []
+        session.attributes_markdown = (
+            draft.inputs.attributes_markdown
+            if draft.inputs and draft.inputs.attributes_markdown
+            else generate_default_attributes_markdown(draft.name)
+        )
+        session.draft_id = draft.id
+        session.draft_status = draft.status
+
+        if draft.status == "submitted":
+            # Human-friendly submitted time (UTC)
+            try:
+                submitted_time = draft.updated_at
+                if submitted_time.tzinfo is None:
+                    submitted_time = submitted_time.replace(tzinfo=UTC)
+                session.submitted_display_time = humanize.naturaltime(datetime.now(UTC) - submitted_time)
+            except Exception:
+                session.submitted_display_time = None
+
+            finding_model: FindingModelFull | None = None
+            if draft.generated_json:
+                try:
+                    finding_model = FindingModelFull.model_validate_json(draft.generated_json)
+                    session.final_model = finding_model.model_dump(mode="json", exclude_none=True)
+                except Exception:
+                    finding_model = None
+            session.current_step = 5
+            await session_manager.update_session(session)
+            html_content = render_step_template(
+                request,
+                5,
+                session,
+                finding_model=finding_model if finding_model else None,
+                show_ids=True,
+                show_json=True,
+            )
+            return HTMLResponse(content=html_content)
+        else:
+            session.current_step = 4
+            await session_manager.update_session(session)
+            html_content = render_step_template(request, 4, session)
+            return HTMLResponse(content=html_content)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error resuming creation: {e}", exc_info=True)
+        error_html = templates.get_template("components/error_display.html").render(
+            request=request, error_message=f"Error resuming creation: {str(e)}"
+        )
+        return HTMLResponse(content=error_html, status_code=500)
+
+
+@router.get("/drafts/{draft_id}/view", response_class=HTMLResponse)
+async def view_draft(
+    request: Request,
+    current_user: CurrentUserDep,
+    draft_repo: DraftRepoDep,
+    draft_id: str,
+) -> HTMLResponse:
+    """View a draft in a read-only page without entering the wizard."""
+    try:
+        draft = await draft_repo.get_draft(draft_id=draft_id, user_id=current_user.id)
+        if draft is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Draft not found")
+
+        finding_model: FindingModelFull | None = None
+        if draft.generated_json:
+            try:
+                finding_model = FindingModelFull.model_validate_json(draft.generated_json)
+            except Exception:
+                finding_model = None
+
+        # Render using standard TemplateResponse to ensure url_for and globals are available
+        return templates.TemplateResponse(
+            request=request,
+            name="draft_display.html",
+            context={
+                "user": current_user,
+                "title": f"Draft: {finding_model.name if finding_model else draft.name}",
+                "draft": draft,
+                "finding_model": finding_model,
+                # Only show IDs/JSON once submitted; drafts remain private/minimal
+                "show_ids": bool(draft.status == "submitted"),
+                "show_json": bool(draft.status == "submitted"),
+            },
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error viewing draft: {e}", exc_info=True)
+        error_html = templates.get_template("components/error_display.html").render(
+            request=request, error_message=f"Error viewing draft: {str(e)}"
         )
         return HTMLResponse(content=error_html, status_code=500)

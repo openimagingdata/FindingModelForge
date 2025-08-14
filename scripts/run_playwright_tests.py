@@ -46,11 +46,11 @@ class PlaywrightTestRunner:
                 try:
                     import requests
 
-                    response = requests.get(f"http://localhost:{self.server_port}/health", timeout=2)
+                    response = requests.get(f"http://localhost:{self.server_port}/api/health", timeout=2)
                     if response.status_code == 200:
                         print("✅ Server is ready!")
                         return True
-                except (requests.RequestException, ImportError):
+                except Exception:
                     continue
 
             print("❌ Server failed to start within timeout")
@@ -76,22 +76,35 @@ class PlaywrightTestRunner:
         """Run the Playwright tests."""
         print("🎭 Running Playwright integration tests...")
 
+        # Use a minimal pytest ini to avoid repo-level addopts like coverage for UI runs
         cmd = [
             "uv",
             "run",
             "pytest",
+            "-p",
+            "no:cov",
+            # override addopts to keep UI runs minimal and fast
+            "--override-ini",
+            "addopts=",
             "tests/test_integration_htmx_playwright.py",
+            "tests/test_profile_playwright.py",
             "-v",
             "--browser=chromium",
         ]
 
         if self.headed:
-            cmd.append("--headed=true")
-        else:
-            cmd.append("--headed=false")
+            cmd.append("--headed")
+
+        # Ensure headed mode is respected by tests that check PLAYWRIGHT_HEADLESS
+        env = None
+        if self.headed:
+            import os
+
+            env = os.environ.copy()
+            env["PLAYWRIGHT_HEADLESS"] = "false"
 
         try:
-            result = subprocess.run(cmd, check=False)
+            result = subprocess.run(cmd, check=False, env=env)
             return result.returncode
         except Exception as e:
             print(f"❌ Failed to run tests: {e}")

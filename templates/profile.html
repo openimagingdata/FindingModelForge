@@ -1,40 +1,30 @@
 {% extends "base.html" %}
-{% from "macros/flowbite_components.html" import action_button %}
+{% from "macros/flowbite_components.html" import flowbite_icon_button, flowbite_badge, flowbite_button %}
 
 {% block content %}
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900" x-data="profileManager()">
-    <div class="max-w-4xl mx-auto py-6 sm:px-6 lg:px-8">
+    <div class="container mx-auto px-4 py-8 pb-16 max-w-5xl">
         <!-- Page header -->
         <div class="mb-8">
-            <div class="flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <!-- Page avatar -->
+                <div class="h-12 w-12 rounded-full border-2 border-gray-200 dark:border-gray-700 flex-shrink-0">
+                    <img x-show="profile.avatar_url"
+                         class="h-full w-full rounded-full object-cover"
+                         :src="profile.avatar_url"
+                         :alt="profile.login">
+                    <div x-show="!profile.avatar_url"
+                         class="h-full w-full rounded-full bg-primary-600 flex items-center justify-center">
+                        <span class="text-white font-medium" x-text="(profile.name || profile.login || 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)"></span>
+                    </div>
+                </div>
                 <div class="flex-1 min-w-0">
                     <h1 class="text-2xl font-bold leading-7 text-gray-900 dark:text-white sm:text-3xl sm:truncate">
-                        Profile
+                        <span x-text="(profile.name && profile.name.trim().length) ? profile.name : (profile.login || 'Unnamed User')"></span><span>’s Forge</span>
                     </h1>
                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                        Manage your profile information and organizations
+                        Manage your profile information and draft finding models
                     </p>
-                </div>
-                <!-- Save/Cancel buttons -->
-                <div x-show="isEditing" x-cloak class="flex space-x-3">
-                    {% set cancel_attrs %}@click="cancelEdit()"{% endset %}
-                    {{ action_button("Cancel", type="secondary", attributes=cancel_attrs) }}
-
-                    {% set save_icon %}
-                        <svg x-show="isSaving" class="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                    {% endset %}
-                    {% set save_attrs %}@click="saveProfile()" :disabled="isSaving"{% endset %}
-
-                    <button type="button"
-                            class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            @click="saveProfile()"
-                            :disabled="isSaving">
-                        {{ save_icon|safe }}
-                        <span x-text="isSaving ? 'Saving...' : 'Save Changes'"></span>
-                    </button>
                 </div>
             </div>
         </div>
@@ -106,91 +96,49 @@
             </div>
         </div>
 
-        <!-- Profile Information Card -->
-        <div class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-lg">
-            <div class="px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">
-                            Profile Information
-                        </h3>
-                        <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
-                            Your personal details and GitHub information
-                        </p>
-                    </div>
-                    <button x-show="!isEditing" x-cloak @click="startEdit()"
-                            class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
-                        <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                        Edit
-                    </button>
-                </div>
-            </div>
-
-            <div class="px-4 py-5 sm:p-6">
+    <!-- Profile Information - Flowbite Accordion (collapsed by default) -->
+    <!-- Add outer border so the section retains a bottom border when collapsed -->
+    <div id="profile-info-accordion" data-accordion="collapse"
+         class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+            <h2 id="profile-info-accordion-heading-1">
+                <button type="button"
+            class="flex items-center justify-between w-full p-5 font-medium text-left text-gray-500 focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-800 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 gap-3"
+                        data-accordion-target="#profile-info-accordion-body-1"
+                        aria-expanded="false"
+                        aria-controls="profile-info-accordion-body-1">
+                    <span class="flex flex-col items-start">
+                        <span class="text-lg leading-6 font-medium text-gray-900 dark:text-white">Profile Information</span>
+                        <span class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">Your personal details and GitHub information</span>
+                    </span>
+                    <svg data-accordion-icon class="w-3 h-3 rotate-180 shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5 5 1 1 5"/>
+                    </svg>
+                </button>
+            </h2>
+        <div id="profile-info-accordion-body-1" class="hidden" aria-labelledby="profile-info-accordion-heading-1">
+                <!-- Add a top border to separate header from content when expanded -->
+                <div class="p-5 border-t border-gray-200 dark:border-gray-700">
                 <dl class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
-                    <!-- Avatar -->
-                    <div class="sm:col-span-2">
-                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Avatar</dt>
-                        <dd class="mt-1 flex items-center space-x-4">
-                            <!-- Use avatar if available, otherwise show initials -->
-                            <div class="h-16 w-16 rounded-full border-2 border-gray-200 dark:border-gray-700 flex-shrink-0">
-                                <img x-show="profile.avatar_url"
-                                     class="h-full w-full rounded-full object-cover"
-                                     :src="profile.avatar_url"
-                                     :alt="profile.login">
-                                <div x-show="!profile.avatar_url"
-                                     class="h-full w-full rounded-full bg-primary-600 flex items-center justify-center">
-                                    <span class="text-white font-medium text-lg"
-                                          x-text="(profile.name || profile.login || 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)">
-                                    </span>
-                                </div>
+                    <!-- Identity (edit-only: name + avatar URL) -->
+                    <div class="sm:col-span-2" x-show="isEditing" x-cloak>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Identity</dt>
+                        <dd class="mt-1 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <div class="sm:col-span-2">
+                                <label for="full_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Full Name</label>
+                                <input type="text" id="full_name" x-model="profile.name"
+                                       class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white sm:text-sm"
+                                       placeholder="Enter your full name">
                             </div>
-                            <div x-show="isEditing" x-cloak class="flex-1">
+                            <div class="sm:col-span-2">
                                 <label for="avatar_url" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Avatar URL</label>
-                                <input type="url"
-                                       id="avatar_url"
-                                       x-model="profile.avatar_url"
-                                       class="block w-full min-w-0 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white sm:text-sm"
+                                <input type="url" id="avatar_url" x-model="profile.avatar_url"
+                                       class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white sm:text-sm"
                                        placeholder="https://example.com/avatar.jpg">
                             </div>
                         </dd>
                     </div>
 
-                    <!-- GitHub Username (readonly) -->
-                    <div>
-                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">GitHub Username</dt>
-                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">
-                            <span class="font-mono" x-text="profile.login"></span>
-                            <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">(readonly)</span>
-                        </dd>
-                    </div>
-
-                    <!-- GitHub ID (readonly) -->
-                    <div>
-                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">GitHub ID</dt>
-                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">
-                            <span class="font-mono" x-text="profile.id"></span>
-                            <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">(readonly)</span>
-                        </dd>
-                    </div>
-
-                    <!-- Full Name -->
-                    <div>
-                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Full Name</dt>
-                        <dd class="mt-1">
-                            <div x-show="!isEditing">
-                                <span class="text-sm text-gray-900 dark:text-white" x-text="profile.name || 'Not provided'"></span>
-                            </div>
-                            <div x-show="isEditing" x-cloak>
-                                <input type="text"
-                                       x-model="profile.name"
-                                       class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                       placeholder="Enter your full name">
-                            </div>
-                        </dd>
-                    </div>
+                    <!-- Full Name block removed (now shown next to avatar) -->
 
                     <!-- Email -->
                     <div>
@@ -208,32 +156,45 @@
                         </dd>
                     </div>
 
-                    <!-- GitHub Profile Link (readonly) -->
-                    <div class="sm:col-span-2">
-                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">GitHub Profile</dt>
-                        <dd class="mt-1">
-                            <a :href="profile.html_url"
-                               target="_blank"
-                               class="text-primary-600 hover:text-primary-500 text-sm">
-                                <span x-text="profile.html_url"></span>
+                    <!-- GitHub (username + link combined) -->
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">GitHub</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">
+                            <a :href="profile.html_url" target="_blank" class="text-primary-600 hover:text-primary-500 font-mono">
+                                <span x-text="profile.login"></span>
                                 <svg class="inline h-3 w-3 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                                 </svg>
                             </a>
+                            <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">(readonly)</span>
                         </dd>
                     </div>
+
+                    <!-- GitHub ID removed per request -->
 
                     <!-- Organizations -->
                     <div class="sm:col-span-2">
                         <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Organizations</dt>
                         <dd>
                             <div x-show="!isEditing" x-cloak>
-                                <div x-show="profile.organizations && profile.organizations.length > 0" class="flex flex-wrap gap-2">
-                                    <template x-for="org in profile.organizations" :key="org">
-                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-100" x-text="org"></span>
-                                    </template>
+                                <div class="flex items-center justify-between gap-3">
+                                    <div class="min-w-0">
+                                        <div x-show="profile.organizations && profile.organizations.length > 0" class="flex flex-wrap gap-2">
+                                            <template x-for="org in profile.organizations" :key="org">
+                                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-100" x-text="org"></span>
+                                            </template>
+                                        </div>
+                                        <span x-show="!profile.organizations || profile.organizations.length === 0" class="text-sm text-gray-500 dark:text-gray-400">No organizations</span>
+                                    </div>
+                                    <!-- Edit button nestled alongside organizations -->
+                                    <button x-show="!isEditing" x-cloak @click="startEdit()"
+                                            class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                                        <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                        Edit
+                                    </button>
                                 </div>
-                                <span x-show="!profile.organizations || profile.organizations.length === 0" class="text-sm text-gray-500 dark:text-gray-400">No organizations</span>
                             </div>
                             <div x-show="isEditing" x-cloak>
                                 <div class="space-y-3">
@@ -274,10 +235,157 @@
                         </dd>
                     </div>
                 </dl>
+                <!-- Editor actions inside the editor area -->
+                <div x-show="isEditing" x-cloak class="mt-6 flex items-center justify-end gap-3">
+                    <button type="button"
+                            class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                            @click="cancelEdit()">
+                        Cancel
+                    </button>
+                    <button type="button"
+                            class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            @click="saveProfile()"
+                            :disabled="isSaving">
+                        <svg x-show="isSaving" class="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span x-text="isSaving ? 'Saving...' : 'Save Changes'"></span>
+                    </button>
+                </div>
+                </div>
+            </div>
+    </div>
+
+    <!-- Drafts Section -->
+    <div class="mt-8 bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-lg">
+        <div class="px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">Your Drafts</h3>
+                    <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">Manage your finding model drafts</p>
+                </div>
+                <div class="mt-1 flex-shrink-0">
+                    {{ flowbite_button(
+                        'Create Model',
+                        href=url_for('create_finding_model_page'),
+                        type='primary',
+                        size='default',
+                        icon='<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12m6-6H6"/></svg>'
+                    ) }}
+                </div>
             </div>
         </div>
+        <div class="px-4 py-5 sm:p-6">
+            <div id="no-drafts" x-ref="noDrafts" class="{% if drafts|length > 0 %}hidden{% endif %}">
+                <div class="text-center p-8 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50/50 dark:bg-gray-900/20">
+                    <h4 class="text-base font-medium text-gray-900 dark:text-white">No drafts yet</h4>
+                    <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Start by creating a new finding model.</p>
+                    <div class="mt-4 flex items-center justify-center">
+                        {{ flowbite_button(
+                            'Create your first model',
+                            href=url_for('create_finding_model_page'),
+                            type='primary',
+                            size='lg',
+                            icon='<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12m6-6H6"/></svg>'
+                        ) }}
+                    </div>
+                </div>
+            </div>
+
+            {% if drafts|length > 0 %}
+            <div id="drafts-grid" x-ref="grid" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+                {% for d in drafts %}
+                <div id="draft-card-{{ d.id }}" class="draft-card rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm p-5 flex flex-col h-full">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="flex-1 min-w-0">
+                            <h4 class="text-base font-semibold text-gray-900 dark:text-white">{{ d.name }}</h4>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Updated {{ d.updated_display }}</p>
+                        </div>
+                        <div class="flex-shrink-0">
+                            {% if d.status == 'draft' %}
+                                {{ flowbite_badge('Draft', color='yellow', size='xs', pill=true) }}
+                            {% elif d.status == 'submitted' %}
+                                {{ flowbite_badge('Submitted', color='green', size='xs', pill=true) }}
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="mt-3 min-h-[1.5rem]">
+                        {% if d.attribute_names and d.attribute_names|length %}
+                        <div class="flex flex-wrap gap-1">
+                            {% for a in d.attribute_names[:3] %}
+                                <span class="px-2 py-0.5 rounded text-[10px] bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">{{ a }}</span>
+                            {% endfor %}
+                            {% if d.attribute_names|length > 3 %}
+                                <span class="px-2 py-0.5 rounded text-[10px] bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300">+{{ d.attribute_names|length - 3 }} more</span>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <span class="text-gray-400 text-sm">No attributes</span>
+                        {% endif %}
+                    </div>
+                    <div class="flex-1"></div>
+                    <div class="pt-4 flex items-center justify-end gap-2">
+                        {# View available for both statuses; always use the draft view endpoint to ensure consistent display #}
+                        {{ flowbite_icon_button(
+                            icon='<svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>',
+                            color='blue',
+                            size='xs',
+                            title='View',
+                            href=('/api/finding-models/drafts/' ~ d.id ~ '/view')
+                        ) }}
+                        {% if d.status == 'draft' %}
+                        {{ flowbite_icon_button(
+                            icon='<svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a2 2 0 112.828 2.828L12 17.657 9 18l.343-3 9.021-9.364z"/></svg>',
+                            color='primary',
+                            size='xs',
+                            title='Edit',
+                            href=('/create-finding-model?draft_id=' ~ d.id)
+                        ) }}
+                        {{ flowbite_icon_button(
+                            icon='<svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2"/></svg>',
+                            color='red',
+                            size='xs',
+                            title='Delete',
+                            attributes='data-modal-target="' ~ ('delete-draft-modal-' ~ d.id) ~ '" data-modal-toggle="' ~ ('delete-draft-modal-' ~ d.id) ~ '"'
+                        ) }}
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if d.status == 'draft' %}
+                <!-- Delete Confirmation Modal (Flowbite) for this draft -->
+                <div id="delete-draft-modal-{{ d.id }}" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
+                    <div class="relative p-4 w-full max-w-md max-h-full">
+                        <div class="relative bg-white rounded-lg shadow dark:bg-gray-700">
+                            <button type="button" class="absolute top-3 end-2.5 text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white" data-modal-hide="delete-draft-modal-{{ d.id }}">
+                                <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 12 12M13 1 1 13"/></svg>
+                                <span class="sr-only">Close modal</span>
+                            </button>
+                            <div class="p-4 md:p-5 text-center">
+                                <svg class="mx-auto mb-4 text-gray-400 w-12 h-12 dark:text-gray-200" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 11V6m0 8h.01M19 10a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                                <h3 class="mb-5 text-lg font-normal text-gray-500 dark:text-gray-400">Are you sure you want to delete this draft? This action cannot be undone.</h3>
+                <button type="button"
+                    class="text-white bg-red-600 hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 dark:focus:ring-red-800 font-medium rounded-lg text-sm inline-flex items-center px-5 py-2.5 text-center mr-2"
+                    hx-post="/api/finding-models/drafts/{{ d.id }}/delete"
+                    hx-target="#draft-card-{{ d.id }}"
+                    hx-swap="delete"
+                    data-modal-hide="delete-draft-modal-{{ d.id }}"
+                    data-action="delete-draft">
+                                    Yes, delete
+                                </button>
+                                <button type="button" class="py-2.5 px-5 ms-3 text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-primary-700 focus:z-10 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700" data-modal-hide="delete-draft-modal-{{ d.id }}">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
     </div>
-</div>
+    </div>
 
 <script>
 function profileManager() {
@@ -291,18 +399,23 @@ function profileManager() {
             html_url: '{{ user.html_url }}',
             organizations: {{ user.organizations | tojson if user.organizations else '[]' }}
         },
+    drafts: {{ drafts | tojson }},
         originalProfile: {},
         isEditing: false,
         isSaving: false,
         newOrganization: '',
         showWelcome: false,
+        selectedDraftId: null,
+        selectedRowId: null,
         alert: {
             show: false,
             type: 'success',
             message: ''
         },
+    query: '',
+    statusFilter: 'all',
 
-        init() {
+    init() {
             this.originalProfile = JSON.parse(JSON.stringify(this.profile));
 
             // Check for welcome parameter in URL
@@ -313,6 +426,9 @@ function profileManager() {
                 // Clean up URL without reloading
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
+
+            // Observe drafts grid for changes and toggle placeholder accordingly
+            // No MutationObserver needed; server drives UI state with HTMX OOB swaps
         },
 
         dismissWelcome() {
@@ -411,8 +527,16 @@ function profileManager() {
 
         hideAlert() {
             this.alert.show = false;
-        }
+        },
+
+    // No client-side polling or placeholder toggling; handled via OOB swaps on delete
+
+        // no table init needed for card grid
     }
 }
 </script>
+
+<!-- Drafts placeholder/grid visibility is updated by server via HTMX out-of-band swaps after delete. -->
+
+{% block scripts %}{% endblock %}
 {% endblock %}
