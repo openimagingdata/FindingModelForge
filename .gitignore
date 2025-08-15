@@ -116,7 +116,8 @@ secrets/
 .infisical.json
 
 # MCP Server cache/state files
-.serena/
+# Track .serena project config and memories, but not cache
+.serena/cache/
 .mcp.json
 !.mcp.json.example
 

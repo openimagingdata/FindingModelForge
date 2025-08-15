@@ -31,11 +31,16 @@
       "mcp__playwright",
       "mcp__sequential",
       "mcp__context7",
-      "mcp__github"
+      "mcp__github",
+      "mcp__ide__getDiagnostics"
     ],
     "deny": []
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": ["serena"],
-  "disabledMcpjsonServers": ["memory"]
+  "enabledMcpjsonServers": [
+    "serena"
+  ],
+  "disabledMcpjsonServers": [
+    "memory"
+  ]
 }

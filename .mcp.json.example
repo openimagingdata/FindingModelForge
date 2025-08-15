@@ -15,5 +15,13 @@
       ],
       "env": {}
     }
+  },
+  "perplexity-mcp": {
+    "env": {
+      "PERPLEXITY_API_KEY": "",
+      "PERPLEXITY_MODEL": "sonar-reasoning-pro"
+    },
+    "command": "uvx",
+    "args": ["perplexity-mcp"]
   }
 }
