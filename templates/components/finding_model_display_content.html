@@ -1,0 +1,159 @@
+{% from 'macros/flowbite_components.html' import flowbite_badge %}
+{% from 'macros/app_components.html' import required_badge, id_badge, type_badge, attribute_value, contributor_avatar %}
+
+<!-- Finding Model Display Content - Containerless version for unified interface -->
+<!-- Header -->
+<div class="mb-6">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
+            {{ finding_model.name }}
+        </h2>
+        {% if (show_ids is not defined or show_ids) and finding_model.oifm_id %}
+            {{ id_badge("ID: " + finding_model.oifm_id) }}
+        {% endif %}
+    </div>
+
+    {% if finding_model.description %}
+    <p class="text-gray-700 dark:text-gray-300 text-base leading-relaxed">
+        {{ finding_model.description }}
+    </p>
+    {% endif %}
+</div>
+
+<!-- Metadata -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+    <!-- Synonyms -->
+    {% if finding_model.synonyms and finding_model.synonyms|length > 0 %}
+    <div>
+        <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Synonyms</h3>
+        <div class="flex flex-wrap gap-2">
+            {% for synonym in finding_model.synonyms %}
+                {{ flowbite_badge(synonym, "gray", "xs", true) }}
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Tags -->
+    {% if finding_model.tags and finding_model.tags|length > 0 %}
+    <div>
+        <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Tags</h3>
+        <div class="flex flex-wrap gap-2">
+            {% for tag in finding_model.tags %}
+                {{ flowbite_badge(tag, "green", "xs", true) }}
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Contributors -->
+{% if finding_model.contributors and finding_model.contributors|length > 0 %}
+<div class="mb-6">
+    <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Contributors</h3>
+    <div class="space-y-2">
+        {% for contributor in finding_model.contributors %}
+            {{ contributor_avatar(contributor) }}
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Attributes -->
+{% if finding_model.attributes and finding_model.attributes|length > 0 %}
+<div class="mb-6">
+    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Attributes</h3>
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        {% for attribute in finding_model.attributes %}
+        <div class="border border-gray-200 dark:border-gray-600 rounded-lg p-4 bg-gray-50 dark:bg-gray-900/50 hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors">
+            <div class="flex items-start justify-between mb-3">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center space-x-2 mb-1 flex-wrap">
+                        <h4 class="text-sm font-semibold text-gray-900 dark:text-white truncate">{{ attribute.name }}</h4>
+                        {% if attribute.type %}
+                            {{ type_badge(attribute.type.value if attribute.type.value else attribute.type) }}
+                        {% endif %}
+                    </div>
+                </div>
+                {% if (show_ids is not defined or show_ids) and (attribute.id or attribute.oifma_id) %}
+                    <div class="flex-shrink-0 ml-2">
+                        {{ id_badge(attribute.id or attribute.oifma_id) }}
+                    </div>
+                {% endif %}
+            </div>
+
+            {% if attribute.description %}
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">{{ attribute.description }}</p>
+            {% endif %}
+
+            <!-- Numeric attribute details -->
+            {% if attribute.type and (attribute.type.value == "NUMERIC" or attribute.type == "numeric") %}
+            <div class="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                {% set numeric_details = [] %}
+                {% if attribute.minimum is defined %}{% set _ = numeric_details.append("Min: " + attribute.minimum|string) %}{% endif %}
+                {% if attribute.maximum is defined %}{% set _ = numeric_details.append("Max: " + attribute.maximum|string) %}{% endif %}
+                {% if attribute.min is defined %}{% set _ = numeric_details.append("Min: " + attribute.min|string) %}{% endif %}
+                {% if attribute.max is defined %}{% set _ = numeric_details.append("Max: " + attribute.max|string) %}{% endif %}
+                {% if attribute.units %}{% set _ = numeric_details.append("Units: " + attribute.units) %}{% endif %}
+                {% if attribute.unit %}{% set _ = numeric_details.append("Units: " + attribute.unit) %}{% endif %}
+                {% if numeric_details %}{{ numeric_details|join(" • ") }}{% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Attribute Values -->
+            {% if attribute.values and attribute.values|length > 0 %}
+            <div class="mb-3">
+                <h5 class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Values</h5>
+                <div class="flex flex-wrap gap-2">
+                    {% for value in attribute.values %}
+                        {{ attribute_value(value) }}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Required indicator in bottom right -->
+            <div class="flex justify-end">
+                {% if attribute.required %}
+                    {{ required_badge() }}
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Footer with metadata -->
+{% if finding_model.created_date or finding_model.last_modified or finding_model.version %}
+<div class="pt-6 border-t border-gray-200 dark:border-gray-700">
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
+        <div class="text-sm text-gray-500 dark:text-gray-400">
+            {% if finding_model.created_date %}
+                <span class="inline-flex items-center">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    Created: {% if finding_model.created_date.strftime %}{{ finding_model.created_date.strftime('%B %d, %Y') }}{% else %}{{ finding_model.created_date }}{% endif %}
+                </span>
+            {% endif %}
+            {% if finding_model.last_modified and finding_model.created_date %}
+                <span class="mx-2">•</span>
+            {% endif %}
+            {% if finding_model.last_modified %}
+                <span class="inline-flex items-center">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    </svg>
+                    Modified: {% if finding_model.last_modified.strftime %}{{ finding_model.last_modified.strftime('%B %d, %Y') }}{% else %}{{ finding_model.last_modified }}{% endif %}
+                </span>
+            {% endif %}
+        </div>
+        <div class="flex items-center space-x-4">
+            {% if finding_model.version %}
+                {{ flowbite_badge("v" + finding_model.version|string, "indigo", "xs") }}
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}

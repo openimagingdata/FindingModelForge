@@ -1,11 +1,20 @@
 {# Alpine.js Form Validation Macros #}
 
-{# Simple Alpine.js form validation #}
-{% macro validation_data(initial_name='', initial_description='', initial_attributes='') %}
+{# Simple Alpine.js form validation with change tracking #}
+{% macro validation_data(initial_name='', initial_description='', initial_attributes='', has_no_generated_json=false) %}
 {
+    // Current values
     name: {{ initial_name | tojson }},
     description: {{ initial_description | tojson }},
     attributes_markdown: {{ initial_attributes | tojson }},
+
+    // Original values for change tracking
+    original_name: {{ initial_name | tojson }},
+    original_description: {{ initial_description | tojson }},
+    original_attributes_markdown: {{ initial_attributes | tojson }},
+
+    // Fresh draft status (no generated JSON)
+    hasNoGeneratedJson: {{ has_no_generated_json | tojson }},
 
     get isNameValid() {
         return this.name.length >= 3 && this.name.length <= 200;
@@ -19,20 +28,46 @@
         return this.attributes_markdown.length >= 20;
     },
 
+    get hasChanges() {
+        // Check if any values have changed from originals
+        let textChanges = this.name !== this.original_name ||
+                         this.description !== this.original_description ||
+                         this.attributes_markdown !== this.original_attributes_markdown;
+
+        // Also check synonyms if they exist
+        let synonymChanges = false;
+        if (this.synonymsChanged !== undefined) {
+            synonymChanges = this.synonymsChanged;
+        }
+
+        return textChanges || synonymChanges;
+    },
+
     get canSubmit() {
-        // Check based on which fields are present in the form
-        if (this.$refs.name) return this.isNameValid;
-        if (this.$refs.description && this.$refs.attributes_markdown) return this.isDescriptionValid && this.isAttributesValid;
-        if (this.$refs.description) return this.isDescriptionValid;
+        // For draft editing form: validate description and attributes AND check for changes OR fresh draft
+        // Only consider it a draft editing form if description and attributes have actual content requirements
+        if (this.description !== "" && this.attributes_markdown !== "" &&
+            this.original_description !== undefined && this.original_attributes_markdown !== undefined) {
+            // Always allow submit if inputs are valid AND (changes detected OR no generated JSON exists)
+            const isValid = this.isDescriptionValid && this.isAttributesValid;
+            const hasChangesOrFresh = this.hasChanges || this.hasNoGeneratedJson;
+            return isValid && hasChangesOrFresh;
+        }
+        // For name-only form: validate name (creation step 1)
+        if (this.name !== undefined && this.description === "" && this.attributes_markdown === "") {
+            return this.isNameValid;
+        }
+        // For description-only form: validate description (creation step 2)
+        if (this.description !== "" && this.name === undefined) {
+            return this.isDescriptionValid;
+        }
+        // Fallback for other cases
         return true;
     },
 
     isFormValid() {
         // Same logic as canSubmit but as a method for button bindings
-        if (this.$refs.name) return this.isNameValid;
-        if (this.$refs.description && this.$refs.attributes_markdown) return this.isDescriptionValid && this.isAttributesValid;
-        if (this.$refs.description) return this.isDescriptionValid;
-        return true;
+        return this.canSubmit;
     }
 }
 {% endmacro %}

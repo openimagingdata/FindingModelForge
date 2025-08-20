@@ -193,23 +193,61 @@ tasks:
       - echo "✅ Integration tests passed!"
     silent: true
 
-  test-playwright:
-    desc: "Run Playwright browser integration tests"
+  test-ui:
+    desc: "Run all UI/browser tests (organized in tests/ui/)"
     cmds:
-      - echo "🎭 Running Playwright integration tests..."
+      - echo "🎭 Running UI/browser tests..."
       - echo "💡 Make sure the development server is running on localhost:8000"
-      - uv run pytest tests/test_integration_htmx_playwright.py -v --no-cov
-      - echo "✅ Playwright tests passed!"
+      - uv run pytest tests/ui/ -v --no-cov
+      - echo "✅ UI tests passed!"
     silent: true
 
-  test-playwright-headed:
-    desc: "Run Playwright tests with visible browser (for debugging)"
+  test-ui-headed:
+    desc: "Run UI tests with visible browser (for debugging)"
     cmds:
-      - echo "🎭 Running Playwright debug test with visible browser..."
+      - echo "🎭 Running UI tests with visible browser..."
       - echo "💡 Make sure the development server is running on localhost:8000"
-      - PLAYWRIGHT_HEADLESS=false uv run pytest tests/test_integration_htmx_playwright.py::TestHTMXFindingModelCreationWorking::test_complete_htmx_workflow_debug -v --no-cov -s
-      - echo "✅ Playwright debug test completed!"
+      - PLAYWRIGHT_HEADLESS=false uv run pytest tests/ui/ -v --no-cov -s
+      - echo "✅ UI tests completed!"
     silent: true
+
+  test-ui-profile:
+    desc: "Run only profile page UI tests"
+    cmds:
+      - echo "🏠 Running profile page tests..."
+      - echo "💡 Make sure the development server is running on localhost:8000"
+      - uv run pytest tests/ui/test_profile.py -v --no-cov
+      - echo "✅ Profile tests passed!"
+    silent: true
+
+  test-ui-creation:
+    desc: "Run only creation workflow UI tests"
+    cmds:
+      - echo "⚡ Running creation workflow tests..."
+      - echo "💡 Make sure the development server is running on localhost:8000"
+      - uv run pytest tests/ui/test_creation_workflow.py -v --no-cov
+      - echo "✅ Creation workflow tests passed!"
+    silent: true
+
+  test-ui-drafts:
+    desc: "Run only draft management UI tests"
+    cmds:
+      - echo "📝 Running draft management tests..."
+      - echo "💡 Make sure the development server is running on localhost:8000"
+      - uv run pytest tests/ui/test_draft_management.py -v --no-cov
+      - echo "✅ Draft management tests passed!"
+    silent: true
+
+  # Legacy commands for backward compatibility
+  test-playwright:
+    desc: "Run all UI tests (alias for test-ui)"
+    cmds:
+      - task: test-ui
+
+  test-playwright-headed:
+    desc: "Run UI tests with visible browser (alias for test-ui-headed)"
+    cmds:
+      - task: test-ui-headed
 
   test-full:
     desc: "Run full test suite with quality checks"

@@ -8,17 +8,34 @@
 
 {% block step_content %}
     <div x-data='{{ validation_data(initial_name=form_data.name if form_data else "") }}'>
+        {# Error message - moved here to be in Alpine scope #}
+        {% from "macros/flowbite_components.html" import alert %}
+        {% if session_data.error_message %}
+            <div x-show="(!name || name === '{{ (form_data.name if form_data and form_data.name else '') | replace("'", "\\'") }}')"
+                 x-transition
+                 class="mb-4">
+                {{ alert(session_data.error_message, type="error", dismissible=false) }}
+            </div>
+        {% endif %}
+
         {% call htmx_form(1) %}
             <div class="space-y-4">
-                {{ validated_input(
-                    name="name",
-                    label="Finding Name",
-                    value=form_data.name if form_data else '',
-                    placeholder="e.g., Pulmonary Nodule, Brain Aneurysm, liver-lesion",
-                    required=true,
-                    minlength=3,
-                    maxlength=200
-                ) }}
+                <div class="mb-5">
+                    <label for="name" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                        Finding Name
+                        <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text"
+                           id="name"
+                           name="name"
+                           x-model="name"
+                           value="{{ form_data.name if form_data else '' }}"
+                           class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                           placeholder="e.g., Pulmonary Nodule, Brain Aneurysm, liver-lesion"
+                           required
+                           minlength="3"
+                           maxlength="200">
+                </div>
 
                 {# Name availability feedback #}
                 {% if name_check_result %}

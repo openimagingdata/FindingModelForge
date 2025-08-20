@@ -138,3 +138,5 @@ static/js/alpine.min.js
 static/js/flowbite.min.js
 static/js/flowbite.min.js.map
 static/js/simple-datatables.js
+.chromium-profile
+.playwright-mcp

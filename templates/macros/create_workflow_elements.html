@@ -5,7 +5,7 @@
 <form method="{{ method }}"
       action="/api/finding-models/create/step/{{ step_number }}"
       hx-post="/api/finding-models/create/step/{{ step_number }}"
-      hx-target="#step-container"
+      hx-target="#main-content"
       hx-swap="innerHTML"
       class="{{ extra_classes }}">
     {{ caller() }}
@@ -35,7 +35,7 @@
         {% if session_id or draft_id %}
         hx-vals='{"session_id": {{ session_id|tojson }}{% if draft_id %}, "draft_id": {{ draft_id|tojson }}{% endif %}}'
         {% endif %}
-        hx-target="#step-container"
+        hx-target="#main-content"
         hx-swap="innerHTML"
         class="px-4 py-2 text-gray-600 dark:text-gray-400 font-medium rounded-md border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors {{ extra_classes }}">
     {{ text }}

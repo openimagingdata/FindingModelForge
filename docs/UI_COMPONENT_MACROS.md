@@ -147,3 +147,46 @@ Example:
 - Stick to Flowbite’s structure and classes; use Alpine.js for interactivity via attributes.
 - Avoid custom JS/CSS; when needed, wire through attributes and established macros.
 - Keep templates small: import only the macros you use.
+- Use unified_form_data for complex forms combining validation and synonym management.
+- Include appropriate deletion modals for destructive actions.
+
+## Draft Management Modals (macros/delete_draft_modal.html)
+
+- delete_draft_modal(draft_id, hx_target=None, hx_swap=None, extra_attributes='')
+  - Flowbite confirmation modal for draft deletion
+  - Includes warning icon, confirmation text, and Yes/Cancel buttons
+  - HTMX integration for seamless deletion workflow
+  - Customizable targeting and swap behavior
+
+## Unified Form Data (macros/unified_form_data.html)
+
+- unified_form_data(initial_description="", initial_attributes="", initial_synonyms=[], has_no_generated_json=False)
+  - Alpine.js reactive data object combining validation and synonym management
+  - Includes computed properties for validation state (isValidDescription, isValidAttributes, canSubmit)
+  - Change detection for text fields and synonyms array
+  - Step-specific validation methods (canSubmitStep2 for creation, canSubmit for editing)
+  - Synonym management methods (addSynonym, removeSynonym, getSynonymsJson)
+
+### Draft Management Integration Example
+
+```jinja
+{# Complete draft editing form with validation and deletion modal #}
+<div x-data='{{ unified_form_data(draft.inputs.description, draft.inputs.attributes_markdown, draft.inputs.synonyms, not draft.generated_json) | safe }}'>
+  {{ validated_textarea('description', 'Description', required=true, minlength=10, maxlength=1000) }}
+  {{ synonym_manager() }}
+  {{ validated_textarea('attributes_markdown', 'Attributes', required=true, minlength=20) }}
+
+  <div class="flex gap-4">
+    {{ action_button('Save Changes', type='primary', attributes=':disabled="!canSubmit"') }}
+    {{ action_button('Delete Draft', type='danger', attributes='data-modal-target="delete-draft-modal-' + draft.id + '" data-modal-toggle="delete-draft-modal-' + draft.id + '"') }}
+  </div>
+
+  {# Hidden fields for form submission #}
+  <input type="hidden" name="description" x-model="description">
+  <input type="hidden" name="attributes_markdown" x-model="attributes_markdown">
+  <input type="hidden" name="synonyms" x-model="getSynonymsJson()">
+</div>
+
+{# Include deletion confirmation modal #}
+{{ delete_draft_modal(draft.id, hx_target="#main-content", hx_swap="innerHTML") }}
+```

@@ -66,22 +66,25 @@ def _draft(
     )
 
 
-def test_step1_resumes_submitted_draft_to_step5():
+def test_step1_resumes_submitted_draft_to_draft_view():
     # Session starting at step 1 with no draft
     session_json = '{"session_id":"sid-x","current_step":1}'
     client = _client_with_state(session_json)
     from app.main import app
 
+    submitted_draft = _draft("submitted")
     db: Database = app.state.database  # type: ignore[assignment]
     db.draft_repo.find_editable_by_name = AsyncMock(return_value=None)  # type: ignore[attr-defined]
-    db.draft_repo.find_latest_by_name = AsyncMock(return_value=_draft("submitted"))  # type: ignore[attr-defined]
+    db.draft_repo.find_latest_by_name = AsyncMock(return_value=submitted_draft)  # type: ignore[attr-defined]
+    # Also mock get_draft for the redirect target
+    db.draft_repo.get_draft = AsyncMock(return_value=submitted_draft)  # type: ignore[attr-defined]
 
     resp = client.post(
         "/api/finding-models/create/step/1",
         data={"session_id": "sid-x", "name": "nodule"},
     )
     assert resp.status_code == 200
-    # Should land on review step with submitted badge and no Save Draft
+    # Should land on draft view with submitted status - no longer step 5
     text = resp.text.lower()
     assert "submitted" in text
     assert "save draft" not in text

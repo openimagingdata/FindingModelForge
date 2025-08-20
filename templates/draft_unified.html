@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% from 'macros/flowbite_components.html' import breadcrumb, flowbite_button %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="container mx-auto px-4 py-8 pb-16 max-w-5xl">
+        {% set home_icon %}
+            <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path d="m19.707 9.293-2-2-7-7a1 1 0 0 0-1.414 0l-7 7-2 2a1 1 0 0 0 1.414 1.414L2 10.414V18a2 2 0 0 0 2 2h3a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h3a2 2 0 0 0 2-2v-7.586l.293.293a1 1 0 0 0 1.414-1.414Z"/>
+            </svg>
+        {% endset %}
+
+        {% set folder_icon %}
+            <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/>
+            </svg>
+        {% endset %}
+
+        {{ breadcrumb([
+            {"text": "Home", "href": url_for('index'), "icon": home_icon},
+            {"text": (user.name or user.login) ~ "'s Drafts", "href": url_for('profile'), "icon": folder_icon},
+            {"text": draft.name }
+        ]) }}
+
+        {% if request.query_params.get('created') == 'true' %}
+        <!-- Success Message -->
+        <div id="success-alert" class="flex items-center p-4 mb-6 text-green-800 border border-green-300 rounded-lg bg-green-50 dark:bg-gray-800 dark:text-green-400 dark:border-green-800" role="alert">
+            <svg class="flex-shrink-0 w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
+            </svg>
+            <span class="sr-only">Success</span>
+            <div class="ms-3 text-sm font-medium">
+                <strong>Draft created successfully!</strong> Your finding model "{{ draft.name }}" has been saved. You can now edit the description and attributes below, then click "Update & Preview" to generate the model.
+            </div>
+            <button type="button" class="ms-auto -mx-1.5 -my-1.5 bg-green-50 text-green-500 rounded-lg focus:ring-2 focus:ring-green-400 p-1.5 hover:bg-green-200 inline-flex items-center justify-center h-8 w-8 dark:bg-gray-800 dark:text-green-400 dark:hover:bg-gray-700" data-dismiss-target="#success-alert" aria-label="Close">
+                <span class="sr-only">Close</span>
+                <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+                </svg>
+            </button>
+        </div>
+        {% endif %}
+
+        <!-- Page Header -->
+        <div class="mb-8">
+            <div class="flex items-start justify-between gap-4">
+                <div class="flex-1">
+                    <h1 id="page-title" class="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                        {% if mode == 'edit' %}Edit Finding Model Draft{% else %}Preview Finding Model Draft{% endif %}
+                    </h1>
+                    <p class="text-gray-600 dark:text-gray-400">
+                        {{ draft.name }} -
+                        {% if mode == 'edit' %}
+                            Edit your draft and preview the generated model
+                        {% else %}
+                            View your draft and the generated finding model
+                        {% endif %}
+                    </p>
+                </div>
+
+                {% if draft.generated_json %}
+                    {# Draft has generated model - show mode toggle buttons #}
+                    {% set target_container = '#main-content' %}
+                    {% include 'components/draft_mode_toggle_header.html' with context %}
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Dynamic Content Container -->
+        <div id="main-content">
+            {% if mode == 'edit' %}
+                {% include 'components/draft_edit_form.html' %}
+            {% else %}
+                {% include 'components/draft_preview.html' %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('htmx:afterSwap', function(event) {
+    // Reinitialize Flowbite components after HTMX swaps
+    if (typeof initFlowbite !== 'undefined') {
+        initFlowbite();
+    }
+});
+</script>
+{% endblock %}

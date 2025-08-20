@@ -1,11 +1,14 @@
 # HTMX Multi-Step Workflow Patterns
 
 ## Overview
-The Finding Model creation workflow demonstrates best practices for HTMX-driven multi-step forms with server-side session management and draft autosaving.
+
+The Finding Model creation workflow demonstrates best practices for HTMX-driven multi-step forms with server-side
+session management and draft autosaving.
 
 ## Key Patterns
 
 ### 1. Session Management with Draft Support
+
 ```python
 @dataclass
 class FindingModelCreationSession:
@@ -31,6 +34,7 @@ class FindingModelCreationSession:
 - **Draft ID tracking for autosave and resume**
 
 ### 2. Draft Autosave Pattern (Step 4)
+
 ```python
 # Autosave on GET request to step 4
 if request.method == "GET":
@@ -46,6 +50,7 @@ if request.method == "GET":
 ```
 
 ### 3. Session Adoption from Draft
+
 ```python
 # Recover session state from draft when session is lost
 draft_id = request.query_params.get("draft_id")
@@ -60,12 +65,14 @@ if draft_id and not session.attributes_markdown:
 ```
 
 ### 4. Form-Based Draft ID Persistence
+
 ```html
 <!-- Hidden field to maintain draft_id across form submissions -->
-<input type="hidden" name="draft_id" value="{{ session_data.draft_id or '' }}">
+<input type="hidden" name="draft_id" value="{{ session_data.draft_id or '' }}" />
 ```
 
 ### 5. Submit and Lock Pattern
+
 ```python
 @router.post("/drafts/{draft_id}/submit")
 async def submit_draft(draft_id: str, ...):
@@ -75,6 +82,7 @@ async def submit_draft(draft_id: str, ...):
 ```
 
 ### 6. Template Consolidation
+
 ```python
 def render_step_template(
     request: Request,
@@ -95,6 +103,7 @@ def render_step_template(
 ```
 
 ### 7. Smart Workflow Routing
+
 ```python
 # Step 2: Check similarity and conditionally redirect
 if not session.similar_models:
@@ -107,6 +116,7 @@ else:
 ```
 
 ### 8. FastAPI Response Types
+
 ```python
 # ✅ CORRECT: Use Response base class for mixed return types
 async def process_step_2(...) -> Response:
@@ -121,6 +131,7 @@ async def process_step_2(...) -> Response:
 ```
 
 ### 9. Resume from Draft Pattern
+
 ```python
 @router.post("/drafts/resume")
 async def resume_draft(draft_id: str = Form(...)):
@@ -138,17 +149,20 @@ async def resume_draft(draft_id: str = Form(...)):
 ## Component Reuse
 
 ### 1. Template Includes
+
 - `finding_model_complete_display.html` - Full model display with JSON accordion
 - `finding_model_display.html` - Formatted display only
 - Use `{% include %}` for consistency
 
 ### 2. JSON Accordion Pattern
+
 ```jinja
 {% from 'macros/json_accordion.html' import json_accordion %}
 {{ json_accordion(finding_model, "finding-model-json", "JSON Data") }}
 ```
 
 ### 3. Step Template Structure
+
 - Base template: `step_base.html`
 - Consistent navigation and styling
 - HTMX target: `#step-container`
@@ -156,6 +170,7 @@ async def resume_draft(draft_id: str = Form(...)):
 ## Alpine.js and HTMX Integration
 
 ### Draft ID Management in Forms
+
 ```javascript
 // Alpine.js manages draft_id in form data
 x-data='{
@@ -168,28 +183,32 @@ x-data='{
 ```
 
 ### HTMX Events for Draft Status
+
 ```javascript
 // Handle draft save success
-@htmx:after-settle="if ($event.detail.xhr.status === 200) { 
-  this.draft_saved = true; 
+@htmx:after-settle="if ($event.detail.xhr.status === 200) {
+  this.draft_saved = true;
 }"
 ```
 
 ## Testing Patterns
 
 ### 1. Draft Testing
+
 - Test draft creation and updates
 - Test session adoption from drafts
 - Test draft submission and locking
 - Test draft deletion
 
 ### 2. Session Testing
+
 - Mock `FindingModelCreationSession` in tests
 - Test session state transitions
 - Verify workflow routing logic
 - Test draft ID persistence
 
 ### 3. HTMX Integration Tests
+
 - Use Playwright for end-to-end workflow testing
 - Test step transitions and form submissions
 - Verify component reinitialization after HTMX swaps

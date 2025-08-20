@@ -33,7 +33,7 @@
                 {% endif %}
             </div>
             <div class="mt-6">
-                <a href="/create-finding-model?draft_id={{ draft.id }}" class="inline-flex items-center px-4 py-2 rounded-lg text-white bg-primary-600 hover:bg-primary-700">Edit draft</a>
+                <a href="/api/finding-models/drafts/{{ draft.id }}/edit" class="inline-flex items-center px-4 py-2 rounded-lg text-white bg-primary-600 hover:bg-primary-700">Edit draft</a>
             </div>
         </div>
     {% endif %}

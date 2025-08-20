@@ -61,7 +61,8 @@ Common development commands:
 
 ```sh
 task setup          # Install deps + create .env + build assets
-task test            # Run tests with coverage
+task test            # Run tests with coverage (70 tests, 71% router coverage)
+task test-unit       # Fast unit tests only
 task lint            # Lint and fix code issues
 task format          # Format code
 task check           # Quality checks (CI-friendly)
@@ -98,14 +99,18 @@ task build-frontend  # Build CSS and JS assets
 - Async/await patterns for I/O operations
 - Comprehensive error handling and logging
 
-### Draft Workflow (Finding Models)
+### Draft Management System
 
-- Drafts are created and autosaved during the multi-step creation flow (notably from Step 4 onwards).
-- Each draft stores: user id, name, inputs (description, synonyms, attributes_markdown), generated JSON, status, and an
-  action log.
-- Status transitions: draft -> submitted -> under-review | added | declined. After submit, editing is locked.
-- Resuming: entering the same finding name after submit takes the user directly to the final display view.
-- Redis cache is always available in code paths and degrades gracefully if unavailable (no conditional logic required).
+**Complete draft lifecycle** with autosave, resume, submit, and delete functionality:
+
+- **Auto-save on Step 4**: Drafts automatically created/updated when editing attributes
+- **Unified draft pages**: Single endpoint handles both edit and view modes via `?mode=` parameter
+- **Session adoption**: Automatic recovery of draft state when sessions are lost
+- **User isolation**: One editable draft per (user_id, name) combination with secure ownership checks
+- **Action logging**: Comprehensive audit trail for all draft operations
+- **Status management**: draft → submitted → [future: under-review | added | declined]
+- **Smart resume**: Entering the same finding name after submit shows final display view
+- **Redis integration**: Cache layer available throughout with graceful degradation
 
 ### UI Guidelines
 

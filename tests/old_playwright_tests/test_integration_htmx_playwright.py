@@ -331,11 +331,12 @@ class TestHTMXFindingModelCreationWorking:
                         await self._test_synonym_management(page, "edit attributes page")
 
                         # NOW look for and click the Show/Generate Model button
-                        print("🔍 Step 4: Looking for Show/Generate Model button...")
+                        print("🔍 Step 4: Looking for Show/Generate/Update Model button...")
                         final_selectors = [
                             "button:has-text('Show Model')",
                             "button:has-text('Generate Final Model')",
                             "button:has-text('Generate Model')",
+                            "button:has-text('Update & Preview')",
                             "button[type='submit']:not(:has-text('Check')):not(:has-text('Add'))",
                         ]
 
@@ -401,6 +402,7 @@ class TestHTMXFindingModelCreationWorking:
                         "button:has-text('Show Model')",
                         "button:has-text('Generate Final Model')",
                         "button:has-text('Generate Model')",
+                        "button:has-text('Update & Preview')",
                     ]
                     final_clicked = False
                     for selector in final_selectors:
@@ -624,17 +626,17 @@ class TestHTMXFindingModelCreationWorking:
                 await page.go_back()
                 await page.wait_for_selector("#drafts-grid")
 
-                # Edit unsubmitted and click Show Model without edits -> reuse path
+                # Edit unsubmitted and click Update & Preview without edits -> reuse path
                 print("✏️ Editing unsubmitted draft without changes (reuse path)...")
                 await draft_card.locator("a[title='Edit'], button[title='Edit']").first.click()
                 await page.wait_for_load_state("networkidle")
-                await expect(page.locator("button:has-text('Show Model')")).to_be_visible()
-                # Capture reuse header from POST /create/step/4
+                await expect(page.locator("button:has-text('Update & Preview')")).to_be_visible()
+                # Capture reuse header from POST to update-and-redirect
                 reuse_hdr: dict[str, str] = {}
 
                 def on_response_reuse(resp: Any) -> None:  # type: ignore[no-redef]
                     try:
-                        if "/api/finding-models/create/step/4" in resp.url and resp.request.method == "POST":
+                        if "/update-and-redirect" in resp.url and resp.request.method == "POST":
                             val = resp.headers.get("x-model-reused")
                             if val is not None:
                                 reuse_hdr["x-model-reused"] = val
@@ -642,7 +644,7 @@ class TestHTMXFindingModelCreationWorking:
                         pass
 
                 page.on("response", on_response_reuse)  # type: ignore[arg-type]
-                await page.locator("button:has-text('Show Model')").click()
+                await page.locator("button:has-text('Update & Preview')").click()
                 # Reuse path lands on step 5 quickly; ensure heading appears
                 await expect(page.locator("h2:has-text('Your Finding Model is Ready!')")).to_be_visible(timeout=20000)
                 # Confirm reuse
@@ -655,12 +657,12 @@ class TestHTMXFindingModelCreationWorking:
                 print("✏️ Editing unsubmitted draft WITH changes (should regenerate)...")
                 await draft_card.locator("a[title='Edit'], button[title='Edit']").first.click()
                 await page.wait_for_load_state("networkidle")
-                await expect(page.locator("button:has-text('Show Model')")).to_be_visible()
+                await expect(page.locator("button:has-text('Update & Preview')")).to_be_visible()
                 # Change description to trigger non-reuse path
                 desc = page.locator("textarea#description")
                 await desc.fill("Updated PCL description for demo.")
-                # Click Show Model and expect to land on step 5 again
-                await page.locator("button:has-text('Show Model')").click()
+                # Click Update & Preview and expect to land on step 5 again
+                await page.locator("button:has-text('Update & Preview')").click()
                 await expect(page.locator("h2:has-text('Your Finding Model is Ready!')")).to_be_visible(timeout=30000)
                 # Verify updated description is reflected on the page
                 await expect(page.locator("body")).to_contain_text("Updated PCL description for demo.")

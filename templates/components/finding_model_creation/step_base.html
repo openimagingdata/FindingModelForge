@@ -5,9 +5,6 @@
 
     {# Error and success messages #}
     {% from "macros/flowbite_components.html" import alert %}
-    {% if session_data.error_message %}
-        {{ alert(session_data.error_message, type="error", dismissible=false) }}
-    {% endif %}
     {% if session_data.success_message %}
         {{ alert(session_data.success_message, type="success", dismissible=false) }}
     {% endif %}

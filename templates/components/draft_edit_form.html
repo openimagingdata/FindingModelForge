@@ -1,0 +1,102 @@
+{# Draft Edit Form Component #}
+{% from "macros/form_validation.html" import validated_textarea %}
+{% from "macros/synonym_manager.html" import synonym_manager %}
+{% from "macros/unified_form_data.html" import unified_form_data %}
+{% from "macros/flowbite_components.html" import flowbite_button %}
+
+<div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+    <div x-data='{{ unified_form_data(initial_description=draft.inputs.description or "", initial_attributes=draft.inputs.attributes_markdown or "", initial_synonyms=draft.inputs.synonyms or [], has_no_generated_json=not draft.generated_json) }}'>
+
+        {% if draft.status == 'submitted' %}
+        <div class="flex items-center p-4 mb-4 text-sm text-blue-800 border border-blue-300 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400 dark:border-blue-800" role="alert">
+            <svg class="flex-shrink-0 inline w-4 h-4 me-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
+            </svg>
+            <span class="sr-only">Info</span>
+            <div>
+                <span class="font-medium">Draft submitted.</span> Editing is locked.
+            </div>
+        </div>
+        {% endif %}
+
+        <form hx-post="/api/finding-models/drafts/{{ draft.id }}/update-and-redirect">
+
+            <div class="space-y-6">
+                {# Read-only name field #}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Finding Name</label>
+                    <input type="text"
+                           value="{{ draft.name }}"
+                           readonly
+                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-gray-50 dark:bg-gray-600 text-gray-500 dark:text-gray-400">
+                </div>
+
+                {{ validated_textarea(
+                    name="description",
+                    label="Description",
+                    value=draft.inputs.description or '',
+                    rows=4,
+                    placeholder="Enter a detailed description of the finding...",
+                    required=true,
+                    minlength=10,
+                    maxlength=1000,
+                    extra_classes=("opacity-60" if draft.status == 'submitted' else "")
+                ) }}
+
+                <fieldset {% if draft.status == 'submitted' %}disabled{% endif %}>
+                    {{ synonym_manager() }}
+                </fieldset>
+
+                {# Attributes markdown with validation #}
+                {{ validated_textarea(
+                    name="attributes_markdown",
+                    label="Attributes Markdown",
+                    value=draft.inputs.attributes_markdown or '',
+                    rows=20,
+                    placeholder="Define the attributes for your finding model in markdown format...",
+                    required=true,
+                    minlength=20,
+                    extra_classes=("font-mono text-sm " + ("opacity-60" if draft.status == 'submitted' else ""))
+                ) }}
+
+                {# Action buttons #}
+                <div class="flex justify-between items-center pt-6 border-t border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center gap-3">
+                        <div id="draft-actions"></div>
+
+                        {% if draft.status != 'submitted' %}
+                        {# Auto-save on changes to description/attributes #}
+                        <div
+                            hx-post="/api/finding-models/drafts/save"
+                            hx-include="closest form"
+                            hx-trigger="change from:find textarea delay:500ms, keyup from:find textarea delay:1000ms changed"
+                            hx-target="#draft-actions"
+                            hx-swap="outerHTML">
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        {% if draft.status != 'submitted' %}
+                        <button type="submit"
+                                :disabled="!canSubmit"
+                                :class="{'opacity-50 cursor-not-allowed': !canSubmit}"
+                                class="inline-flex items-center px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg focus:outline-none focus:ring-4 focus:ring-primary-300 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed dark:focus:ring-primary-800">
+                            <span class="htmx-indicator">
+                                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Updating...
+                            </span>
+                            <span>Update & Preview</span>
+                        </button>
+                        {% else %}
+                        <span class="text-sm text-gray-500 dark:text-gray-400">This draft has been submitted</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>

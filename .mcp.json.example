@@ -23,5 +23,13 @@
     },
     "command": "uvx",
     "args": ["perplexity-mcp"]
+  },
+  "mongodb": {
+    "type": "stdio",
+    "command": "npx",
+    "args": ["mongodb-mcp-server@latest"],
+    "env": {
+      "MONGODB_URI": "mongodb://localhost:27017/findingmodels"
+    }
   }
 }

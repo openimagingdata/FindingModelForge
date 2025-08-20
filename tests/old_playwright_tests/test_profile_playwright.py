@@ -180,19 +180,21 @@ class TestProfileDraftsUI:
                 await expect(submitted_card.locator("a[title='Edit'], button[title='Edit']")).to_have_count(0)
                 await expect(page.locator(f"#delete-draft-modal-{submitted_id}")).to_have_count(0)
 
-                # Draft card should have View/Edit/Delete
-                await expect(draft_card.locator("a[title='View'], button[title='View']")).to_have_count(1)
+                # Draft card should have Edit/Delete (View only appears if has_generated)
                 await expect(draft_card.locator("a[title='Edit'], button[title='Edit']")).to_have_count(1)
                 await expect(draft_card.locator("a[title='Delete'], button[title='Delete']")).to_have_count(1)
+                # View button may or may not be present for drafts depending on whether they have generated JSON
 
-                # 1) View draft: should NOT show JSON or IDs
-                await draft_card.locator("a[title='View'], button[title='View']").first.click()
-                await page.wait_for_load_state("networkidle")
-                # JSON accordion must be absent for drafts
-                await expect(page.locator("#finding-model-json")).to_have_count(0)
-                # Return back
-                await page.go_back()
-                await page.wait_for_selector("#drafts-grid")
+                # 1) View draft: only test if View button is present (depends on has_generated)
+                view_button_count = await draft_card.locator("a[title='View'], button[title='View']").count()
+                if view_button_count > 0:
+                    await draft_card.locator("a[title='View'], button[title='View']").first.click()
+                    await page.wait_for_load_state("networkidle")
+                    # JSON accordion must be absent for drafts without submitted status
+                    await expect(page.locator("#finding-model-json")).to_have_count(0)
+                    # Return back
+                    await page.go_back()
+                    await page.wait_for_selector("#drafts-grid")
 
                 # 2) View submitted: JSON accordion should be present
                 await submitted_card.locator("a[title='View'], button[title='View']").first.click()
@@ -202,11 +204,15 @@ class TestProfileDraftsUI:
                 await page.go_back()
                 await page.wait_for_selector("#drafts-grid")
 
-                # 3) Edit draft: should navigate to create page with draft loaded (step 4 UI present)
+                # 3) Edit draft: should navigate to unified draft page in edit mode
                 await draft_card.locator("a[title='Edit'], button[title='Edit']").first.click()
                 await page.wait_for_load_state("networkidle")
-                # Expect Edit Attributes step elements (Show Model button)
-                await expect(page.locator("button:has-text('Show Model')")).to_be_visible(timeout=10000)
+                # Expect unified draft edit page elements
+                await expect(page.locator("h1:has-text('Edit Finding Model Draft')")).to_be_visible(timeout=10000)
+                await expect(page.locator("button:has-text('Update & Preview')")).to_be_visible(timeout=10000)
+                # Should have description and attributes textareas
+                await expect(page.locator("textarea#description")).to_be_visible()
+                await expect(page.locator("textarea[name='attributes_markdown']")).to_be_visible()
                 await page.go_back()
                 await page.wait_for_selector("#drafts-grid")
 
@@ -310,13 +316,13 @@ class TestProfileNoDraftsState:
                 await browser.close()
 
 
-class TestReuseOnShowModel:
-    async def test_reuse_generated_json_when_inputs_unchanged(self) -> None:
-        """Editing a draft and clicking Show Model should reuse generated_json if inputs are unchanged."""
+class TestFormValidation:
+    async def test_button_validation_for_draft_with_generated_model(self) -> None:
+        """Test that Update & Preview button validation works correctly for drafts with existing models."""
         test_user_id = int(os.getenv("TEST_AUTH_USER_ID", "999999"))
-        draft_name = "PW Reuse Draft"
+        draft_name = "PW Validation Draft"
 
-        # Seed a single draft with generated_json
+        # Seed a single draft with generated_json (existing model)
         client: Any = AsyncIOMotorClient(settings.mongodb_uri)
         db = client[settings.mongodb_db]
         col = db["finding_model_drafts"]
@@ -361,29 +367,48 @@ class TestReuseOnShowModel:
                 await expect(card).to_be_visible()
                 await card.locator("a[title='Edit'], button[title='Edit']").first.click()
                 await page.wait_for_load_state("networkidle")
-                await expect(page.locator("button:has-text('Show Model')")).to_be_visible()
+                await expect(page.locator("button:has-text('Update & Preview')")).to_be_visible()
 
-                # Intercept the POST to step/4 and capture the response headers
-                reuse_flag: dict[str, str] = {}
+                # Wait for Alpine.js to initialize and form to be populated
+                await page.wait_for_timeout(3000)
 
-                def on_response(response: Any) -> None:  # Playwright Response
-                    try:
-                        if "/api/finding-models/create/step/4" in response.url and response.request.method == "POST":
-                            val = response.headers.get("x-model-reused")
-                            if val is not None:
-                                reuse_flag["x-model-reused"] = val
-                    except Exception:
-                        pass
+                button = page.locator("button:has-text('Update & Preview')")
 
-                page.on("response", on_response)  # type: ignore[arg-type]
+                # Test 1: Button should be DISABLED initially (no changes + has existing model)
+                await expect(button).to_be_disabled(timeout=5000)
 
-                # Click Show Model without changing inputs
-                await page.locator("button:has-text('Show Model')").click()
-                # After swap, step 5 heading should be present (implicit wait for POST completion)
-                await expect(page.locator("h2:has-text('Your Finding Model is Ready!')")).to_be_visible(timeout=20000)
+                # Test 2: Make a change - button should become ENABLED
+                desc_field = page.locator("textarea#description")
+                current_desc = await desc_field.input_value()
+                await desc_field.fill(current_desc + " Updated content.")
+                await page.wait_for_timeout(500)  # Wait for Alpine reactivity
 
-                # Assert header indicates reuse
-                assert reuse_flag.get("x-model-reused") == "1", f"Expected reuse header '1', got {reuse_flag}"
+                await expect(button).to_be_enabled(timeout=5000)
+
+                # Test 3: Revert the change - button should become DISABLED again
+                await desc_field.fill(current_desc)
+                await page.wait_for_timeout(500)  # Wait for Alpine reactivity
+
+                await expect(button).to_be_disabled(timeout=5000)
+
+                # Test 4: Change attributes instead - button should become ENABLED
+                attrs_field = page.locator("textarea[name='attributes_markdown']")
+                current_attrs = await attrs_field.input_value()
+                await attrs_field.fill(current_attrs + "\n- new: attribute")
+                await page.wait_for_timeout(500)
+
+                await expect(button).to_be_enabled(timeout=5000)
+
+                # Test 5: Can successfully submit with changes
+                await button.click()
+
+                # Wait for HTMX to complete the content swap
+                await page.wait_for_timeout(2000)
+
+                # Should see success message
+                success_alert = page.locator("#success-alert")
+                await expect(success_alert).to_be_visible(timeout=5000)
+                await expect(success_alert).to_contain_text("Draft updated successfully!")
 
             finally:
                 await browser.close()
@@ -437,24 +462,42 @@ class TestBackFromReviewKeepsForm:
                 await page.goto("http://localhost:8000/profile")
                 await page.wait_for_selector("#drafts-grid")
 
-                # Edit the seeded draft to land on step 4
+                # Edit the seeded draft - lands on unified draft edit page
                 card = page.locator(f"#drafts-grid .draft-card:has-text('{draft_name}')")
                 await expect(card).to_be_visible()
                 await card.locator("a[title='Edit'], button[title='Edit']").first.click()
                 await page.wait_for_load_state("networkidle")
-                await expect(page.locator("button:has-text('Show Model')")).to_be_visible()
+                await expect(page.locator("button:has-text('Update & Preview')")).to_be_visible()
 
-                # Click Show Model to navigate to step 5
-                await page.locator("button:has-text('Show Model')").click()
-                await expect(page.locator("h2:has-text('Your Finding Model is Ready!')")).to_be_visible(timeout=20000)
+                # Wait for form to load and ensure button is enabled
+                await page.wait_for_timeout(2000)
+                button = page.locator("button:has-text('Update & Preview')")
+                is_enabled = await button.is_enabled()
+                if not is_enabled:
+                    # Make a minimal change to enable the button
+                    desc_field = page.locator("textarea#description")
+                    current_desc = await desc_field.input_value()
+                    await desc_field.fill(current_desc + " (test update)")
+                    await page.wait_for_timeout(500)
 
-                # Click Back to return to step 4
-                back_btn = page.locator("button:has-text('Back')")
-                await expect(back_btn).to_be_visible()
-                await back_btn.click()
+                # Click Update & Preview - this will trigger HTMX content swap
+                await page.locator("button:has-text('Update & Preview')").click()
 
-                # Step 4 should render with prefilled values
-                await expect(page.locator("button:has-text('Show Model')")).to_be_visible(timeout=10000)
+                # Wait for HTMX to complete the content swap
+                await page.wait_for_timeout(2000)
+
+                # Look for the success alert that appears after update
+                success_alert = page.locator("#success-alert")
+                await expect(success_alert).to_be_visible(timeout=5000)
+                await expect(success_alert).to_contain_text("Draft updated successfully!")
+
+                # For drafts, we should be able to switch back to edit mode using the Edit button
+                edit_mode_btn = page.locator("button#edit-mode-btn")
+                await expect(edit_mode_btn).to_be_visible()
+                await edit_mode_btn.click()
+
+                # Should be back on edit mode of unified draft page with prefilled values
+                await expect(page.locator("button:has-text('Update & Preview')")).to_be_visible(timeout=10000)
 
                 # Description textarea should contain seeded text
                 desc = page.locator("textarea#description")

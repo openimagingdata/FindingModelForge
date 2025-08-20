@@ -1,11 +1,14 @@
 # Component Architecture and Reuse Patterns
 
 ## Overview
-The application uses a component-based architecture with reusable Jinja2 macros and templates for consistency and maintainability.
+
+The application uses a component-based architecture with reusable Jinja2 macros and templates for consistency and
+maintainability.
 
 ## Component Hierarchy
 
 ### 1. Display Components
+
 ```
 templates/components/
 ├── finding_model_complete_display.html    # Full display + JSON accordion
@@ -20,6 +23,7 @@ templates/components/
 ```
 
 ### 2. Macro Library
+
 ```
 templates/macros/
 ├── json_accordion.html         # Flowbite JSON accordion with copy/download
@@ -33,6 +37,7 @@ templates/macros/
 ## Usage Patterns
 
 ### 1. Complete Model Display
+
 ```jinja
 {# Use everywhere finding models need full display #}
 {% set finding_model = session_data.final_model %}
@@ -40,18 +45,21 @@ templates/macros/
 ```
 
 ### 2. JSON Accordion
+
 ```jinja
 {% from 'macros/json_accordion.html' import json_accordion %}
 {{ json_accordion(finding_model, "finding-model-json", "JSON Data") }}
 ```
 
 Features:
+
 - Proper Flowbite accordion styling
 - Copy to clipboard functionality
 - Download as JSON file
 - Syntax highlighting for JSON
 
 ### 3. Synonym Management
+
 ```jinja
 {% from 'macros/synonym_manager.html' import synonym_manager, synonym_data %}
 
@@ -62,12 +70,14 @@ Features:
 ```
 
 Features:
+
 - Alpine.js reactive management
 - Visual badge display
 - Add/remove functionality
 - JSON serialization for forms
 
 ### 4. Form Validation
+
 ```jinja
 {% from 'macros/form_validation.html' import validation_data, validated_input %}
 
@@ -81,6 +91,7 @@ Features:
 Before creating new components:
 
 1. **Search existing components**:
+
    ```bash
    find templates/ -name "*.html" | grep -E "(display|card|list)"
    grep -r "accordion" templates/
@@ -92,10 +103,11 @@ Before creating new components:
    - `templates/macros/` - Reusable UI elements
 
 3. **Reuse patterns**:
+
    ```jinja
    {# ✅ CORRECT: Reuse existing component #}
    {% include 'components/finding_model_display.html' %}
-   
+
    {# ❌ WRONG: Recreating existing functionality #}
    <div class="bg-green-100 text-green-800 px-3 py-1 rounded">Success</div>
    ```
@@ -103,12 +115,14 @@ Before creating new components:
 ## Component Guidelines
 
 ### 1. Flowbite Compliance
+
 - **Always use Flowbite components** from https://flowbite.com/docs/components/
 - **Copy exact HTML structure** and CSS classes
 - **Use data attributes** for component behavior
 - **No custom CSS** or JavaScript
 
 ### 2. Alpine.js Integration
+
 ```javascript
 // ✅ CORRECT: Reactive data binding
 x-data='{
@@ -121,6 +135,7 @@ x-data='{
 ```
 
 ### 3. Template Structure
+
 ```jinja
 {# Component documentation #}
 {# Purpose: Brief description
@@ -139,16 +154,19 @@ x-data='{
 ## Testing Components
 
 ### 1. Unit Testing
+
 - Test macro parameter handling
 - Verify HTML structure output
 - Check default values
 
 ### 2. Integration Testing
+
 - Test component interaction with Alpine.js
 - Verify HTMX compatibility
 - Test responsive behavior
 
 ### 3. Accessibility Testing
+
 - ARIA attributes present
 - Keyboard navigation works
 - Screen reader compatibility
@@ -163,12 +181,14 @@ x-data='{
 ## Migration Notes
 
 After the refactoring:
+
 - **Removed**: 5 old JSON API endpoints
 - **Consolidated**: 40+ lines of duplicate markdown generation
 - **Added**: Reusable helper functions
 - **Improved**: Component consistency across workflow
 
 The architecture now supports:
+
 - Easy component discovery and reuse
 - Consistent styling with Flowbite
 - Reactive behavior with Alpine.js

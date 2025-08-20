@@ -6,12 +6,19 @@
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
     <div class="container mx-auto px-4 py-8 pb-16 max-w-5xl">
         <div class="mb-8">
-            <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Create Finding Model</h1>
-            <p class="text-gray-600 dark:text-gray-400">Build a new finding model through our guided workflow</p>
+            <div class="flex items-start justify-between gap-4">
+                <div class="flex-1">
+                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Create Finding Model</h1>
+                    <p class="text-gray-600 dark:text-gray-400">Build a new finding model through our guided workflow</p>
+                </div>
+
+                <!-- Mode Toggle Header Target for HTMX OOB Swaps -->
+                <div id="draft-mode-toggle-header"></div>
+            </div>
         </div>
 
     <!-- HTMX Container for dynamic content -->
-    <div id="step-container">
+    <div id="main-content">
             <!-- Initial content will be loaded here via HTMX -->
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
                 <div class="text-center py-8">
@@ -28,7 +35,7 @@
             <div
                 hx-post="/api/finding-models/create/resume"
                 hx-trigger="load"
-                hx-target="#step-container"
+                hx-target="#main-content"
                 hx-swap="innerHTML"
                 hx-vals='{"draft_id": {{ start_draft_id|tojson }} }'
             ></div>
@@ -36,7 +43,7 @@
             <div
                 hx-post="/api/finding-models/create/step/1"
                 hx-trigger="load"
-                hx-target="#step-container"
+                hx-target="#main-content"
                 hx-swap="innerHTML"
                 hx-vals='{"name": {{ start_name|tojson }} }'
             ></div>
@@ -44,7 +51,7 @@
             <div
                 hx-post="/api/finding-models/create/restart"
                 hx-trigger="load"
-                hx-target="#step-container"
+                hx-target="#main-content"
                 hx-swap="innerHTML"
             ></div>
             {% endif %}

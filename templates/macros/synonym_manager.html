@@ -38,15 +38,23 @@
     </div>
 
     {# Hidden input that stores JSON for form submission #}
-    <input type="hidden" name="synonyms" :value="JSON.stringify(synonyms)">
+    <input type="hidden" name="synonyms" :value="getSynonymsJson()">
 </div>
 {% endmacro %}
 
-{# Alpine.js data object for synonym management #}
+{# Alpine.js data object for synonym management with change tracking #}
 {% macro synonym_data(initial_synonyms) %}
 {
     synonyms: {{ initial_synonyms | tojson }},
+    original_synonyms: {{ initial_synonyms | tojson }},
     newSynonym: "",
+
+    get synonymsChanged() {
+        // Check if synonyms array has changed
+        if (this.synonyms.length !== this.original_synonyms.length) return true;
+        return !this.synonyms.every((synonym, index) => synonym === this.original_synonyms[index]);
+    },
+
     addSynonym: function() {
         if (this.newSynonym.trim()) {
             this.synonyms.push(this.newSynonym.trim());
