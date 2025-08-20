@@ -90,7 +90,15 @@
       "Bash(PLAYWRIGHT_HEADLESS=true uv run pytest tests/ui/test_draft_management.py -v --no-cov --tb=short)",
       "Bash(PLAYWRIGHT_HEADLESS=true uv run pytest tests/ui/test_draft_management.py::TestFormValidation -v --no-cov --tb=short)",
       "Bash(PLAYWRIGHT_HEADLESS=true uv run pytest tests/ui/ -v --no-cov --tb=short)",
-      "Bash(task lint)"
+      "Bash(task lint)",
+      "Bash(PLAYWRIGHT_HEADLESS=true uv run pytest tests/ui/test_draft_management.py::TestDraftModalWorkflows::test_submit_draft_modal_workflow -v --no-cov --tb=short)",
+      "Bash(PLAYWRIGHT_HEADLESS=true uv run pytest tests/ui/test_draft_management.py::TestDraftModalWorkflows::test_delete_draft_modal_workflow -v --no-cov --tb=short)",
+      "Bash(PLAYWRIGHT_HEADLESS=true uv run pytest tests/ui/test_draft_management.py::TestDraftModalWorkflows::test_delete_draft_modal_workflow -v --no-cov --tb=short -s)",
+      "Bash(PLAYWRIGHT_HEADLESS=true uv run pytest tests/ui/test_draft_management.py::TestDraftModalWorkflows -v --no-cov --tb=short)",
+      "Bash(PLAYWRIGHT_HEADLESS=true uv run pytest tests/ui/test_draft_management.py::TestDraftModalWorkflows::test_modal_accessibility_and_keyboard_navigation -v --no-cov --tb=short)",
+      "Bash(PLAYWRIGHT_HEADLESS=true uv run pytest tests/ui/test_draft_management.py::TestDraftModalWorkflows::test_modal_correct_htmx_targets -v --no-cov --tb=short)",
+      "Bash(PLAYWRIGHT_HEADLESS=true uv run pytest tests/ui/test_draft_management.py::TestDraftModalWorkflows -v --no-cov)",
+      "Bash(PLAYWRIGHT_HEADLESS=true uv run pytest tests/ui/test_draft_management.py -v --no-cov)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

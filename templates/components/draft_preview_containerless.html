@@ -80,10 +80,8 @@
             <button
                 type="button"
                 class="inline-flex items-center px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg focus:outline-none focus:ring-4 focus:ring-green-300 transition-colors dark:focus:ring-green-800"
-                hx-post="/api/finding-models/drafts/{{ draft.id }}/submit"
-                hx-target="#draft-content"
-                hx-swap="innerHTML"
-                hx-confirm="Are you sure you want to submit this draft? This will lock the draft and prevent further edits.">
+                data-modal-target="submit-draft-modal-{{ draft.id }}"
+                data-modal-toggle="submit-draft-modal-{{ draft.id }}">
                 <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
@@ -105,8 +103,10 @@
     </div>
 </div>
 
-<!-- Delete Confirmation Modal -->
+<!-- Confirmation Modals -->
 {% if draft.status == 'draft' %}
     {% from 'macros/delete_draft_modal.html' import delete_draft_modal %}
+    {% from 'macros/submit_draft_modal.html' import submit_draft_modal %}
     {{ delete_draft_modal(draft.id) }}
+    {{ submit_draft_modal(draft.id) }}
 {% endif %}

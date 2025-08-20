@@ -1,0 +1,18 @@
+{# Submit Draft Modal Macro - Uses base confirmation modal #}
+
+{% from 'macros/confirmation_modal.html' import confirmation_modal %}
+
+{% macro submit_draft_modal(draft_id, hx_target="#main-content", hx_swap="innerHTML") %}
+{{ confirmation_modal(
+    modal_id="submit-draft-modal-" ~ draft_id,
+    title="Submit Draft",
+    message="Are you sure you want to submit this draft? This will lock the draft and prevent further edits.",
+    confirm_text="Yes, submit",
+    cancel_text="Cancel",
+    confirm_color="green",
+    icon_type="info",
+    hx_post="/api/finding-models/drafts/" ~ draft_id ~ "/submit",
+    hx_target=hx_target,
+    hx_swap=hx_swap
+) }}
+{% endmacro %}

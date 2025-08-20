@@ -5,6 +5,30 @@ All notable changes to FindingModelForge are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+#### Submit Draft Modal Implementation
+
+- **Fixed htmx:targetError** - Submit Draft button now correctly targets `#main-content` instead of non-existent `#draft-content`
+- **Replaced browser confirmation with Flowbite modal** - Consistent UI using proper modal components instead of `hx-confirm`
+- **Created reusable modal system**:
+  - `templates/macros/confirmation_modal.html` - Base modal component with customizable parameters
+  - `templates/macros/submit_draft_modal.html` - Green submit confirmation modal
+  - Refactored `templates/macros/delete_draft_modal.html` to use base component
+- **Updated draft preview templates** - All draft display components now use consistent modal patterns
+- **Comprehensive test coverage**:
+  - 4 unit tests for modal HTML generation and HTMX attributes
+  - 4 UI tests for complete Submit/Delete modal workflows including accessibility
+  - Tests verify modal appearance, button functionality, and proper HTMX targeting
+
+#### Code Quality Improvements
+
+- **Linting fixes** - Resolved all style and formatting issues in test files
+- **Import organization** - Consistent import ordering across test modules
+- **Unused variable cleanup** - Removed dead code from UI tests
+
 ## [1.2.0] - 2025-08-20
 
 ### Major UI Testing Infrastructure Overhaul
@@ -100,7 +124,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 #### Backend Architecture Improvements
 
-- **Enhanced type safety** - `StepNumber = Annotated[int, Path(ge=1, le=3)]` provides validation at FastAPI/Pydantic level
+- **Enhanced type safety** - `StepNumber = Annotated[int, Path(ge=1, le=3)]` provides validation at FastAPI/Pydantic
+  level
 - **Improved error handling** - Step validation now returns proper 422 errors with clear messages instead of 500 errors
 - **Redirect testing patterns** - Updated tests to properly handle 303 redirects to draft endpoints
 - **Clean separation** - Clear distinction between creation steps (1-3) and draft management system

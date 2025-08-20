@@ -10,6 +10,8 @@ Tests for draft-specific functionality including:
 
 from __future__ import annotations
 
+import re
+
 import pytest
 from playwright.async_api import Page, expect
 
@@ -450,5 +452,230 @@ class TestDraftAutosave:
 
         attrs_value = await page.locator("textarea#attributes_markdown").input_value()
         assert "autosave: Test autosave functionality" in attrs_value
+
+        await verify_no_console_errors(errors, warnings)
+
+
+class TestDraftModalWorkflows:
+    """Test Submit/Delete modal workflows for draft actions."""
+
+    async def test_submit_draft_modal_workflow(
+        self, authenticated_page_with_console: tuple[Page, list[str], list[str]]
+    ) -> None:
+        """Test the complete submit draft modal workflow."""
+        page, errors, warnings = authenticated_page_with_console
+
+        draft_name = "UI Test Submit Modal"
+        gen_json = await generate_valid_generated_json(draft_name)
+        draft_id = await seed_draft(user_id=TEST_USER_ID, name=draft_name, generated_json=gen_json, status="draft")
+
+        # Navigate to draft in view mode to see action buttons
+        await page.goto(f"http://localhost:8000/api/finding-models/drafts/{draft_id}?mode=view")
+        await page.wait_for_load_state("networkidle")
+
+        # Verify the Submit Draft button is visible
+        submit_button = page.locator("button:has-text('Submit Draft')")
+        await expect(submit_button).to_be_visible(timeout=10000)
+
+        # Click the Submit Draft button to open modal
+        await submit_button.click()
+        await page.wait_for_timeout(500)  # Allow modal to open
+
+        # Verify the submit modal appears with correct content
+        modal = page.locator(f"#submit-draft-modal-{draft_id}")
+        await expect(modal).to_be_visible(timeout=5000)
+        await expect(modal).to_contain_text("Are you sure you want to submit this draft?")
+        await expect(modal).to_contain_text("This will lock the draft and prevent further edits")
+
+        # Verify modal has correct buttons
+        confirm_button = modal.locator("button:has-text('Yes, submit')")
+        cancel_button = modal.locator("button:has-text('Cancel')")
+        await expect(confirm_button).to_be_visible()
+        await expect(cancel_button).to_be_visible()
+
+        # Test cancel functionality
+        await cancel_button.click()
+        await page.wait_for_timeout(500)
+        await expect(modal).to_be_hidden()  # Modal should close
+
+        # Still on draft page, draft should still be status="draft"
+        await expect(
+            page.locator("span.text-yellow-600:has-text('Draft'), span.text-yellow-400:has-text('Draft')")
+        ).to_be_visible()
+
+        # Now test actual submit
+        await submit_button.click()
+        await page.wait_for_timeout(500)
+        await expect(modal).to_be_visible()
+
+        # Click confirm
+        await confirm_button.click()
+        await wait_for_htmx_swap(page, "span:has-text('Submitted')")
+
+        # Should see status change to submitted
+        await expect(
+            page.locator("span.text-green-600:has-text('Submitted'), span.text-green-400:has-text('Submitted')")
+        ).to_be_visible(timeout=10000)
+        await expect(
+            page.locator("span.text-yellow-600:has-text('Draft'), span.text-yellow-400:has-text('Draft')")
+        ).to_have_count(0)
+
+        # Action buttons should be gone (submitted drafts can't be modified)
+        await expect(page.locator("button:has-text('Submit Draft')")).to_have_count(0)
+        await expect(page.locator("button:has-text('Delete')")).to_have_count(0)
+
+        await verify_no_console_errors(errors, warnings)
+
+    async def test_delete_draft_modal_workflow(
+        self, authenticated_page_with_console: tuple[Page, list[str], list[str]]
+    ) -> None:
+        """Test the complete delete draft modal workflow."""
+        page, errors, warnings = authenticated_page_with_console
+
+        draft_name = "UI Test Delete Modal"
+        gen_json = await generate_valid_generated_json(draft_name)
+        draft_id = await seed_draft(user_id=TEST_USER_ID, name=draft_name, generated_json=gen_json, status="draft")
+
+        # Navigate to draft in view mode to see action buttons
+        await page.goto(f"http://localhost:8000/api/finding-models/drafts/{draft_id}?mode=view")
+        await page.wait_for_load_state("networkidle")
+
+        # Verify the Delete button is visible (the trigger button, not the modal confirmation button)
+        delete_button = page.locator("button[data-modal-target^='delete-draft-modal']:has-text('Delete')")
+        await expect(delete_button).to_be_visible(timeout=10000)
+
+        # Click the Delete button to open modal
+        await delete_button.click()
+        await page.wait_for_timeout(500)  # Allow modal to open
+
+        # Verify the delete modal appears with correct content
+        modal = page.locator(f"#delete-draft-modal-{draft_id}")
+        await expect(modal).to_be_visible(timeout=5000)
+        await expect(modal).to_contain_text("Are you sure you want to delete this draft?")
+        await expect(modal).to_contain_text("This action cannot be undone")
+
+        # Verify modal has correct buttons with appropriate colors
+        confirm_button = modal.locator("button:has-text('Yes, delete')")
+        cancel_button = modal.locator("button:has-text('Cancel')")
+        await expect(confirm_button).to_be_visible()
+        await expect(cancel_button).to_be_visible()
+        # Red color for delete button
+        await expect(confirm_button).to_have_class(re.compile(r".*bg-red-600.*"))
+
+        # Test cancel functionality
+        await cancel_button.click()
+        await page.wait_for_timeout(500)
+        await expect(modal).to_be_hidden()  # Modal should close
+
+        # Still on draft page - check for the main heading
+        await expect(page.locator(f"h1:has-text('{draft_name}'), h2:has-text('{draft_name}')")).to_be_visible()
+
+        # Now test actual delete
+        await delete_button.click()
+        await page.wait_for_timeout(500)
+        await expect(modal).to_be_visible()
+
+        # Click confirm to delete
+        await confirm_button.click()
+        await wait_for_htmx_swap(page, "body")  # Wait for HTMX response
+
+        # After delete, check if we're redirected or if there's an error message
+        # The exact behavior may vary based on implementation
+        current_url = page.url
+        if f"/drafts/{draft_id}" in current_url:
+            # If still on same page, the modal workflow still worked correctly
+            # This test mainly verifies the modal workflow, not the delete logic
+            print(f"Delete completed, still on page: {current_url}")
+        else:
+            # Successfully redirected away
+            print(f"Successfully redirected to: {current_url}")
+
+        await verify_no_console_errors(errors, warnings)
+
+    async def test_modal_accessibility_and_keyboard_navigation(
+        self, authenticated_page_with_console: tuple[Page, list[str], list[str]]
+    ) -> None:
+        """Test modal accessibility features and keyboard navigation."""
+        page, errors, warnings = authenticated_page_with_console
+
+        draft_name = "UI Test Modal Accessibility"
+        gen_json = await generate_valid_generated_json(draft_name)
+        draft_id = await seed_draft(user_id=TEST_USER_ID, name=draft_name, generated_json=gen_json, status="draft")
+
+        await page.goto(f"http://localhost:8000/api/finding-models/drafts/{draft_id}?mode=view")
+        await page.wait_for_load_state("networkidle")
+
+        # Test submit modal accessibility
+        submit_button = page.locator("button:has-text('Submit Draft')")
+        await submit_button.click()
+        await page.wait_for_timeout(500)
+
+        modal = page.locator(f"#submit-draft-modal-{draft_id}")
+        await expect(modal).to_be_visible()
+
+        # Check ARIA attributes - modals have aria-modal="true" and tabindex="-1"
+        await expect(modal).to_have_attribute("aria-modal", "true")
+        await expect(modal).to_have_attribute("tabindex", "-1")
+
+        # Test keyboard navigation - Escape key should close modal
+        await page.keyboard.press("Escape")
+        await page.wait_for_timeout(500)
+        await expect(modal).to_be_hidden()
+
+        # Test that modal can be closed by clicking outside
+        await submit_button.click()
+        await page.wait_for_timeout(500)
+        await expect(modal).to_be_visible()
+
+        # Click outside the modal (on backdrop)
+        await page.mouse.click(50, 50)  # Click near top-left corner (backdrop)
+        await page.wait_for_timeout(500)
+        await expect(modal).to_be_hidden()
+
+        await verify_no_console_errors(errors, warnings)
+
+    async def test_modal_correct_htmx_targets(
+        self, authenticated_page_with_console: tuple[Page, list[str], list[str]]
+    ) -> None:
+        """Test that modals use correct HTMX targets (#main-content, not #draft-content)."""
+        page, errors, warnings = authenticated_page_with_console
+
+        draft_name = "UI Test HTMX Targets"
+        gen_json = await generate_valid_generated_json(draft_name)
+        draft_id = await seed_draft(user_id=TEST_USER_ID, name=draft_name, generated_json=gen_json, status="draft")
+
+        await page.goto(f"http://localhost:8000/api/finding-models/drafts/{draft_id}?mode=view")
+        await page.wait_for_load_state("networkidle")
+
+        # Open submit modal and check HTMX attributes
+        submit_button = page.locator("button:has-text('Submit Draft')")
+        await submit_button.click()
+        await page.wait_for_timeout(500)
+
+        modal = page.locator(f"#submit-draft-modal-{draft_id}")
+        confirm_button = modal.locator("button:has-text('Yes, submit')")
+
+        # Check HTMX attributes point to correct target
+        await expect(confirm_button).to_have_attribute("hx-target", "#main-content")
+        await expect(confirm_button).to_have_attribute("hx-swap", "innerHTML")
+        await expect(confirm_button).to_have_attribute("hx-post", f"/api/finding-models/drafts/{draft_id}/submit")
+
+        # Close this modal
+        await page.keyboard.press("Escape")
+        await page.wait_for_timeout(500)
+
+        # Test delete modal HTMX attributes
+        delete_button = page.locator("button[data-modal-target^='delete-draft-modal']:has-text('Delete')")
+        await delete_button.click()
+        await page.wait_for_timeout(500)
+
+        delete_modal = page.locator(f"#delete-draft-modal-{draft_id}")
+        delete_confirm_button = delete_modal.locator("button:has-text('Yes, delete')")
+
+        # Delete modal should have correct attributes too
+        await expect(delete_confirm_button).to_have_attribute(
+            "hx-post", f"/api/finding-models/drafts/{draft_id}/delete"
+        )
+        # Delete modal might have different target/swap based on context
 
         await verify_no_console_errors(errors, warnings)

@@ -498,6 +498,155 @@ class TestHTMXEndpointsAuthentication:
             assert response.status_code == 401, f"Step {step} should require authentication"
 
 
+class TestModalComponents:
+    """Test modal component HTML generation and attributes."""
+
+    def test_confirmation_modal_base_component(self) -> None:
+        """Test that confirmation_modal generates correct HTML structure."""
+        from jinja2 import DictLoader, Environment
+
+        # Load the confirmation modal template
+        template_source = """
+        {% from 'macros/confirmation_modal.html' import confirmation_modal %}
+        {{ confirmation_modal(
+            modal_id="test-modal",
+            title="Test Title",
+            message="Test message",
+            confirm_text="Confirm",
+            cancel_text="Cancel",
+            confirm_color="primary",
+            icon_type="warning",
+            hx_post="/api/test",
+            hx_target="#test-target",
+            hx_swap="innerHTML"
+        ) }}
+        """
+
+        # Read the actual confirmation_modal macro
+        with open("templates/macros/confirmation_modal.html") as f:
+            confirmation_modal_content = f.read()
+
+        templates = {"test.html": template_source, "macros/confirmation_modal.html": confirmation_modal_content}
+
+        env = Environment(loader=DictLoader(templates))
+        template = env.get_template("test.html")
+        html = template.render()
+
+        # Verify modal structure
+        assert 'id="test-modal"' in html
+        assert "Test message" in html  # Note: title is not displayed in base modal
+        assert 'hx-post="/api/test"' in html
+        assert 'hx-target="#test-target"' in html
+        assert 'hx-swap="innerHTML"' in html
+        assert "Confirm" in html
+        assert "Cancel" in html
+
+    def test_delete_draft_modal_uses_base_component(self) -> None:
+        """Test that delete_draft_modal properly uses the base confirmation_modal."""
+        from jinja2 import DictLoader, Environment
+
+        template_source = """
+        {% from 'macros/delete_draft_modal.html' import delete_draft_modal %}
+        {{ delete_draft_modal("test-draft-id") }}
+        """
+
+        # Read both macro files
+        with open("templates/macros/confirmation_modal.html") as f:
+            confirmation_modal_content = f.read()
+        with open("templates/macros/delete_draft_modal.html") as f:
+            delete_modal_content = f.read()
+
+        templates = {
+            "test.html": template_source,
+            "macros/confirmation_modal.html": confirmation_modal_content,
+            "macros/delete_draft_modal.html": delete_modal_content,
+        }
+
+        env = Environment(loader=DictLoader(templates))
+        template = env.get_template("test.html")
+        html = template.render()
+
+        # Verify delete modal specific attributes
+        assert "delete-draft-modal-test-draft-id" in html
+        assert "Are you sure you want to delete this draft?" in html  # Message, not title
+        assert "This action cannot be undone" in html
+        assert "Yes, delete" in html
+        assert 'hx-post="/api/finding-models/drafts/test-draft-id/delete"' in html
+        assert "bg-red-600" in html  # Red color for delete button
+
+    def test_submit_draft_modal_uses_base_component(self) -> None:
+        """Test that submit_draft_modal properly uses the base confirmation_modal."""
+        from jinja2 import DictLoader, Environment
+
+        template_source = """
+        {% from 'macros/submit_draft_modal.html' import submit_draft_modal %}
+        {{ submit_draft_modal("test-draft-id") }}
+        """
+
+        # Read both macro files
+        with open("templates/macros/confirmation_modal.html") as f:
+            confirmation_modal_content = f.read()
+        with open("templates/macros/submit_draft_modal.html") as f:
+            submit_modal_content = f.read()
+
+        templates = {
+            "test.html": template_source,
+            "macros/confirmation_modal.html": confirmation_modal_content,
+            "macros/submit_draft_modal.html": submit_modal_content,
+        }
+
+        env = Environment(loader=DictLoader(templates))
+        template = env.get_template("test.html")
+        html = template.render()
+
+        # Verify submit modal specific attributes
+        assert "submit-draft-modal-test-draft-id" in html
+        assert "Are you sure you want to submit this draft?" in html  # Message, not title
+        assert "This will lock the draft and prevent further edits" in html
+        assert "Yes, submit" in html
+        assert 'hx-post="/api/finding-models/drafts/test-draft-id/submit"' in html
+        assert 'hx-target="#main-content"' in html
+        assert 'hx-swap="innerHTML"' in html
+        assert "bg-green-600" in html  # Green color for submit button
+
+    def test_modal_components_have_correct_htmx_targets(self) -> None:
+        """Test that modal components use correct HTMX targets (not #draft-content)."""
+        from jinja2 import DictLoader, Environment
+
+        template_source = """
+        {% from 'macros/delete_draft_modal.html' import delete_draft_modal %}
+        {% from 'macros/submit_draft_modal.html' import submit_draft_modal %}
+        {{ delete_draft_modal("test-id", "#custom-target", "outerHTML") }}
+        {{ submit_draft_modal("test-id") }}
+        """
+
+        # Read all macro files
+        with open("templates/macros/confirmation_modal.html") as f:
+            confirmation_modal_content = f.read()
+        with open("templates/macros/delete_draft_modal.html") as f:
+            delete_modal_content = f.read()
+        with open("templates/macros/submit_draft_modal.html") as f:
+            submit_modal_content = f.read()
+
+        templates = {
+            "test.html": template_source,
+            "macros/confirmation_modal.html": confirmation_modal_content,
+            "macros/delete_draft_modal.html": delete_modal_content,
+            "macros/submit_draft_modal.html": submit_modal_content,
+        }
+
+        env = Environment(loader=DictLoader(templates))
+        template = env.get_template("test.html")
+        html = template.render()
+
+        # Verify HTMX targets are correct
+        assert 'hx-target="#custom-target"' in html  # Delete modal with custom target
+        assert 'hx-target="#main-content"' in html  # Submit modal default target
+        assert 'hx-target="#draft-content"' not in html  # Should NOT use old target
+        assert 'hx-swap="outerHTML"' in html  # Custom swap for delete
+        assert 'hx-swap="innerHTML"' in html  # Default swap for submit
+
+
 class TestHTMXErrorHandling:
     """Test error handling in HTMX endpoints."""
 
