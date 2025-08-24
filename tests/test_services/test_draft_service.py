@@ -386,7 +386,8 @@ class TestDraftService:
         bad_draft.generated_json = None
 
         # Mock the extract method
-        with patch.object(service, "extract_attribute_names_from_generated_json", return_value=[]):
-            # Test - should raise exception since isoformat() fails in both places
-            with pytest.raises(AttributeError, match="Mock timestamp error"):
-                service.format_draft_for_display(bad_draft)
+        with (
+            patch.object(service, "extract_attribute_names_from_generated_json", return_value=[]),
+            pytest.raises(AttributeError, match="Mock timestamp error"),
+        ):
+            service.format_draft_for_display(bad_draft)

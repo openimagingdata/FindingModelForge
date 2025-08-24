@@ -237,18 +237,20 @@ class TestFindingModelService:
         mock_response.text = '{"name": "test_model"}'  # Simple JSON response
         mock_response.raise_for_status = MagicMock()
 
-        with patch("app.services.finding_model_service.httpx.AsyncClient") as mock_client:
-            with patch("app.services.finding_model_service.FindingModelFull") as mock_model_class:
-                mock_client.return_value.__aenter__.return_value.get = AsyncMock(return_value=mock_response)
-                mock_model_class.model_validate_json.return_value = sample_finding_model_full
+        with (
+            patch("app.services.finding_model_service.httpx.AsyncClient") as mock_client,
+            patch("app.services.finding_model_service.FindingModelFull") as mock_model_class,
+        ):
+            mock_client.return_value.__aenter__.return_value.get = AsyncMock(return_value=mock_response)
+            mock_model_class.model_validate_json.return_value = sample_finding_model_full
 
-                # Test
-                model, entry = await service._get_finding_model_with_cache(slug)
+            # Test
+            model, entry = await service._get_finding_model_with_cache(slug)
 
-                # Assertions
-                assert model == sample_finding_model_full
-                assert entry.filename == "bow_tie.fm.json"
-                mock_cache.set_finding_model.assert_called_once()
+            # Assertions
+            assert model == sample_finding_model_full
+            assert entry.filename == "bow_tie.fm.json"
+            mock_cache.set_finding_model.assert_called_once()
 
     async def test_get_finding_model_with_cache_filename_fallback(
         self,
@@ -279,17 +281,19 @@ class TestFindingModelService:
         mock_response.text = '{"name": "test_model"}'  # Simple JSON response
         mock_response.raise_for_status = MagicMock()
 
-        with patch("app.services.finding_model_service.httpx.AsyncClient") as mock_client:
-            with patch("app.services.finding_model_service.FindingModelFull") as mock_model_class:
-                mock_client.return_value.__aenter__.return_value.get = AsyncMock(return_value=mock_response)
-                mock_model_class.model_validate_json.return_value = sample_finding_model_full
+        with (
+            patch("app.services.finding_model_service.httpx.AsyncClient") as mock_client,
+            patch("app.services.finding_model_service.FindingModelFull") as mock_model_class,
+        ):
+            mock_client.return_value.__aenter__.return_value.get = AsyncMock(return_value=mock_response)
+            mock_model_class.model_validate_json.return_value = sample_finding_model_full
 
-                # Test
-                model, entry = await service._get_finding_model_with_cache(slug)
+            # Test
+            model, entry = await service._get_finding_model_with_cache(slug)
 
-                # Assertions
-                assert model == sample_finding_model_full
-                assert entry.filename == "test_model.fm.json"
+            # Assertions
+            assert model == sample_finding_model_full
+            assert entry.filename == "test_model.fm.json"
 
     async def test_get_finding_model_github_404(
         self, service: FindingModelService, mock_cache: MagicMock, mock_index: MagicMock

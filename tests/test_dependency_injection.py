@@ -150,7 +150,7 @@ class TestServiceDependenciesInRouters:
         try:
             # Test that we can override the dependency successfully
             # This proves the dependency injection system is working
-            injected_service = get_creation_service(MagicMock(), MagicMock())
+            _ = get_creation_service(MagicMock(), MagicMock())
 
             # The key test: verify that dependency overrides work
             # This is the core functionality we're testing
@@ -219,14 +219,10 @@ class TestCircularImportPrevention:
         """Test that importing dependencies doesn't cause circular imports."""
         # This test passes if the imports work without errors
         try:
-            from app.dependencies import (
-                get_creation_service,
-                get_draft_service,
-                get_finding_model_service,
+            from app import (
+                dependencies,  # noqa: F401
+                services,  # noqa: F401
             )
-            from app.services.creation_service import CreationService
-            from app.services.draft_service import DraftService
-            from app.services.finding_model_service import FindingModelService
 
             # If we get here without ImportError, circular imports are avoided
             assert True

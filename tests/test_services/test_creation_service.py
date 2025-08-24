@@ -68,7 +68,9 @@ class TestCreationService:
         return FindingModelInputs(
             description="A test finding for medical imaging",
             synonyms=["test finding", "example finding"],
-            attributes_markdown="### presence\n\nPresence of test finding\n\n- absent: Not visible\n- present: Clearly visible",
+            attributes_markdown=(
+                "### presence\n\nPresence of test finding\n\n- absent: Not visible\n- present: Clearly visible"
+            ),
         )
 
     async def test_check_name_availability_available(self, service: CreationService, mock_index: MagicMock):
@@ -165,92 +167,96 @@ class TestCreationService:
         self, service: CreationService, sample_user: User, sample_inputs: FindingModelInputs, mock_database: MagicMock
     ):
         """Test generating finding model from inputs in normal mode."""
-        with patch("app.services.creation_service.create_model_from_markdown", new=AsyncMock()) as mock_create:
-            with patch("app.services.creation_service.add_ids_to_model") as mock_add_ids:
-                with patch("app.services.creation_service.add_standard_codes_to_model") as mock_add_codes:
-                    # Setup mocks
-                    from findingmodel import FindingModelBase
+        with (
+            patch("app.services.creation_service.create_model_from_markdown", new=AsyncMock()) as mock_create,
+            patch("app.services.creation_service.add_ids_to_model") as mock_add_ids,
+            patch("app.services.creation_service.add_standard_codes_to_model") as mock_add_codes,
+        ):
+            # Setup mocks
+            from findingmodel import FindingModelBase
 
-                    mock_model = FindingModelBase(
-                        name="Test Finding",
-                        description="Test description",
-                        synonyms=["synonym"],
-                        tags=None,
-                        contributors=None,
-                        attributes=[
-                            {
-                                "name": "presence",
-                                "description": "Test attribute",
-                                "type": "choice",
-                                "values": [
-                                    {"name": "absent", "description": "Not visible"},
-                                    {"name": "present", "description": "Visible"},
-                                ],
-                                "required": False,
-                                "max_selected": 1,
-                            }
+            mock_model = FindingModelBase(
+                name="Test Finding",
+                description="Test description",
+                synonyms=["synonym"],
+                tags=None,
+                contributors=None,
+                attributes=[
+                    {
+                        "name": "presence",
+                        "description": "Test attribute",
+                        "type": "choice",
+                        "values": [
+                            {"name": "absent", "description": "Not visible"},
+                            {"name": "present", "description": "Visible"},
                         ],
-                    )
-                    mock_create.return_value = mock_model
-                    mock_add_ids.return_value = mock_model
+                        "required": False,
+                        "max_selected": 1,
+                    }
+                ],
+            )
+            mock_create.return_value = mock_model
+            mock_add_ids.return_value = mock_model
 
-                    # Test
-                    result = await service.generate_from_inputs(
-                        name="Test Finding", inputs=sample_inputs, user=sample_user, test_mode=False
-                    )
+            # Test
+            result = await service.generate_from_inputs(
+                name="Test Finding", inputs=sample_inputs, user=sample_user, test_mode=False
+            )
 
-                    # Assertions
-                    assert isinstance(result, str)
-                    result_dict = json.loads(result)
-                    assert result_dict["name"] == "Test Finding"
-                    mock_create.assert_called_once()
-                    mock_add_ids.assert_called_once()
-                    mock_add_codes.assert_called_once()
+            # Assertions
+            assert isinstance(result, str)
+            result_dict = json.loads(result)
+            assert result_dict["name"] == "Test Finding"
+            mock_create.assert_called_once()
+            mock_add_ids.assert_called_once()
+            mock_add_codes.assert_called_once()
 
     async def test_generate_from_inputs_test_mode(
         self, service: CreationService, sample_user: User, sample_inputs: FindingModelInputs
     ):
         """Test generating finding model from inputs in test mode."""
-        with patch("app.services.creation_service.add_ids_to_model") as mock_add_ids:
-            with patch("app.services.creation_service.add_standard_codes_to_model") as mock_add_codes:
-                # Setup mocks
-                from findingmodel import FindingModelBase
+        with (
+            patch("app.services.creation_service.add_ids_to_model") as mock_add_ids,
+            patch("app.services.creation_service.add_standard_codes_to_model"),
+        ):
+            # Setup mocks
+            from findingmodel import FindingModelBase
 
-                mock_model = FindingModelBase(
-                    name="Test Finding Test",  # Test mode adds "Test" suffix for short names
-                    description="Test description",
-                    synonyms=["synonym"],
-                    tags=None,
-                    contributors=None,
-                    attributes=[
-                        {
-                            "name": "presence",
-                            "description": "Test attribute",
-                            "type": "choice",
-                            "values": [
-                                {"name": "absent", "description": "Not visible"},
-                                {"name": "present", "description": "Visible"},
-                            ],
-                            "required": False,
-                            "max_selected": 1,
-                        }
-                    ],
-                )
-                mock_add_ids.return_value = mock_model
+            mock_model = FindingModelBase(
+                name="Test Finding Test",  # Test mode adds "Test" suffix for short names
+                description="Test description",
+                synonyms=["synonym"],
+                tags=None,
+                contributors=None,
+                attributes=[
+                    {
+                        "name": "presence",
+                        "description": "Test attribute",
+                        "type": "choice",
+                        "values": [
+                            {"name": "absent", "description": "Not visible"},
+                            {"name": "present", "description": "Visible"},
+                        ],
+                        "required": False,
+                        "max_selected": 1,
+                    }
+                ],
+            )
+            mock_add_ids.return_value = mock_model
 
-                # Test
-                result = await service.generate_from_inputs(
-                    name="Test",  # Short name to trigger suffix
-                    inputs=sample_inputs,
-                    user=sample_user,
-                    test_mode=True,
-                )
+            # Test
+            result = await service.generate_from_inputs(
+                name="Test",  # Short name to trigger suffix
+                inputs=sample_inputs,
+                user=sample_user,
+                test_mode=True,
+            )
 
-                # Assertions
-                assert isinstance(result, str)
-                result_dict = json.loads(result)
-                assert "Test" in result_dict["name"]
-                assert result_dict["attributes"][0]["name"] == "presence"
+            # Assertions
+            assert isinstance(result, str)
+            result_dict = json.loads(result)
+            assert "Test" in result_dict["name"]
+            assert result_dict["attributes"][0]["name"] == "presence"
 
     async def test_generate_from_inputs_no_finding_index(
         self, service: CreationService, sample_user: User, sample_inputs: FindingModelInputs, mock_database: MagicMock
