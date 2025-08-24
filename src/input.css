@@ -104,3 +104,13 @@
 .dark ::-webkit-scrollbar-thumb:hover {
     background-color: #6b7280; /* gray-500 */
 }
+
+/* SimpleDatatables FOUC Prevention */
+#finding-models-table[data-loading="true"] {
+    visibility: hidden;
+    height: 200px; /* Prevent layout shift */
+}
+
+#finding-models-table:not([data-loading]) {
+    visibility: visible;
+}

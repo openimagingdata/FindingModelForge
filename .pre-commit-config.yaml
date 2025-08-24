@@ -38,5 +38,5 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
-        args: [-m, "not integration and not ui and not playwright and not slow"]
+        args: [-m, "not playwright"]
         exclude: ^zOld/

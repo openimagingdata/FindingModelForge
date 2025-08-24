@@ -4,7 +4,7 @@
 
 ## Golden Rules
 
-1. ✅ **Check Flowbite docs FIRST**: https://flowbite.com/docs/components/
+1. ✅ **Check Flowbite docs FIRST**: https://flowbite.com/docs/
 2. ✅ **Use exact HTML structure** from Flowbite examples
 3. ✅ **Use Alpine.js for interactivity** - `x-data`, `x-model`, computed properties
 4. ❌ **NO custom CSS classes** - Use Tailwind utilities only
@@ -308,7 +308,7 @@ Use responsive prefixes:
    ```
 
 2. **Check Flowbite docs**
-   - Visit https://flowbite.com/docs/components/
+   - Visit https://flowbite.com/docs/
    - Find the exact component needed
    - Copy the official HTML structure
 
@@ -391,7 +391,7 @@ If you must create a new component:
 
 ```bash
 # Search Flowbite docs for component type
-open https://flowbite.com/docs/components/[component-name]
+open https://flowbite.com/docs/
 ```
 
 ### Check Alpine.js Syntax
@@ -420,7 +420,7 @@ npm run watch:css  # For development
 
 ## Resources
 
-- **Flowbite Components**: https://flowbite.com/docs/components/
+- **Flowbite Components**: https://flowbite.com/docs/
 - **Alpine.js Docs**: https://alpinejs.dev/
 - **Tailwind CSS**: https://tailwindcss.com/docs
 - **Jinja2 Templates**: https://jinja.palletsprojects.com/

@@ -7,12 +7,54 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+#### Finding Models Display System Complete Overhaul
+
+- **Public browseable finding models library** with comprehensive search, navigation, and responsive UI
+- **Advanced HTMX patterns** implemented:
+  - `hx-history-elt="true"` configuration on `#main-content` prevents CSS-in-JS conflicts
+  - Conditional Out-of-Band (OOB) breadcrumb swaps prevent duplicate breadcrumbs on initial page load
+  - Template-based browser history restoration for clean breadcrumb and title updates
+- **Server-side search and pagination** with 500ms debounced search input for optimal UX
+- **Dynamic page title system**:
+  - Context-aware titles: "Finding Models", "Search: {query}", "{model} - Finding Model Forge"
+  - Automatic HTMX title updates using `<title>` tags in fragment responses
+  - Proper title restoration during browser history navigation
+- **Smart caching optimization** with Redis layer for GitHub API finding models data and graceful fallback
+- **SEO-friendly implementation** with clean URL structure, proper meta tags, and search indexing support
+
+#### Comprehensive Testing Infrastructure
+
+- **100% test success rate achieved** - All 40 tests passing (22 unit + 18 UI tests)
+- **Complete Unit Test Suite**:
+  - Fixed 7 failing unit tests by updating route paths from singular to plural (/finding-model/ → /finding-models/)
+  - Fixed async mocking issues using AsyncMock for cache operations instead of MagicMock
+  - Removed 4 obsolete partial route tests referencing non-existent endpoints
+  - Added 5 new unit tests for search, pagination, HTMX headers, and dynamic titles
+- **Comprehensive Playwright UI Test Suite**:
+  - 18 end-to-end tests covering all finding models navigation scenarios
+  - TestFindingModelsListPage (5 tests): page loading, search functionality, debounce verification, pagination, empty
+    results
+  - TestFindingModelsDetailNavigation (4 tests): HTMX navigation, direct access, breadcrumb links, 404 handling
+  - TestFindingModelsHistoryNavigation (4 tests): browser back/forward, title/breadcrumb restoration
+  - TestFindingModelsDynamicFeatures (5 tests): dynamic titles, state preservation, HTMX configuration verification
+- **Playwright MCP-driven development** - Used real browser automation to understand actual site behavior before writing
+  tests
+- **Robust test patterns**:
+  - Fixed function signature issues (ignore_patterns → allowed_patterns)
+  - Fixed import issues (tests.ui.helpers → tests.ui.utils)
+  - Fixed Playwright expect syntax (string expects → proper assertions)
+  - Used specific breadcrumb selector (`nav[aria-label='Breadcrumb']`) instead of generic selectors
+
 ### Fixed
 
 #### Submit Draft Modal Implementation
 
-- **Fixed htmx:targetError** - Submit Draft button now correctly targets `#main-content` instead of non-existent `#draft-content`
-- **Replaced browser confirmation with Flowbite modal** - Consistent UI using proper modal components instead of `hx-confirm`
+- **Fixed htmx:targetError** - Submit Draft button now correctly targets `#main-content` instead of non-existent
+  `#draft-content`
+- **Replaced browser confirmation with Flowbite modal** - Consistent UI using proper modal components instead of
+  `hx-confirm`
 - **Created reusable modal system**:
   - `templates/macros/confirmation_modal.html` - Base modal component with customizable parameters
   - `templates/macros/submit_draft_modal.html` - Green submit confirmation modal

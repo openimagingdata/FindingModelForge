@@ -14,6 +14,10 @@ keep templates clean.
 {% from "macros/form_validation.html" import validation_data, validated_input, validated_textarea %}
 {% from "macros/synonym_manager.html" import synonym_manager, synonym_data %}
 {% from "macros/json_accordion.html" import json_accordion %}
+{% from "macros/confirmation_modal.html" import confirmation_modal %}
+{% from "macros/delete_draft_modal.html" import delete_draft_modal %}
+{% from "macros/submit_draft_modal.html" import submit_draft_modal %}
+{% from "macros/unified_form_data.html" import unified_form_data %}
 ```
 
 ## Core Flowbite Components (macros/flowbite_components.html)
@@ -150,13 +154,32 @@ Example:
 - Use unified_form_data for complex forms combining validation and synonym management.
 - Include appropriate deletion modals for destructive actions.
 
-## Draft Management Modals (macros/delete_draft_modal.html)
+## Modal Components
+
+### Base Modal (macros/confirmation_modal.html)
+
+- confirmation_modal(modal_id, title="Confirm Action", message="Are you sure?", confirm_text="Confirm",
+  cancel_text="Cancel", confirm_color="primary", icon_type="warning", hx_post=None, hx_target=None, hx_swap=None,
+  extra_attributes="")
+  - Reusable Flowbite confirmation modal component
+  - Supports primary, green, and red color themes
+  - Icons: warning, danger, info
+  - Full HTMX integration for server-side actions
+  - Customizable text, styling, and behavior
+
+### Draft Management Modals
 
 - delete_draft_modal(draft_id, hx_target=None, hx_swap=None, extra_attributes='')
   - Flowbite confirmation modal for draft deletion
-  - Includes warning icon, confirmation text, and Yes/Cancel buttons
+  - Uses base confirmation_modal with warning icon and red styling
   - HTMX integration for seamless deletion workflow
   - Customizable targeting and swap behavior
+
+- submit_draft_modal(draft_id, hx_target="#main-content", hx_swap="innerHTML")
+  - Flowbite confirmation modal for draft submission
+  - Uses base confirmation_modal with info icon and green styling
+  - HTMX POST to submit endpoint with automatic targeting
+  - Warns user about draft locking after submission
 
 ## Unified Form Data (macros/unified_form_data.html)
 

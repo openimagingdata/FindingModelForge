@@ -1,0 +1,151 @@
+{% from "macros/flowbite_components.html" import breadcrumb %}
+
+<!-- Update document title -->
+<title>{{ page_title }}</title>
+
+<!-- List view content -->
+<h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-6">
+  Finding Models
+</h1>
+
+<!-- Search and Pagination Controls -->
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+  <!-- Search Input (Flowbite Search Input) -->
+  <div class="flex-1 max-w-md">
+    <label for="table-search" class="sr-only">Search</label>
+    <div class="relative">
+      <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
+        <svg class="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
+          <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"/>
+        </svg>
+      </div>
+      <input type="search"
+             id="table-search"
+             name="search"
+             value="{{ search_query }}"
+             hx-get="/finding-models"
+             hx-target="#main-content"
+             hx-push-url="true"
+             hx-trigger="input changed delay:500ms, search"
+             class="block w-full p-2.5 ps-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+             placeholder="Search finding models...">
+    </div>
+  </div>
+
+  <!-- Pagination Component (Fixed Width) -->
+  {% if total_pages > 1 %}
+  <nav aria-label="Page navigation" class="flex-shrink-0">
+    <ul class="inline-flex -space-x-px text-sm">
+      {% if current_page > 1 %}
+      <li>
+        <a hx-get="/finding-models?page={{ current_page - 1 }}{% if search_query %}&search={{ search_query }}{% endif %}{% if per_page != 20 %}&per_page={{ per_page }}{% endif %}"
+           hx-target="#main-content"
+           hx-push-url="true"
+           class="flex items-center justify-center px-3 h-8 ms-0 leading-tight text-gray-500 bg-white border border-e-0 border-gray-300 rounded-s-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
+          Previous
+        </a>
+      </li>
+      {% endif %}
+
+      {% for page_num in page_range %}
+      <li>
+        {% if page_num == current_page %}
+        <a hx-get="/finding-models?page={{ page_num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if per_page != 20 %}&per_page={{ per_page }}{% endif %}"
+           hx-target="#main-content"
+           hx-push-url="true"
+           aria-current="page"
+           class="flex items-center justify-center px-3 h-8 text-blue-600 border border-gray-300 bg-blue-50 hover:bg-blue-100 hover:text-blue-700 dark:border-gray-700 dark:bg-gray-700 dark:text-white">
+          {{ page_num }}
+        </a>
+        {% else %}
+        <a hx-get="/finding-models?page={{ page_num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if per_page != 20 %}&per_page={{ per_page }}{% endif %}"
+           hx-target="#main-content"
+           hx-push-url="true"
+           class="flex items-center justify-center px-3 h-8 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
+          {{ page_num }}
+        </a>
+        {% endif %}
+      </li>
+      {% endfor %}
+
+      {% if current_page < total_pages %}
+      <li>
+        <a hx-get="/finding-models?page={{ current_page + 1 }}{% if search_query %}&search={{ search_query }}{% endif %}{% if per_page != 20 %}&per_page={{ per_page }}{% endif %}"
+           hx-target="#main-content"
+           hx-push-url="true"
+           class="flex items-center justify-center px-3 h-8 leading-tight text-gray-500 bg-white border border-gray-300 rounded-e-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
+          Next
+        </a>
+      </li>
+      {% endif %}
+    </ul>
+  </nav>
+  {% endif %}
+</div>
+
+<!-- Results Summary -->
+{% if total_count > 0 %}
+<div class="mb-4">
+  <p class="text-sm text-gray-700 dark:text-gray-400">
+    Showing <span class="font-semibold text-gray-900 dark:text-white">{{ start_index }}</span> to
+    <span class="font-semibold text-gray-900 dark:text-white">{{ end_index }}</span> of
+    <span class="font-semibold text-gray-900 dark:text-white">{{ total_count }}</span> results
+    {% if search_query %}
+    for "<span class="font-semibold text-gray-900 dark:text-white">{{ search_query }}</span>"
+    {% endif %}
+  </p>
+</div>
+{% endif %}
+
+<!-- Table Structure (Flowbite Table with Proper Shadow and Hover) -->
+<div class="relative overflow-x-auto shadow-md sm:rounded-lg">
+  <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
+    <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+      <tr>
+        <th scope="col" class="px-6 py-3">ID</th>
+        <th scope="col" class="px-6 py-3">Name</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if finding_models %}
+        {% for model in finding_models %}
+        <tr hx-get="/finding-models/{{ model.slug }}"
+            hx-target="#main-content"
+            hx-push-url="true"
+            class="odd:bg-white odd:dark:bg-gray-900 even:bg-gray-50 even:dark:bg-gray-800 border-b dark:border-gray-700 border-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer">
+          <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">{{ model.id }}</td>
+          <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+            {{ model.name }}
+          </td>
+        </tr>
+        {% endfor %}
+      {% else %}
+        <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700 border-gray-200">
+          <td colspan="2" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+            {% if search_query %}
+              No finding models found matching "{{ search_query }}".
+            {% else %}
+              No finding models available.
+            {% endif %}
+          </td>
+        </tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+
+<!-- OOB swap for breadcrumb when returning to list -->
+{% set home_icon %}
+<svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+    <path d="m19.707 9.293-2-2-7-7a1 1 0 0 0-1.414 0l-7 7-2 2a1 1 0 0 0 1.414 1.414L2 10.414V18a2 2 0 0 0 2 2h3a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h3a2 2 0 0 0 2-2v-7.586l.293.293a1 1 0 0 0 1.414-1.414Z"/>
+</svg>
+{% endset %}
+
+{% if is_htmx_request %}
+<nav id="breadcrumb-container" hx-swap-oob="true">
+  {{ breadcrumb([
+    {"text": "Home", "href": url_for('index'), "icon": home_icon},
+    {"text": "Finding Models"}
+  ]) }}
+</nav>
+{% endif %}

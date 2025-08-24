@@ -38,7 +38,7 @@
       "Bash(export TEST_AUTH_USER_ID=42889)",
       "mcp__filesystem__read_text_file",
       "mcp__filesystem__write_file",
-      "mcp__perplexity-mcp__perplexity_search_web",
+      "mcp__perplexity__perplexity_search_web",
       "Bash(open htmlcov/index.html)",
       "Bash(grep:*)",
       "Bash(PLAYWRIGHT_HEADLESS=false uv run pytest tests/test_profile_playwright.py::TestProfileDraftsUI::test_profile_drafts_actions_and_modals -v --no-cov -s)",
@@ -98,7 +98,13 @@
       "Bash(PLAYWRIGHT_HEADLESS=true uv run pytest tests/ui/test_draft_management.py::TestDraftModalWorkflows::test_modal_accessibility_and_keyboard_navigation -v --no-cov --tb=short)",
       "Bash(PLAYWRIGHT_HEADLESS=true uv run pytest tests/ui/test_draft_management.py::TestDraftModalWorkflows::test_modal_correct_htmx_targets -v --no-cov --tb=short)",
       "Bash(PLAYWRIGHT_HEADLESS=true uv run pytest tests/ui/test_draft_management.py::TestDraftModalWorkflows -v --no-cov)",
-      "Bash(PLAYWRIGHT_HEADLESS=true uv run pytest tests/ui/test_draft_management.py -v --no-cov)"
+      "Bash(PLAYWRIGHT_HEADLESS=true uv run pytest tests/ui/test_draft_management.py -v --no-cov)",
+      "WebSearch",
+      "WebFetch(domain:localhost)",
+      "WebFetch(domain:fiduswriter.github.io)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(pkill:*)",
+      "Bash(git log:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

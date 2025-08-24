@@ -1,7 +1,7 @@
 {# Complete Finding Model Display Component #}
 {% from 'macros/json_accordion.html' import json_accordion %}
 
-<div class="space-y-6">
+<div class="space-y-6" data-model-name="{{ finding_model.name }}">
         {# Formatted Display #}
         {% include 'components/finding_model_display.html' %}
 

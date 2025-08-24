@@ -3,12 +3,12 @@
 import re
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from typing import Any
+from typing import Annotated, Any, cast
 
 import httpx
 import humanize
-from fastapi import APIRouter, HTTPException, Request, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import APIRouter, Header, HTTPException, Query, Request, status
+from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from findingmodel import FindingModelFull
 
@@ -122,12 +122,6 @@ async def profile(
     )
 
 
-@router.get("/dashboard", response_class=RedirectResponse)
-async def dashboard_redirect() -> RedirectResponse:
-    """Redirect old dashboard route to profile."""
-    return RedirectResponse(url="/profile", status_code=status.HTTP_301_MOVED_PERMANENTLY)
-
-
 @router.get("/create-finding-model", response_class=HTMLResponse)
 async def create_finding_model_page(
     request: Request, current_user: OptionalUserDep, name: str | None = None, draft_id: str | None = None
@@ -158,28 +152,21 @@ async def create_finding_model_page(
     )
 
 
-@router.get("/finding-models", response_class=HTMLResponse)
-async def finding_models_list(
-    request: Request,
-    current_user: OptionalUserDep,
-    index: FindingIndexDep,
-    cache: CacheDep,
-) -> HTMLResponse:
-    """List all finding models."""
-    logger.info(f"Accessing finding models list for user: {current_user.login if current_user else 'Guest'}")
+async def _get_finding_models_list(
+    index: Any,  # Index type from findingmodel.index
+    cache: Any,  # RedisCache type
+) -> list[dict[str, Any]]:
+    """
+    Shared logic to fetch the finding models list with caching.
 
-    def make_response(finding_models: list[dict[str, Any]]) -> HTMLResponse:
-        return templates.TemplateResponse(
-            request=request,
-            name="finding_models_list.html",
-            context={"user": current_user, "title": "Finding Models", "finding_models": finding_models},
-        )
-
+    Returns:
+        List of finding model dictionaries with id, name, and slug
+    """
     # Check cache first
     finding_models = await cache.get_finding_models()
     if finding_models:
         logger.debug("Cache hit for finding models list")
-        return make_response(finding_models)
+        return cast(list[dict[str, Any]], finding_models)
 
     logger.debug("Cache miss for finding models list, fetching from index")
 
@@ -192,13 +179,10 @@ async def finding_models_list(
             {"$project": {"name_lower": 0}},  # Exclude the helper field from results
         ]
     ).to_list(length=None)
+
     if not finding_models_data:
         logger.warning("No finding models found in index")
-        return templates.TemplateResponse(
-            request=request,
-            name="finding_models_list.html",
-            context={"user": current_user, "title": "Finding Models", "finding_models": []},
-        )
+        return []
 
     def slugify(name: str) -> str:
         """Convert a name to a URL-friendly slug."""
@@ -211,7 +195,239 @@ async def finding_models_list(
     # Cache the finding models list for 1 hour
     await cache.set_finding_models(finding_models)
 
-    return make_response(finding_models)
+    return finding_models
+
+
+@router.get("/finding-models", response_class=HTMLResponse)
+@router.get("/finding-models/{slug}", response_class=HTMLResponse)
+async def finding_models(
+    request: Request,
+    current_user: OptionalUserDep,
+    index: FindingIndexDep,
+    cache: CacheDep,
+    slug: str | None = None,
+    hx_request: Annotated[str | None, Header()] = None,
+    search: str = Query(None, description="Search term for filtering models"),
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(20, ge=10, le=50, description="Items per page"),
+) -> HTMLResponse:
+    """Unified finding models endpoint - shows list or detail based on slug."""
+    logger.info(
+        f"Accessing finding models {'(detail: ' + slug + ')' if slug else '(list)'} "
+        f"for user: {current_user.login if current_user else 'Guest'}"
+        f"{' with search: ' + search if search else ''}"
+        f"{' page: ' + str(page) if page > 1 else ''}"
+    )
+
+    # For HTMX requests, return just the content fragment
+    if hx_request == "true":
+        if slug:
+            # Return detail fragment
+            try:
+                finding_model, index_entry = await _get_finding_model_with_cache(slug, index, cache)
+                response = templates.TemplateResponse(
+                    request=request,
+                    name="fragments/finding_model_detail_content.html",
+                    context={
+                        "finding_model": finding_model,
+                        "index_entry": index_entry,
+                        "show_json": True,
+                        "show_ids": True,
+                        "is_htmx_request": True,
+                        "page_title": f"{finding_model.name} - Finding Model Forge",
+                    },
+                )
+                # Tell HTMX what URL to push to browser history
+                response.headers["HX-Push-Url"] = f"/finding-models/{slug}"
+                return response
+            except httpx.HTTPError as e:
+                logger.error(f"HTTP error fetching finding model '{slug}': {e}")
+                error_content = (
+                    '<div class="p-4 text-red-600 bg-red-50 dark:bg-red-900 dark:text-red-200 rounded-lg">'
+                    "Failed to load finding model</div>"
+                )
+                return HTMLResponse(content=error_content, status_code=500)
+            except HTTPException:
+                # Let HTTPException propagate as-is
+                raise
+            except Exception as e:
+                logger.error(f"Error displaying finding model '{slug}': {e}")
+                error_content = (
+                    '<div class="p-4 text-red-600 bg-red-50 dark:bg-red-900 dark:text-red-200 rounded-lg">'
+                    "Error loading finding model</div>"
+                )
+                return HTMLResponse(content=error_content, status_code=500)
+        else:
+            # Return list fragment with search and pagination
+            finding_models_list = await _get_finding_models_list(index, cache)
+
+            # Apply search filter if provided
+            if search:
+                search_lower = search.lower()
+                finding_models_list = [
+                    model
+                    for model in finding_models_list
+                    if search_lower in model["name"].lower() or search_lower in str(model["id"]).lower()
+                ]
+
+            # Calculate pagination
+            total_count = len(finding_models_list)
+            total_pages = max(1, (total_count + per_page - 1) // per_page)
+            start_index = (page - 1) * per_page
+            end_index = min(start_index + per_page, total_count)
+            paginated_models = finding_models_list[start_index:end_index]
+
+            # Calculate page range for pagination display (show 5 pages around current)
+            page_range = []
+            start_page = max(1, page - 2)
+            end_page = min(total_pages, page + 2)
+            page_range = list(range(start_page, end_page + 1))
+
+            # Build URL parameters for pagination
+            url_params = {}
+            if search:
+                url_params["search"] = search
+            if per_page != 20:
+                url_params["per_page"] = str(per_page)
+
+            # Generate dynamic title based on search
+            page_title = "Finding Models - Finding Model Forge"
+            if search:
+                page_title = f"Search: {search} - Finding Model Forge"
+
+            response = templates.TemplateResponse(
+                request=request,
+                name="fragments/finding_models_list_content.html",
+                context={
+                    "finding_models": paginated_models,
+                    "search_query": search or "",
+                    "current_page": page,
+                    "total_pages": total_pages,
+                    "per_page": per_page,
+                    "page_range": page_range,
+                    "start_index": start_index + 1 if total_count > 0 else 0,
+                    "end_index": end_index,
+                    "total_count": total_count,
+                    "url_params": url_params,
+                    "is_htmx_request": True,
+                    "page_title": page_title,
+                },
+            )
+
+            # Build URL for browser history
+            url_parts = ["/finding-models"]
+            query_params = []
+            if search:
+                query_params.append(f"search={search}")
+            if page > 1:
+                query_params.append(f"page={page}")
+            if per_page != 20:
+                query_params.append(f"per_page={per_page}")
+
+            push_url = f"{url_parts[0]}?{'&'.join(query_params)}" if query_params else url_parts[0]
+
+            response.headers["HX-Push-Url"] = push_url
+            return response
+
+    # For full page requests, return the base template
+    # It will determine what to show based on slug presence
+    context = {
+        "user": current_user,
+        "title": "Finding Models",
+    }
+
+    if slug:
+        # Preload the detail data for initial render
+        try:
+            finding_model, index_entry = await _get_finding_model_with_cache(slug, index, cache)
+            context.update(
+                cast(
+                    dict[str, Any],
+                    {
+                        "initial_model": finding_model,
+                        "finding_model": finding_model,  # Also add for fragment compatibility
+                        "index_entry": index_entry,
+                        "show_detail": True,
+                        "model_slug": slug,
+                    },
+                )
+            )
+        except Exception as e:
+            logger.error(f"Error loading finding model '{slug}' for initial render: {e}")
+            # Fall back to showing list view with error
+            finding_models_list = await _get_finding_models_list(index, cache)
+            context.update(
+                cast(
+                    dict[str, Any],
+                    {
+                        "finding_models": finding_models_list,
+                        "show_detail": False,
+                        "error_message": f"Finding model '{slug}' not found",
+                        "search_query": "",
+                        "current_page": 1,
+                        "total_pages": 1,
+                        "per_page": 20,
+                        "page_range": [1],
+                        "start_index": 1,
+                        "end_index": len(finding_models_list),
+                        "total_count": len(finding_models_list),
+                        "url_params": {},
+                    },
+                )
+            )
+    else:
+        # Preload the list data for initial render with search/pagination
+        finding_models_list = await _get_finding_models_list(index, cache)
+
+        # Apply search filter if provided
+        if search:
+            search_lower = search.lower()
+            finding_models_list = [
+                model
+                for model in finding_models_list
+                if search_lower in model["name"].lower() or search_lower in str(model["id"]).lower()
+            ]
+
+        # Calculate pagination
+        total_count = len(finding_models_list)
+        total_pages = max(1, (total_count + per_page - 1) // per_page)
+        start_index = (page - 1) * per_page
+        end_index = min(start_index + per_page, total_count)
+        paginated_models = finding_models_list[start_index:end_index]
+
+        # Calculate page range for pagination display
+        page_range = []
+        start_page = max(1, page - 2)
+        end_page = min(total_pages, page + 2)
+        page_range = list(range(start_page, end_page + 1))
+
+        # Build URL parameters for pagination
+        url_params = {}
+        if search:
+            url_params["search"] = search
+        if per_page != 20:
+            url_params["per_page"] = str(per_page)
+
+        context.update(
+            cast(
+                dict[str, Any],
+                {
+                    "finding_models": paginated_models,
+                    "show_detail": False,
+                    "search_query": search or "",
+                    "current_page": page,
+                    "total_pages": total_pages,
+                    "per_page": per_page,
+                    "page_range": page_range,
+                    "start_index": start_index + 1 if total_count > 0 else 0,
+                    "end_index": end_index,
+                    "total_count": total_count,
+                    "url_params": url_params,
+                },
+            )
+        )
+
+    return templates.TemplateResponse(request=request, name="finding_models_base.html", context=context)
 
 
 async def _get_finding_model_with_cache(
@@ -320,132 +536,3 @@ async def _get_finding_model_with_cache(
         logger.debug(f"Cached finding model '{raw_slug}' (cache key: {cache_slug}) for future requests")
 
     return finding_model, index_entry
-
-
-@router.get("/finding-model/{slug}/partial", response_class=HTMLResponse)
-async def finding_model_partial(
-    request: Request,
-    slug: str,
-    current_user: OptionalUserDep,
-    index: FindingIndexDep,
-    cache: CacheDep,
-) -> HTMLResponse:
-    """Return partial HTML for finding model display."""
-    logger.info(f"Accessing finding model partial '{slug}' for user: {current_user.login if current_user else 'Guest'}")
-
-    try:
-        finding_model, index_entry = await _get_finding_model_with_cache(slug, index, cache)
-
-        # Return the complete display component so the JSON accordion is included
-        return templates.TemplateResponse(
-            request=request,
-            name="components/finding_model_complete_display.html",
-            context={
-                "finding_model": finding_model,
-                "index_entry": index_entry,
-                # Normalize slug for any downstream use
-                "slug": slug.replace("-", " ").replace("_", " ").lower().strip(),
-                # Explicitly allow JSON in the partial detail view
-                "show_json": True,
-                "show_ids": True,
-            },
-        )
-
-    except httpx.HTTPError as e:
-        logger.error(f"HTTP error fetching finding model '{slug}': {e}")
-        error_content = (
-            '<div class="p-4 text-red-600 bg-red-50 dark:bg-red-900 dark:text-red-200 rounded-lg">'
-            "Failed to load finding model</div>"
-        )
-        return HTMLResponse(content=error_content, status_code=500)
-    except HTTPException:
-        # Let HTTPException propagate as-is
-        raise
-    except Exception as e:
-        logger.error(f"Error displaying finding model partial '{slug}': {e}")
-        error_content = (
-            '<div class="p-4 text-red-600 bg-red-50 dark:bg-red-900 dark:text-red-200 rounded-lg">'
-            "Error loading finding model</div>"
-        )
-        return HTMLResponse(content=error_content, status_code=500)
-
-
-@router.get("/finding-model/{slug}", response_class=HTMLResponse)
-async def finding_model_display(
-    request: Request,
-    slug: str,
-    current_user: OptionalUserDep,
-    index: FindingIndexDep,
-    cache: CacheDep,
-) -> HTMLResponse:
-    """Display a finding model by slug with caching."""
-    logger.info(f"Accessing finding model '{slug}' for user: {current_user.login if current_user else 'Guest'}")
-
-    try:
-        finding_model, index_entry = await _get_finding_model_with_cache(slug, index, cache)
-
-        # Normalize slug for template context
-        normalized_slug = slug.replace("-", " ").replace("_", " ").lower().strip()
-
-        # Pass the data to the template
-        return templates.TemplateResponse(
-            request=request,
-            name="finding_model_display.html",
-            context={
-                "user": current_user,
-                "title": f"Finding Model: {finding_model.name}",
-                "finding_model": finding_model,
-                "finding_model_json": finding_model.model_dump_json(indent=2, exclude_none=True),
-                "filename": index_entry.filename,
-                "index_entry": index_entry,
-                "slug": normalized_slug,
-            },
-        )
-
-    except httpx.HTTPError as e:
-        logger.error(f"HTTP error fetching finding model '{slug}': {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch finding model data: {e}",
-        ) from e
-    except HTTPException:
-        # Let HTTPException propagate as-is
-        raise
-    except Exception as e:
-        logger.error(f"Error displaying finding model '{slug}': {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to display finding model: {e}",
-        ) from e
-
-
-@router.get("/test-htmx-simple", response_class=HTMLResponse)
-async def test_htmx_simple(request: Request) -> HTMLResponse:
-    """Simple HTMX test endpoint that returns HTML."""
-    from datetime import datetime
-
-    current_time = datetime.now().strftime("%H:%M:%S")
-
-    # SVG checkmark icon path
-    check_path = "M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"  # noqa: E501
-
-    return HTMLResponse(
-        content=f"""
-        <div class="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700">
-            <div class="flex items-center">
-                <svg class="w-5 h-5 text-green-600 dark:text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="{check_path}" clip-rule="evenodd"/>
-                </svg>
-                <div>
-                    <h4 class="text-green-800 dark:text-green-200 font-semibold">HTMX Test Successful! ✅</h4>
-                    <p class="text-green-700 dark:text-green-300 text-sm mt-1">
-                        This content was loaded via HTMX from <code>/test-htmx-simple</code>
-                    </p>
-                    <p class="text-green-600 dark:text-green-400 text-xs mt-2">
-                        Request time: {current_time}
-                    </p>
-                </div>
-            </div>
-        </div>
-    """
-    )

@@ -61,8 +61,9 @@ Common development commands:
 
 ```sh
 task setup          # Install deps + create .env + build assets
-task test            # Run tests with coverage (70 tests, 71% router coverage)
-task test-unit       # Fast unit tests only
+task test            # Run tests with coverage (40 tests passing, 100% success rate)
+task test-unit       # Fast unit tests only (22 unit tests)
+task test-ui         # Playwright UI tests only (18 UI tests)
 task lint            # Lint and fix code issues
 task format          # Format code
 task check           # Quality checks (CI-friendly)
@@ -111,6 +112,18 @@ task build-frontend  # Build CSS and JS assets
 - **Status management**: draft → submitted → [future: under-review | added | declined]
 - **Smart resume**: Entering the same finding name after submit shows final display view
 - **Redis integration**: Cache layer available throughout with graceful degradation
+
+### Finding Models Display System
+
+**Public browseable finding models library** with search, navigation, and responsive UI:
+
+- **Server-side search and pagination**: Efficient filtering and page navigation with debounced search (500ms)
+- **HTMX navigation**: Seamless transitions between list and detail pages with proper browser history
+- **Dynamic page titles**: Context-aware titles that update for search results and model details
+- **Smart breadcrumb system**: OOB (Out-of-Band) breadcrumb updates with history navigation support
+- **Cache optimization**: Redis caching for finding models data with graceful fallback
+- **Responsive design**: Flowbite components with mobile-first design and dark mode support
+- **SEO-friendly URLs**: Clean URL structure with proper meta tags and search indexing
 
 ### UI Guidelines
 

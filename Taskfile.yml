@@ -47,7 +47,8 @@ tasks:
       - echo "🚀 Starting Finding Model Forge development server..."
       - task: setup
       - echo "🌐 Starting server on http://localhost:8000"
-      - uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --proxy-headers --forwarded-allow-ips "*"
+      - echo "📝 Logging output to dev.log"
+      - uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --proxy-headers --forwarded-allow-ips "*" 2>&1 | tee dev.log
     silent: true
 
   dev-vite:

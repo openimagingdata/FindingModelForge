@@ -87,11 +87,12 @@ FindingModelForge/
 
 ### 4. Testing Philosophy
 
-- **Comprehensive unit tests** (70 tests, 71% router coverage achieved)
+- **100% test success rate** (40 tests passing: 22 unit + 18 UI tests)
+- **Comprehensive coverage**: Unit tests for backend logic, Playwright tests for UI workflows
 - **Priority-based organization**: Critical paths → State transitions → Edge cases → Access control
 - **Realistic test data**: Valid ObjectIds, proper session mocking, comprehensive assertions
-- **Integration tests** for full workflows with real services
-- **Playwright** for end-to-end browser testing
+- **Playwright MCP integration**: Browser automation for debugging and verification
+- **HTMX-aware testing**: Proper content swap detection and dynamic title testing
 - **Router testing patterns**: See [`tests/CLAUDE.md`](tests/CLAUDE.md) for examples
 
 ### 5. Security Best Practices
@@ -173,13 +174,29 @@ REDIS_PORT=6379
 - **Status management**: draft → submitted (locked from further edits)
 - **Smart resume**: Name-based lookup shows submitted models in view mode
 
+### Finding Models Display System
+
+**Public browseable library with advanced HTMX patterns:**
+
+- **History element configuration**: `hx-history-elt="true"` on `#main-content` prevents CSS-in-JS conflicts
+- **OOB breadcrumb swaps**: Conditional `hx-swap-oob="true"` prevents duplicate breadcrumbs on initial load
+- **Dynamic page titles**: Backend generates context-aware titles, HTMX handles automatic updates
+- **Template-based navigation**: Hidden DOM templates for clean browser history restoration
+- **Debounced search**: Server-side filtering with `input changed delay:500ms` trigger
+- **Smart caching**: Redis optimization with graceful fallback for GitHub API model data
+- **SEO optimization**: Proper URL structure and meta tags for search indexing
+
 ## Debugging Tips
 
-1. **Check logs**: `tail -f logs/app.log`
+1. **Check logs**: `tail -f logs/app.log` or `tail -f test.log` for development
 2. **Verify services**: `docker-compose ps`
 3. **Session issues**: Check Redis connection
 4. **UI problems**: Ensure `initFlowbite()` called after HTMX swaps
 5. **Type errors**: Run `mypy app --show-error-codes`
+6. **HTMX issues**: Use `hx-history-elt="true"` on main container to prevent CSS conflicts
+7. **Playwright debugging**: Use Playwright MCP for real-time browser inspection
+8. **Test failures**: Run `uv run pytest --no-cov -q` for fast test execution
+9. **Breadcrumb duplicates**: Check conditional OOB rendering with `is_htmx_request` flag
 
 ## Important Guidelines
 
@@ -192,7 +209,7 @@ REDIS_PORT=6379
 ## Resources
 
 - **FastAPI Docs**: https://fastapi.tiangolo.com
-- **Flowbite Components**: https://flowbite.com/docs/components/
+- **Flowbite Components**: https://flowbite.com/docs/
 - **Alpine.js**: https://alpinejs.dev
 - **Tailwind CSS**: https://tailwindcss.com
 - **Finding Model Library**: Internal `findingmodel` package
