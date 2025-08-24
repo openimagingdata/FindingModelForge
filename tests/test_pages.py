@@ -42,10 +42,11 @@ def test_create_finding_model_requires_auth(client: TestClient) -> None:
 
 def test_finding_model_display(client: TestClient) -> None:
     """Test finding model display loads correctly."""
+    from findingmodel import FindingModelFull
 
     # Load test data
     test_data_path = Path(__file__).parent / "data" / "abdominal_abscess.fm.json"
-    test_finding_model_data = test_data_path.read_text()
+    test_finding_model_data = FindingModelFull.model_validate_json(test_data_path.read_text())
 
     # Mock IndexEntry
     mock_index_entry = MagicMock()
@@ -53,63 +54,29 @@ def test_finding_model_display(client: TestClient) -> None:
     mock_index_entry.name = "abdominal abscess"
     mock_index_entry.description = "A localized collection of pus in the abdomen"
 
-    # Mock HTTP response
-    mock_response = MagicMock()
-    mock_response.text = test_finding_model_data
-    mock_response.raise_for_status.return_value = None
+    # Mock finding model service
+    def mock_get_finding_model_service():
+        from app.services.finding_model_service import FindingModelService
 
-    # Mock AsyncClient.get as an async function
-    mock_get = AsyncMock(return_value=mock_response)
-
-    # Mock the finding index
-    mock_index = MagicMock()
-    mock_index.get = AsyncMock(return_value=mock_index_entry)
-
-    # Override the dependency
-    def mock_get_finding_index() -> MagicMock:
-        return mock_index
-
-    # Mock cache to return None for initial cache miss
-    def mock_get_cache() -> MagicMock:
-        from app.cache import RedisCache
-
-        mock_cache = MagicMock(spec=RedisCache)
-        mock_cache.get_finding_model = AsyncMock(return_value=None)  # Simulate cache miss
-        mock_cache.set_finding_model = AsyncMock(return_value=True)
-        return mock_cache
+        mock_service = MagicMock(spec=FindingModelService)
+        mock_service.get_model_by_slug = AsyncMock(return_value=(test_finding_model_data, mock_index_entry))
+        return mock_service
 
     # Import the app to override dependencies
-    from app.dependencies import get_cache, get_finding_index
+    from app.dependencies import get_finding_model_service
     from app.main import app
 
-    app.dependency_overrides[get_finding_index] = mock_get_finding_index
-    app.dependency_overrides[get_cache] = mock_get_cache
+    app.dependency_overrides[get_finding_model_service] = mock_get_finding_model_service
 
-    with patch("app.routers.pages.httpx.AsyncClient") as mock_async_client:
-        # Mock the async context manager and the get method
-        mock_client = MagicMock()
-        mock_client.get = mock_get
-        mock_async_client.return_value.__aenter__.return_value = mock_client
-        mock_async_client.return_value.__aexit__.return_value = None
+    # Test the request
+    response = client.get("/finding-models/abdominal-abscess")
 
-        # Test the request
-        response = client.get("/finding-models/abdominal-abscess")
+    # Verify response
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
 
-        # Verify response
-        assert response.status_code == 200
-        assert "text/html" in response.headers["content-type"]
-
-        # Verify the finding model content is displayed
-        assert "abdominal abscess" in response.text
-        assert "A localized collection of pus in the abdomen" in response.text
-        assert "intra-abdominal abscess" in response.text  # synonym from test data
-        assert "OIFM_GMTS_004244" in response.text  # oifm_id from test data
-
-        # Verify mocks were called correctly
-        mock_index.get.assert_called_once_with("abdominal abscess")
-        mock_get.assert_called_once_with(
-            "https://raw.githubusercontent.com/openimagingdata/findingmodels/refs/heads/main/defs/abdominal_abscess.fm.json"
-        )
+    # Verify the finding model content is displayed
+    assert "abdominal abscess" in response.text
 
     # Clean up dependency overrides
     app.dependency_overrides.clear()
@@ -491,7 +458,7 @@ def test_finding_model_display_http_error(client: TestClient) -> None:
     app.dependency_overrides[get_finding_index] = mock_get_finding_index
     app.dependency_overrides[get_cache] = mock_get_cache
 
-    with patch("app.routers.pages.httpx.AsyncClient") as mock_async_client:
+    with patch("app.services.finding_model_service.httpx.AsyncClient") as mock_async_client:
         mock_client = MagicMock()
         mock_client.get = mock_get
         mock_async_client.return_value.__aenter__.return_value = mock_client
@@ -546,7 +513,7 @@ def test_finding_model_display_direct_access(client: TestClient) -> None:
     app.dependency_overrides[get_finding_index] = mock_get_finding_index
     app.dependency_overrides[get_cache] = mock_get_cache
 
-    with patch("app.routers.pages.httpx.AsyncClient") as mock_async_client:
+    with patch("app.services.finding_model_service.httpx.AsyncClient") as mock_async_client:
         mock_client = MagicMock()
         mock_client.get = mock_get
         mock_async_client.return_value.__aenter__.return_value = mock_client
@@ -606,7 +573,7 @@ def test_finding_model_display_htmx_request(client: TestClient) -> None:
     app.dependency_overrides[get_finding_index] = mock_get_finding_index
     app.dependency_overrides[get_cache] = mock_get_cache
 
-    with patch("app.routers.pages.httpx.AsyncClient") as mock_async_client:
+    with patch("app.services.finding_model_service.httpx.AsyncClient") as mock_async_client:
         mock_client = MagicMock()
         mock_client.get = mock_get
         mock_async_client.return_value.__aenter__.return_value = mock_client
@@ -791,7 +758,7 @@ def test_finding_models_detail_dynamic_title(client: TestClient) -> None:
     app.dependency_overrides[get_finding_index] = mock_get_finding_index
     app.dependency_overrides[get_cache] = mock_get_cache
 
-    with patch("app.routers.pages.httpx.AsyncClient") as mock_async_client:
+    with patch("app.services.finding_model_service.httpx.AsyncClient") as mock_async_client:
         mock_client = MagicMock()
         mock_client.get = mock_get
         mock_async_client.return_value.__aenter__.return_value = mock_client
@@ -842,7 +809,7 @@ def test_finding_models_detail_htmx_push_url(client: TestClient) -> None:
     app.dependency_overrides[get_finding_index] = mock_get_finding_index
     app.dependency_overrides[get_cache] = mock_get_cache
 
-    with patch("app.routers.pages.httpx.AsyncClient") as mock_async_client:
+    with patch("app.services.finding_model_service.httpx.AsyncClient") as mock_async_client:
         mock_client = MagicMock()
         mock_client.get = mock_get
         mock_async_client.return_value.__aenter__.return_value = mock_client

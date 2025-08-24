@@ -26,6 +26,7 @@ from app.auth import CurrentUserDep
 from app.config import logger
 from app.vite_manifest import get_vite_asset_path
 from app.dependencies import (
+    CreationServiceDep,
     CreationSessionDep,
     DatabaseDep,
     DraftRepoDep,
@@ -40,32 +41,6 @@ TEST_USER_ID = 999999
 
 # Type definition for step numbers in the creation workflow
 StepNumber = Annotated[int, Path(ge=1, le=3, description="Step number (1-3) in the creation workflow")]
-
-
-def generate_default_attributes_markdown(finding_name: str) -> str:
-    """Generate default attributes markdown template for a finding."""
-    return f"""### presence
-
-Presence of {finding_name}
-
-- absent: {finding_name.capitalize()} is not visible
-- present: {finding_name.capitalize()} is clearly visible
-- indeterminate: Presence of {finding_name} cannot be determined
-- unknown: Presence of {finding_name} is unknown
-
-### change from prior
-
-How the {finding_name} has changed compared to prior imaging
-
-- unchanged: {finding_name.capitalize()} is unchanged from prior imaging
-- stable: {finding_name.capitalize()} is stable
-- new: New {finding_name} not seen on prior imaging
-- resolved: {finding_name.capitalize()} seen on a prior exam has resolved
-- increased: {finding_name.capitalize()} has increased
-- decreased: {finding_name.capitalize()} has decreased
-- larger: {finding_name.capitalize()} is larger
-- smaller: {finding_name.capitalize()} is smaller
-"""
 
 
 def parse_synonyms(synonyms: str) -> list[str]:
@@ -149,6 +124,7 @@ async def process_step_1(
     session_manager: SessionManagerDep,
     index: FindingIndexDep,
     draft_repo: DraftRepoDep,
+    creation_service: CreationServiceDep,
     name: str = Form(min_length=3, max_length=200),
 ) -> Response:
     """Process step 1: Check name and generate description."""
@@ -173,7 +149,7 @@ async def process_step_1(
             session.attributes_markdown = (
                 draft.inputs.attributes_markdown
                 if draft.inputs.attributes_markdown
-                else generate_default_attributes_markdown(draft.name)
+                else creation_service.generate_default_attributes_markdown(draft.name)
             )
             session.draft_id = draft.id
             await session_manager.update_session(session)
@@ -195,7 +171,7 @@ async def process_step_1(
             session.attributes_markdown = (
                 latest.inputs.attributes_markdown
                 if latest.inputs.attributes_markdown
-                else generate_default_attributes_markdown(latest.name)
+                else creation_service.generate_default_attributes_markdown(latest.name)
             )
             session.draft_id = latest.id
             session.draft_status = latest.status
@@ -265,6 +241,7 @@ async def process_step_2(
     session_manager: SessionManagerDep,
     index: FindingIndexDep,
     draft_repo: DraftRepoDep,
+    creation_service: CreationServiceDep,
     synonyms: str = Form(default=""),
     description: str = Form(min_length=10, max_length=1000),
 ) -> Response:
@@ -320,7 +297,9 @@ async def process_step_2(
 
         # Generate default attributes markdown
         if not session.attributes_markdown:
-            session.attributes_markdown = generate_default_attributes_markdown(session.name or "the finding")
+            session.attributes_markdown = creation_service.generate_default_attributes_markdown(
+                session.name or "the finding"
+            )
 
         # Create draft with current session data
         inputs = FindingModelInputs(
@@ -354,12 +333,15 @@ async def process_step_3(
     session: CreationSessionDep,
     session_manager: SessionManagerDep,
     draft_repo: DraftRepoDep,
+    creation_service: CreationServiceDep,
 ) -> Response:
     """Process step 3: Review similar models and create draft for editing."""
     try:
         # Generate default attributes markdown
         if not session.attributes_markdown:
-            session.attributes_markdown = generate_default_attributes_markdown(session.name or "the finding")
+            session.attributes_markdown = creation_service.generate_default_attributes_markdown(
+                session.name or "the finding"
+            )
 
         # Create draft with current session data
         if session.name:
@@ -634,6 +616,7 @@ async def resume_creation(
     session: CreationSessionDep,
     session_manager: SessionManagerDep,
     draft_repo: DraftRepoDep,
+    creation_service: CreationServiceDep,
     draft_id: str = Form(...),
 ) -> Response:
     """Resume the creation process from a specific draft id.
@@ -653,7 +636,7 @@ async def resume_creation(
         session.attributes_markdown = (
             draft.inputs.attributes_markdown
             if draft.inputs and draft.inputs.attributes_markdown
-            else generate_default_attributes_markdown(draft.name)
+            else creation_service.generate_default_attributes_markdown(draft.name)
         )
         session.draft_id = draft.id
         session.draft_status = draft.status

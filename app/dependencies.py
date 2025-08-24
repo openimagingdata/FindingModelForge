@@ -1,9 +1,16 @@
 """Dependency injection for the application."""
 
+from __future__ import annotations
+
 import contextlib
 import json
 import uuid
-from typing import Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any
+
+if TYPE_CHECKING:
+    from .services.creation_service import CreationService
+    from .services.draft_service import DraftService
+    from .services.finding_model_service import FindingModelService
 
 from fastapi import Depends, Request
 from findingmodel.contributor import Organization
@@ -217,3 +224,36 @@ async def get_creation_session(request: Request, session_manager: SessionManager
 
 
 CreationSessionDep = Annotated[FindingModelCreationSession, Depends(get_creation_session)]
+
+
+# ===== SERVICE LAYER DEPENDENCIES =====
+
+
+def get_finding_model_service(index: FindingIndexDep, cache: CacheDep) -> FindingModelService:
+    """Get FindingModelService instance."""
+    from .services.finding_model_service import FindingModelService
+
+    return FindingModelService(index, cache)
+
+
+FindingModelServiceDep = Annotated["FindingModelService", Depends(get_finding_model_service)]
+
+
+def get_creation_service(index: FindingIndexDep, database: DatabaseDep) -> CreationService:
+    """Get CreationService instance."""
+    from .services.creation_service import CreationService
+
+    return CreationService(index, database)
+
+
+CreationServiceDep = Annotated["CreationService", Depends(get_creation_service)]
+
+
+def get_draft_service(draft_repo: DraftRepoDep) -> DraftService:
+    """Get DraftService instance."""
+    from .services.draft_service import DraftService
+
+    return DraftService(draft_repo)
+
+
+DraftServiceDep = Annotated["DraftService", Depends(get_draft_service)]

@@ -1,20 +1,15 @@
 # ruff: noqa: B008
 # mypy: disable-error-code="prop-decorator"
-import re
-from datetime import UTC, datetime
-from types import SimpleNamespace
-from typing import Annotated, Any, cast
+from typing import Annotated, Any
 
-import httpx
-import humanize
-from fastapi import APIRouter, Header, HTTPException, Query, Request, status
+from fastapi import APIRouter, Header, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from findingmodel import FindingModelFull
 
 from app.auth import OptionalUserDep
-from app.config import logger, settings
-from app.dependencies import CacheDep, DraftRepoDep, FindingIndexDep
+from app.config import logger
+from app.dependencies import DraftServiceDep, FindingModelServiceDep
+from app.services import NotFoundError
 from app.vite_manifest import get_vite_asset_path
 
 router = APIRouter()
@@ -40,32 +35,11 @@ async def login_page(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(request=request, name="login.html", context={"title": "Login"})
 
 
-def _extract_attribute_names_from_generated_json(generated_json: str | None) -> list[str]:
-    """Extract attribute names from a FindingModelFull JSON payload.
-
-    Conservative parser that looks for an 'attributes' list and returns readable names.
-    """
-    if not generated_json:
-        return []
-    try:
-        data = FindingModelFull.model_validate_json(generated_json).model_dump(mode="json", exclude_none=True)
-        attrs: list[str] = []
-        for item in data.get("attributes", []) or []:
-            if isinstance(item, dict):
-                # Try common name fields
-                name = item.get("name") or item.get("title") or item.get("id")
-                if isinstance(name, str) and name:
-                    attrs.append(name)
-        return attrs
-    except Exception:
-        return []
-
-
 @router.get("/profile", response_class=HTMLResponse)
 async def profile(
     request: Request,
     current_user: OptionalUserDep,
-    draft_repo: DraftRepoDep,
+    draft_service: DraftServiceDep,
 ) -> HTMLResponse:
     """Protected profile page with user's drafts list."""
     logger.info(f"Accessing profile for user: {current_user.login if current_user else 'Guest'}")
@@ -79,37 +53,8 @@ async def profile(
             },
         )
 
-    # Load user's drafts
-    user_drafts: list[dict[str, Any]] = []
-    try:
-        drafts = await draft_repo.list_for_user(current_user.id)
-        for d in drafts:
-            # Humanized timestamp
-            try:
-                updated_dt = d.updated_at
-                if updated_dt.tzinfo is None:
-                    updated_dt = updated_dt.replace(tzinfo=UTC)
-                updated_display = humanize.naturaltime(datetime.now(UTC) - updated_dt)
-            except Exception:
-                updated_display = d.updated_at.isoformat()
-            # Slug for view links
-            name_slug = (d.name or "").lower().replace(" ", "-").replace("_", "-")
-            has_generated = bool(getattr(d, "generated_json", None))
-            user_drafts.append(
-                {
-                    "id": d.id,
-                    "name": d.name,
-                    "status": d.status,
-                    "updated_at": d.updated_at.isoformat(),
-                    "updated_display": updated_display,
-                    "slug": name_slug,
-                    "has_generated": has_generated,
-                    "attribute_names": _extract_attribute_names_from_generated_json(getattr(d, "generated_json", None)),
-                }
-            )
-    except Exception as e:
-        logger.warning(f"Failed to load drafts for user {current_user.login}: {e}")
-        user_drafts = []
+    # Load user's drafts using service
+    user_drafts = await draft_service.get_drafts_for_user(current_user.id)
 
     return templates.TemplateResponse(
         request=request,
@@ -152,59 +97,12 @@ async def create_finding_model_page(
     )
 
 
-async def _get_finding_models_list(
-    index: Any,  # Index type from findingmodel.index
-    cache: Any,  # RedisCache type
-) -> list[dict[str, Any]]:
-    """
-    Shared logic to fetch the finding models list with caching.
-
-    Returns:
-        List of finding model dictionaries with id, name, and slug
-    """
-    # Check cache first
-    finding_models = await cache.get_finding_models()
-    if finding_models:
-        logger.debug("Cache hit for finding models list")
-        return cast(list[dict[str, Any]], finding_models)
-
-    logger.debug("Cache miss for finding models list, fetching from index")
-
-    # Fetch all finding models from the index
-    # Use a case-insensitive sort by adding a computed field for lowercase name
-    finding_models_data: list[dict[str, Any]] = await index.index_collection.aggregate(
-        [
-            {"$addFields": {"name_lower": {"$toLower": "$name"}}},
-            {"$sort": {"name_lower": 1}},
-            {"$project": {"name_lower": 0}},  # Exclude the helper field from results
-        ]
-    ).to_list(length=None)
-
-    if not finding_models_data:
-        logger.warning("No finding models found in index")
-        return []
-
-    def slugify(name: str) -> str:
-        """Convert a name to a URL-friendly slug."""
-        return name.lower().replace(" ", "-").replace("_", "-")
-
-    finding_models = [
-        {"id": model["oifm_id"], "name": model["name"], "slug": slugify(model["name"])} for model in finding_models_data
-    ]
-
-    # Cache the finding models list for 1 hour
-    await cache.set_finding_models(finding_models)
-
-    return finding_models
-
-
 @router.get("/finding-models", response_class=HTMLResponse)
 @router.get("/finding-models/{slug}", response_class=HTMLResponse)
 async def finding_models(
     request: Request,
     current_user: OptionalUserDep,
-    index: FindingIndexDep,
-    cache: CacheDep,
+    finding_model_service: FindingModelServiceDep,
     slug: str | None = None,
     hx_request: Annotated[str | None, Header()] = None,
     search: str = Query(None, description="Search term for filtering models"),
@@ -224,7 +122,7 @@ async def finding_models(
         if slug:
             # Return detail fragment
             try:
-                finding_model, index_entry = await _get_finding_model_with_cache(slug, index, cache)
+                finding_model, index_entry = await finding_model_service.get_model_by_slug(slug)
                 response = templates.TemplateResponse(
                     request=request,
                     name="fragments/finding_model_detail_content.html",
@@ -240,16 +138,8 @@ async def finding_models(
                 # Tell HTMX what URL to push to browser history
                 response.headers["HX-Push-Url"] = f"/finding-models/{slug}"
                 return response
-            except httpx.HTTPError as e:
-                logger.error(f"HTTP error fetching finding model '{slug}': {e}")
-                error_content = (
-                    '<div class="p-4 text-red-600 bg-red-50 dark:bg-red-900 dark:text-red-200 rounded-lg">'
-                    "Failed to load finding model</div>"
-                )
-                return HTMLResponse(content=error_content, status_code=500)
-            except HTTPException:
-                # Let HTTPException propagate as-is
-                raise
+            except NotFoundError:
+                raise HTTPException(status_code=404, detail=f"Finding model '{slug}' not found") from None
             except Exception as e:
                 logger.error(f"Error displaying finding model '{slug}': {e}")
                 error_content = (
@@ -259,23 +149,12 @@ async def finding_models(
                 return HTMLResponse(content=error_content, status_code=500)
         else:
             # Return list fragment with search and pagination
-            finding_models_list = await _get_finding_models_list(index, cache)
+            paginated_models, total_count = await finding_model_service.list_models(search, page, per_page)
 
-            # Apply search filter if provided
-            if search:
-                search_lower = search.lower()
-                finding_models_list = [
-                    model
-                    for model in finding_models_list
-                    if search_lower in model["name"].lower() or search_lower in str(model["id"]).lower()
-                ]
-
-            # Calculate pagination
-            total_count = len(finding_models_list)
+            # Calculate pagination info
             total_pages = max(1, (total_count + per_page - 1) // per_page)
             start_index = (page - 1) * per_page
             end_index = min(start_index + per_page, total_count)
-            paginated_models = finding_models_list[start_index:end_index]
 
             # Calculate page range for pagination display (show 5 pages around current)
             page_range = []
@@ -331,7 +210,7 @@ async def finding_models(
 
     # For full page requests, return the base template
     # It will determine what to show based on slug presence
-    context = {
+    context: dict[str, Any] = {
         "user": current_user,
         "title": "Finding Models",
     }
@@ -339,61 +218,64 @@ async def finding_models(
     if slug:
         # Preload the detail data for initial render
         try:
-            finding_model, index_entry = await _get_finding_model_with_cache(slug, index, cache)
+            finding_model, index_entry = await finding_model_service.get_model_by_slug(slug)
             context.update(
-                cast(
-                    dict[str, Any],
-                    {
-                        "initial_model": finding_model,
-                        "finding_model": finding_model,  # Also add for fragment compatibility
-                        "index_entry": index_entry,
-                        "show_detail": True,
-                        "model_slug": slug,
-                    },
-                )
+                {
+                    "initial_model": finding_model,
+                    "finding_model": finding_model,  # Also add for fragment compatibility
+                    "index_entry": index_entry,
+                    "show_detail": True,
+                    "model_slug": slug,
+                }
+            )
+        except NotFoundError:
+            logger.error(f"Finding model '{slug}' not found for initial render")
+            # Fall back to showing list view with error
+            finding_models_list, total_count = await finding_model_service.list_models(None, 1, 20)
+            context.update(
+                {
+                    "finding_models": finding_models_list,
+                    "show_detail": False,
+                    "error_message": f"Finding model '{slug}' not found",
+                    "search_query": "",
+                    "current_page": 1,
+                    "total_pages": max(1, (total_count + 19) // 20),
+                    "per_page": 20,
+                    "page_range": [1],
+                    "start_index": 1,
+                    "end_index": min(20, total_count),
+                    "total_count": total_count,
+                    "url_params": {},
+                }
             )
         except Exception as e:
             logger.error(f"Error loading finding model '{slug}' for initial render: {e}")
             # Fall back to showing list view with error
-            finding_models_list = await _get_finding_models_list(index, cache)
+            finding_models_list, total_count = await finding_model_service.list_models(None, 1, 20)
             context.update(
-                cast(
-                    dict[str, Any],
-                    {
-                        "finding_models": finding_models_list,
-                        "show_detail": False,
-                        "error_message": f"Finding model '{slug}' not found",
-                        "search_query": "",
-                        "current_page": 1,
-                        "total_pages": 1,
-                        "per_page": 20,
-                        "page_range": [1],
-                        "start_index": 1,
-                        "end_index": len(finding_models_list),
-                        "total_count": len(finding_models_list),
-                        "url_params": {},
-                    },
-                )
+                {
+                    "finding_models": finding_models_list,
+                    "show_detail": False,
+                    "error_message": "Error loading finding model",
+                    "search_query": "",
+                    "current_page": 1,
+                    "total_pages": max(1, (total_count + 19) // 20),
+                    "per_page": 20,
+                    "page_range": [1],
+                    "start_index": 1,
+                    "end_index": min(20, total_count),
+                    "total_count": total_count,
+                    "url_params": {},
+                }
             )
     else:
         # Preload the list data for initial render with search/pagination
-        finding_models_list = await _get_finding_models_list(index, cache)
-
-        # Apply search filter if provided
-        if search:
-            search_lower = search.lower()
-            finding_models_list = [
-                model
-                for model in finding_models_list
-                if search_lower in model["name"].lower() or search_lower in str(model["id"]).lower()
-            ]
+        paginated_models, total_count = await finding_model_service.list_models(search, page, per_page)
 
         # Calculate pagination
-        total_count = len(finding_models_list)
         total_pages = max(1, (total_count + per_page - 1) // per_page)
         start_index = (page - 1) * per_page
         end_index = min(start_index + per_page, total_count)
-        paginated_models = finding_models_list[start_index:end_index]
 
         # Calculate page range for pagination display
         page_range = []
@@ -409,130 +291,19 @@ async def finding_models(
             url_params["per_page"] = str(per_page)
 
         context.update(
-            cast(
-                dict[str, Any],
-                {
-                    "finding_models": paginated_models,
-                    "show_detail": False,
-                    "search_query": search or "",
-                    "current_page": page,
-                    "total_pages": total_pages,
-                    "per_page": per_page,
-                    "page_range": page_range,
-                    "start_index": start_index + 1 if total_count > 0 else 0,
-                    "end_index": end_index,
-                    "total_count": total_count,
-                    "url_params": url_params,
-                },
-            )
+            {
+                "finding_models": paginated_models,
+                "show_detail": False,
+                "search_query": search or "",
+                "current_page": page,
+                "total_pages": total_pages,
+                "per_page": per_page,
+                "page_range": page_range,
+                "start_index": start_index + 1 if total_count > 0 else 0,
+                "end_index": end_index,
+                "total_count": total_count,
+                "url_params": url_params,
+            }
         )
 
     return templates.TemplateResponse(request=request, name="finding_models_base.html", context=context)
-
-
-async def _get_finding_model_with_cache(
-    slug: str,
-    index: Any,  # Index type from findingmodel.index
-    cache: Any,  # RedisCache type
-) -> tuple[FindingModelFull, Any]:
-    """
-    Shared logic to fetch a finding model with caching.
-
-    Returns:
-        Tuple of (finding_model, index_entry)
-    """
-    # Prepare candidate lookups: prefer the space-normalized variant first (backward-compatible
-    # with existing tests and behavior), then try the raw slug and separator swaps so we handle
-    # names that truly include hyphens like "acro-osteolysis".
-    raw_slug = (slug or "").strip().lower()
-    variant_spaces = raw_slug.replace("-", " ").replace("_", " ")
-    variant_hyphen = raw_slug.replace("_", "-")
-    variant_underscore = raw_slug.replace("-", "_")
-    candidates: list[str] = []
-    for c in (variant_spaces, raw_slug, variant_hyphen, variant_underscore):
-        if c and c not in candidates:
-            candidates.append(c)
-
-    index_entry = None
-    matched_variant = None
-    for candidate in candidates:
-        try:
-            index_entry = await index.get(candidate)
-        except Exception:
-            index_entry = None
-        if index_entry:
-            matched_variant = candidate
-            break
-
-    if not index_entry:
-        # Fallback: query the backing collection by a flexible regex that allows
-        # spaces, hyphens, or underscores between tokens, to handle cases like
-        # "bow-tie" vs "bow tie".
-        tokens = [t for t in re.split(r"[-_\s]+", raw_slug) if t]
-        if tokens:
-            sep = r"[\s\-_]+"
-            pattern = "^" + sep.join(re.escape(t) for t in tokens) + "$"
-            try:
-                doc = await index.index_collection.find_one({"name": {"$regex": pattern, "$options": "i"}})
-            except Exception:
-                doc = None
-            if not doc:
-                # Try matching by filename if name lookup fails
-                base = raw_slug.replace("-", "_").replace(" ", "_")
-                filename_regex = rf"{re.escape(base)}.*\.fm\.json$"
-                try:
-                    doc = await index.index_collection.find_one(
-                        {"filename": {"$regex": filename_regex, "$options": "i"}}
-                    )
-                except Exception:
-                    doc = None
-            if doc and doc.get("filename"):
-                index_entry = SimpleNamespace(
-                    filename=doc.get("filename"),
-                    name=doc.get("name"),
-                    description=doc.get("description"),
-                )
-                matched_variant = raw_slug
-        if not index_entry:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Finding model '{raw_slug}' not found in index",
-            )
-
-    # Use the space-normalized variant as the canonical cache key to remain compatible
-    # with existing expectations/tests while ensuring consistent keys.
-    cache_slug = variant_spaces
-
-    # Check cache first
-    finding_model = await cache.get_finding_model(cache_slug)
-    if finding_model:
-        logger.debug(
-            f"Cache hit for finding model '{raw_slug}' (matched variant: {matched_variant}, cache key: {cache_slug})"
-        )
-    else:
-        logger.debug(
-            f"Cache miss for finding model '{raw_slug}' (matched variant: {matched_variant}), fetching from GitHub"
-        )
-
-        # Extract filename from index entry
-        if not index_entry.filename:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Finding model entry missing filename",
-            )
-
-        # Construct the GitHub raw URL
-        github_url = f"{settings.finding_models_github_base_url}{index_entry.filename}"
-        logger.debug(f"Fetching finding model from: {github_url}")
-
-        # Fetch the finding model JSON from GitHub
-        async with httpx.AsyncClient() as client:
-            response = await client.get(github_url)
-            response.raise_for_status()
-            finding_model = FindingModelFull.model_validate_json(response.text)
-
-        # Cache the result
-        await cache.set_finding_model(cache_slug, finding_model)
-        logger.debug(f"Cached finding model '{raw_slug}' (cache key: {cache_slug}) for future requests")
-
-    return finding_model, index_entry

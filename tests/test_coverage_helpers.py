@@ -14,7 +14,8 @@ from app.database import Database, DraftRepo
 from app.dependencies import SessionManager
 from app.main import app
 from app.models import User
-from app.routers.finding_models import generate_default_attributes_markdown, parse_synonyms
+from app.routers.finding_models import parse_synonyms
+from app.services.creation_service import CreationService
 
 
 def test_parse_synonyms_valid() -> None:
@@ -31,7 +32,14 @@ def test_parse_synonyms_invalid_raises_http_exception() -> None:
 
 
 def test_generate_default_attributes_markdown_contains_sections() -> None:
-    md = generate_default_attributes_markdown("nodule")
+    from unittest.mock import MagicMock
+
+    # Mock dependencies that CreationService needs
+    mock_index = MagicMock()
+    mock_database = MagicMock()
+
+    creation_service = CreationService(index=mock_index, database=mock_database)
+    md = creation_service.generate_default_attributes_markdown("nodule")
     assert "### presence" in md
     assert "### change from prior" in md
     assert "nodule" in md

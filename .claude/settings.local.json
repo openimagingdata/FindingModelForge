@@ -104,7 +104,8 @@
       "WebFetch(domain:fiduswriter.github.io)",
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(pkill:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(task pre-commit:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

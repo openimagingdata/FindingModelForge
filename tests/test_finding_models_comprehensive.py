@@ -21,7 +21,8 @@ from app.database import Database, DraftRepo, UserRepo
 from app.dependencies import FindingModelCreationSession
 from app.main import app
 from app.models import FindingModelDraft, FindingModelInputs, User
-from app.routers.finding_models import generate_default_attributes_markdown, parse_synonyms, render_step_template
+from app.routers.finding_models import parse_synonyms, render_step_template
+from app.services.creation_service import CreationService
 
 # ===== FIXTURES =====
 
@@ -155,7 +156,14 @@ class TestHelperFunctions:
 
     def test_generate_default_attributes_markdown(self):
         """Test generation of default attributes markdown."""
-        result = generate_default_attributes_markdown("nodule")
+        from unittest.mock import MagicMock
+
+        # Mock dependencies that CreationService needs
+        mock_index = MagicMock()
+        mock_database = MagicMock()
+
+        creation_service = CreationService(index=mock_index, database=mock_database)
+        result = creation_service.generate_default_attributes_markdown("nodule")
 
         assert "### presence" in result
         assert "### change from prior" in result
