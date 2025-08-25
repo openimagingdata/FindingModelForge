@@ -14,7 +14,7 @@ from app.database import Database, DraftRepo
 from app.dependencies import SessionManager
 from app.main import app
 from app.models import User
-from app.routers.finding_models import parse_synonyms
+from app.routers.finding_models_drafts import parse_synonyms
 from app.services.creation_service import CreationService
 
 

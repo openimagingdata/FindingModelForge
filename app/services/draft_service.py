@@ -248,7 +248,9 @@ class DraftService:
             logger.warning(f"Error getting draft {draft_id} for user {user_id}: {e}")
             return None
 
-    async def save_draft(self, user_id: int, name: str, inputs: Any, draft_id: str | None = None) -> Any:
+    async def save_draft(
+        self, user_id: int, name: str, inputs: Any, draft_id: str | None = None, generated_json: str | None = None
+    ) -> Any:
         """Save draft inputs.
 
         Args:
@@ -256,12 +258,13 @@ class DraftService:
             name: Name of the finding model
             inputs: FindingModelInputs with description, synonyms, attributes
             draft_id: Optional existing draft ID to update
+            generated_json: Optional generated JSON for the finding model
 
         Returns:
             Saved draft object
         """
         try:
-            return await self.draft_repo.save_draft(user_id, name, inputs, draft_id)
+            return await self.draft_repo.save_draft(user_id, name, inputs, draft_id, generated_json)
         except Exception as e:
             logger.error(f"Error saving draft for user {user_id}: {e}")
             raise

@@ -21,8 +21,8 @@ from app.database import Database, DraftRepo, UserRepo
 from app.dependencies import FindingModelCreationSession
 from app.main import app
 from app.models import FindingModelDraft, FindingModelInputs, User
-from app.routers.finding_models import parse_synonyms
 from app.routers.finding_models_creation import render_step_template
+from app.routers.finding_models_drafts import parse_synonyms
 from app.services.creation_service import CreationService
 
 # ===== FIXTURES =====
@@ -135,12 +135,21 @@ def authenticated_client(
     mock_user: User, mock_cache: MagicMock, mock_database: Database
 ) -> Generator[TestClient, None, None]:
     """Create an authenticated test client with mocked dependencies."""
+    from app.dependencies import get_draft_service
+    from app.services.draft_service import DraftService
+
     # Set up app state
     app.state.database = mock_database
     app.state.cache = mock_cache
 
     # Override auth dependency
     app.dependency_overrides[get_current_user] = lambda: mock_user
+
+    # Override draft service dependency to use our mocked database
+    def get_mock_draft_service() -> DraftService:
+        return DraftService(mock_database.draft_repo)
+
+    app.dependency_overrides[get_draft_service] = get_mock_draft_service
 
     client = TestClient(app)
     yield client
@@ -493,10 +502,25 @@ class TestDraftManagement:
         assert response.status_code == 409
         assert "submitted" in response.text.lower() and "cannot be edited" in response.text
 
-    def test_submit_draft_success(self, authenticated_client: TestClient, mock_cache: MagicMock):
+    def test_submit_draft_success(
+        self, authenticated_client: TestClient, mock_cache: MagicMock, mock_database: Database
+    ):
         """Test successful draft submission."""
         session_data = '{"session_id": "test-123"}'
         mock_cache.get.return_value = session_data
+
+        # Mock the draft to exist before submission
+        draft = FindingModelDraft(
+            id="test-draft-id",
+            user_id=123,
+            name="test-draft",
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            inputs=FindingModelInputs(description="test", synonyms=[], attributes_markdown="test"),
+            status="draft",
+            action_log=[],
+        )
+        mock_database.draft_repo.get_draft = AsyncMock(return_value=draft)
 
         response = authenticated_client.post("/api/finding-models/drafts/test-draft-id/submit")
 
@@ -1115,7 +1139,8 @@ class TestDraftStateTransitions:
         # Verify save_draft was called with the existing ID
         mock_database.draft_repo.save_draft.assert_called_once()
         call_args = mock_database.draft_repo.save_draft.call_args
-        assert call_args.kwargs["draft_id"] == "507f1f77bcf86cd799439011"
+        # The service calls with positional args: (user_id, name, inputs, draft_id, generated_json)
+        assert call_args.args[3] == "507f1f77bcf86cd799439011"  # draft_id is 4th argument
 
     def test_submit_draft_happy_path(
         self, authenticated_client: TestClient, mock_database: Database, mock_cache: MagicMock
@@ -1132,6 +1157,21 @@ class TestDraftStateTransitions:
 
         # Set session cookie on client
         authenticated_client.cookies["creation_session_id"] = "test-session"
+
+        # Mock draft to exist before submission
+        draft = FindingModelDraft(
+            id="507f1f77bcf86cd799439012",
+            user_id=123,
+            name="test-finding",
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            inputs=FindingModelInputs(
+                description="Test description", synonyms=["test"], attributes_markdown="## test\n- value: test"
+            ),
+            status="draft",
+            action_log=[],
+        )
+        mock_database.draft_repo.get_draft = AsyncMock(return_value=draft)
 
         # Mock submitted draft
         submitted_draft = FindingModelDraft(
@@ -1155,8 +1195,8 @@ class TestDraftStateTransitions:
         # Verify the response contains some content
         assert len(response.text) > 0
 
-        # Verify submit was called
-        mock_database.draft_repo.submit.assert_called_once_with(draft_id="507f1f77bcf86cd799439012", user_id=123)
+        # Verify submit was called with positional args
+        mock_database.draft_repo.submit.assert_called_once_with("507f1f77bcf86cd799439012", 123)
 
     def test_delete_draft_happy_path(
         self, authenticated_client: TestClient, mock_database: Database, mock_cache: MagicMock
@@ -1188,8 +1228,8 @@ class TestDraftStateTransitions:
         assert "HX-Redirect" in response.headers
         assert response.headers["HX-Redirect"] == "/profile"
 
-        # Verify delete was called
-        mock_database.draft_repo.delete_draft.assert_called_once_with(draft_id="test-draft-id", user_id=123)
+        # Verify delete was called with positional args
+        mock_database.draft_repo.delete_draft.assert_called_once_with("test-draft-id", 123)
 
     def test_resume_creation_draft_status(
         self, authenticated_client: TestClient, mock_database: Database, mock_cache: MagicMock
