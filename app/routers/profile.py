@@ -1,11 +1,12 @@
-# ruff: noqa: B008
-# mypy: disable-error-code="prop-decorator"
+"""User profile page routes."""
+
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from app.auth import OptionalUserDep
 from app.config import logger
+from app.dependencies import DraftServiceDep
 from app.vite_manifest import get_vite_asset_path
 
 router = APIRouter()
@@ -15,31 +16,33 @@ templates = Jinja2Templates(directory="templates")
 templates.env.globals["vite_asset"] = get_vite_asset_path
 
 
-@router.get("/create-finding-model", response_class=HTMLResponse)
-async def create_finding_model_page(
-    request: Request, current_user: OptionalUserDep, name: str | None = None, draft_id: str | None = None
+@router.get("/profile", response_class=HTMLResponse)
+async def profile(
+    request: Request,
+    current_user: OptionalUserDep,
+    draft_service: DraftServiceDep,
 ) -> HTMLResponse:
-    """Finding model creation page - now using HTMX workflow."""
-    logger.info(f"Accessing finding model creation for user: {current_user.login if current_user else 'Guest'}")
-
+    """Protected profile page with user's drafts list."""
+    logger.info(f"Accessing profile for user: {current_user.login if current_user else 'Guest'}")
     if not current_user:
         return templates.TemplateResponse(
             request=request,
             name="login.html",
             context={
                 "title": "Login Required",
-                "message": "Please log in to create finding models.",
+                "message": "Please log in to access your profile.",
             },
         )
 
-    # Use the new HTMX-based template
+    # Load user's drafts using service
+    user_drafts = await draft_service.get_drafts_for_user(current_user.id)
+
     return templates.TemplateResponse(
         request=request,
-        name="create_finding_model_htmx.html",
+        name="profile.html",
         context={
             "user": current_user,
-            "title": "Create Finding Model",
-            "start_name": name or "",
-            "start_draft_id": draft_id or "",
+            "title": "Profile",
+            "drafts": user_drafts,
         },
     )

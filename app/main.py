@@ -8,7 +8,18 @@ from .cache import CacheConfig, RedisCache
 from .config import logger, settings
 from .database import Database
 from .health import router as health_router
-from .routers import auth, finding_models, pages, static, test_auth, users
+from .routers import (
+    auth,
+    auth_pages,
+    finding_models,
+    finding_models_browse,
+    home,
+    pages,
+    profile,
+    static,
+    test_auth,
+    users,
+)
 
 
 @asynccontextmanager
@@ -89,6 +100,16 @@ def create_app() -> FastAPI:
     app.include_router(auth.router, prefix="/auth", tags=["authentication"])
     app.include_router(users.router, prefix="/api/users", tags=["users"])
     app.include_router(static.router, tags=["static"])
+
+    # Simple page routers (Task 4)
+    app.include_router(home.router, tags=["home"])
+    app.include_router(auth_pages.router, tags=["auth-pages"])
+    app.include_router(profile.router, tags=["profile"])
+
+    # Finding models browse router (Task 5)
+    app.include_router(finding_models_browse.router, tags=["finding-models-browse"])
+
+    # Remaining routers
     app.include_router(pages.router, tags=["pages"])
     app.include_router(finding_models.router, prefix="/api/finding-models", tags=["finding-models"])
 
