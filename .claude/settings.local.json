@@ -105,7 +105,9 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(pkill:*)",
       "Bash(git log:*)",
-      "Bash(task pre-commit:*)"
+      "Bash(task pre-commit:*)",
+      "Bash(git restore:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

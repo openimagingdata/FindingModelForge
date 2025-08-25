@@ -13,6 +13,7 @@ from .routers import (
     auth_pages,
     finding_models,
     finding_models_browse,
+    finding_models_creation,
     home,
     pages,
     profile,
@@ -108,6 +109,9 @@ def create_app() -> FastAPI:
 
     # Finding models browse router (Task 5)
     app.include_router(finding_models_browse.router, tags=["finding-models-browse"])
+
+    # Finding models creation router (Task 6)
+    app.include_router(finding_models_creation.router, prefix="/api/finding-models", tags=["finding-models-creation"])
 
     # Remaining routers
     app.include_router(pages.router, tags=["pages"])

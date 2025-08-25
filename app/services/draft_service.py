@@ -189,6 +189,101 @@ class DraftService:
         except Exception:
             return []
 
+    async def find_editable_by_name(self, user_id: int, name: str) -> Any | None:
+        """Find editable draft by name for a user.
+
+        Args:
+            user_id: User ID to search for
+            name: Name to search for (case insensitive)
+
+        Returns:
+            Editable draft if found, None otherwise
+        """
+        try:
+            # Get all drafts for user and find editable one with matching name
+            all_drafts = await self.draft_repo.list_for_user(user_id)
+            for draft in all_drafts:
+                if draft.name and draft.name.lower() == name.lower() and draft.status == "draft":
+                    return draft
+            return None
+        except Exception as e:
+            logger.warning(f"Error finding editable draft by name '{name}' for user {user_id}: {e}")
+            return None
+
+    async def find_latest_by_name(self, user_id: int, name: str) -> Any | None:
+        """Find latest draft by name for a user.
+
+        Args:
+            user_id: User ID to search for
+            name: Name to search for (case insensitive)
+
+        Returns:
+            Latest draft if found, None otherwise
+        """
+        try:
+            # Get all drafts for user and find latest one with matching name
+            all_drafts = await self.draft_repo.list_for_user(user_id)
+            matching_drafts = [draft for draft in all_drafts if draft.name and draft.name.lower() == name.lower()]
+            if not matching_drafts:
+                return None
+            # Sort by updated_at descending and return first
+            return sorted(matching_drafts, key=lambda x: x.updated_at, reverse=True)[0]
+        except Exception as e:
+            logger.warning(f"Error finding latest draft by name '{name}' for user {user_id}: {e}")
+            return None
+
+    async def get_draft(self, draft_id: str, user_id: int) -> Any | None:
+        """Get draft by ID for a user.
+
+        Args:
+            draft_id: Draft ID to retrieve
+            user_id: User ID for ownership verification
+
+        Returns:
+            Draft if found and owned by user, None otherwise
+        """
+        try:
+            return await self.draft_repo.get_draft(draft_id, user_id)
+        except Exception as e:
+            logger.warning(f"Error getting draft {draft_id} for user {user_id}: {e}")
+            return None
+
+    async def save_draft(self, user_id: int, name: str, inputs: Any, draft_id: str | None = None) -> Any:
+        """Save draft inputs.
+
+        Args:
+            user_id: User ID creating/updating the draft
+            name: Name of the finding model
+            inputs: FindingModelInputs with description, synonyms, attributes
+            draft_id: Optional existing draft ID to update
+
+        Returns:
+            Saved draft object
+        """
+        try:
+            return await self.draft_repo.save_draft(user_id, name, inputs, draft_id)
+        except Exception as e:
+            logger.error(f"Error saving draft for user {user_id}: {e}")
+            raise
+
+    def format_submitted_time(self, updated_at: datetime) -> str:
+        """Format submitted time in human-friendly format.
+
+        Args:
+            updated_at: Datetime when draft was submitted
+
+        Returns:
+            Human-friendly time string
+        """
+        try:
+            submitted_time = updated_at
+            # Ensure timezone-aware
+            if submitted_time.tzinfo is None:
+                submitted_time = submitted_time.replace(tzinfo=UTC)
+            return humanize.naturaltime(datetime.now(UTC) - submitted_time)
+        except Exception:
+            return updated_at.isoformat()
+
     def format_draft_for_display(self, draft: Any) -> dict[str, Any]:
         """Format a single draft for display purposes.
 

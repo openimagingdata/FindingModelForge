@@ -79,6 +79,25 @@ def test_step1_resumes_submitted_draft_to_draft_view():
     # Also mock get_draft for the redirect target
     db.draft_repo.get_draft = AsyncMock(return_value=submitted_draft)  # type: ignore[attr-defined]
 
+    # Mock creation service since it's now used in step 1
+    from app.dependencies import get_creation_service, get_draft_service
+    from app.main import app
+    from app.services.creation_service import CreationService
+
+    mock_creation_service = MagicMock(spec=CreationService)
+    mock_creation_service.check_name_availability = AsyncMock(return_value=False)  # Name exists (submitted draft)
+    mock_creation_service.is_test_user = MagicMock(return_value=False)
+
+    # Mock draft service
+    from app.services.draft_service import DraftService
+
+    mock_draft_service = MagicMock(spec=DraftService)
+    mock_draft_service.find_editable_by_name = AsyncMock(return_value=None)
+    mock_draft_service.find_latest_by_name = AsyncMock(return_value=submitted_draft)
+
+    app.dependency_overrides[get_creation_service] = lambda: mock_creation_service
+    app.dependency_overrides[get_draft_service] = lambda: mock_draft_service
+
     resp = client.post(
         "/api/finding-models/create/step/1",
         data={"session_id": "sid-x", "name": "nodule"},
