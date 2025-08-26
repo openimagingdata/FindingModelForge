@@ -333,7 +333,7 @@
                             color='primary',
                             size='xs',
                             title='Edit',
-                            href=('/api/finding-models/drafts/' ~ d.id ~ '?mode=edit')
+                            href=('/drafts/' ~ d.id ~ '?mode=edit')
                         ) }}
                         {% if d.has_generated %}
                         {{ flowbite_icon_button(
@@ -341,7 +341,7 @@
                             color='blue',
                             size='xs',
                             title='View',
-                            href=('/api/finding-models/drafts/' ~ d.id ~ '?mode=view')
+                            href=('/drafts/' ~ d.id ~ '?mode=view')
                         ) }}
                         {% endif %}
                         {% else %}
@@ -352,7 +352,7 @@
                             color='blue',
                             size='xs',
                             title='View',
-                            href=('/api/finding-models/drafts/' ~ d.id ~ '?mode=view')
+                            href=('/drafts/' ~ d.id ~ '?mode=view')
                         ) }}
                         {% endif %}
                         {% endif %}

@@ -5,7 +5,7 @@
 FindingModelForge is a FastAPI-based web application for creating and managing medical imaging finding models. These
 models define semantic labels and structured attributes for medical imaging findings.
 
-**Current Branch**: `feature/finding-model-draft-saving` (main branch: `main`)
+**Current Branch**: `refactor/router-cleanup` (main branch: `main`)
 
 ## Domain-Specific Guides
 
@@ -47,7 +47,19 @@ models define semantic labels and structured attributes for medical imaging find
 ```
 FindingModelForge/
 ├── app/                    # Backend application (see app/CLAUDE.md)
-│   ├── routers/           # API endpoints
+│   ├── routers/           # Focused API endpoints
+│   │   ├── creation.py    # Creation workflow (/create/*)
+│   │   ├── drafts.py      # Draft management (/drafts/*)
+│   │   ├── finding_models_browse.py  # Browse/detail (/finding-models/*)
+│   │   ├── home.py        # Landing page (/)
+│   │   ├── auth_pages.py  # Login page (/login)
+│   │   └── profile.py     # User profile (/profile)
+│   ├── services/          # Business logic layer
+│   │   ├── creation_service.py      # AI generation & workflow
+│   │   ├── draft_service.py         # Draft CRUD operations
+│   │   └── finding_model_service.py # Model browsing & caching
+│   ├── utils/             # Utilities and helpers
+│   │   └── slug.py        # URL slug generation
 │   ├── database.py        # Repositories
 │   ├── dependencies.py    # DI & sessions
 │   └── models.py          # Data models
@@ -87,7 +99,7 @@ FindingModelForge/
 
 ### 4. Testing Philosophy
 
-- **100% test success rate** (40 tests passing: 22 unit + 18 UI tests)
+- **100% test success rate** (144 tests passing: unit tests + UI tests)
 - **Comprehensive coverage**: Unit tests for backend logic, Playwright tests for UI workflows
 - **Priority-based organization**: Critical paths → State transitions → Edge cases → Access control
 - **Realistic test data**: Valid ObjectIds, proper session mocking, comprehensive assertions
@@ -125,7 +137,7 @@ task test       # Full test suite
 2. **Type Check**: `uv run mypy app`
 3. **Test**: `task test-unit` (fast) or `task test` (comprehensive)
 4. **Check UI**: Ensure Flowbite patterns followed
-5. **Verify**: All router tests pass (71% coverage maintained)
+5. **Verify**: All router tests pass (78%+ coverage maintained)
 
 ### Common Tasks
 
@@ -155,12 +167,44 @@ REDIS_PORT=6379
 
 ## Key Features
 
+### URL Structure (Simplified in v1.3.0)
+
+**Current URL structure (clean, simplified):**
+
+```
+Creation Workflow:
+  /create/step/1      # Step 1: Name and description entry
+  /create/step/2      # Step 2: Description editing and similarity
+  /create/step/3      # Step 3: Review similar models
+  /create/restart     # Restart creation workflow
+  /create/resume      # Resume from existing draft
+
+Draft Management:
+  /drafts/{id}                    # Unified draft page (edit/view modes)
+  /drafts/{id}/submit             # Submit draft for review
+  /drafts/{id}/delete             # Delete draft
+  /drafts/{id}/update-and-redirect # Update and switch to view mode
+
+Public Browse:
+  /finding-models                 # Browse all finding models
+  /finding-models/{slug}          # Individual model details
+
+Simple Pages:
+  /                   # Home page
+  /login              # Login page
+  /profile            # User profile with drafts
+```
+
+**Replaced URLs (removed in v1.3.0):**
+- `/api/finding-models/create/*` → `/create/*`
+- `/api/finding-models/drafts/*` → `/drafts/*`
+
 ### Finding Model Creation
 
-- Multi-step workflow with HTMX
-- AI-powered generation and similarity detection
-- Draft autosave and resume functionality
-- Submit and lock mechanism
+- **Multi-step workflow with HTMX** - 3-step process with content swapping
+- **AI-powered generation and similarity detection** - OpenAI integration for intelligent assistance
+- **Draft autosave and resume functionality** - Seamless workflow interruption/resumption
+- **Submit and lock mechanism** - Prevent edits after submission
 
 ### Draft Management System
 
@@ -205,6 +249,17 @@ REDIS_PORT=6379
 3. **Follow conventions** - Match existing code style
 4. **Document complex logic** - But avoid obvious comments
 5. **Test critical paths** - Especially auth and data operations
+
+## Critical Planning Rule
+
+**NEVER make unilateral changes to agreed plans**. When a plan has been documented and agreed upon:
+
+- Follow the plan exactly as specified
+- If changes seem necessary, STOP and discuss with the user
+- Document any proposed deviations and get explicit approval
+- Router names, URL structures, and architectural decisions must match the plan
+- "Avoiding breaking changes" is NOT a valid reason to deviate from the plan
+- All documented URL mappings, file names, and structures must be implemented as planned
 
 ## Resources
 

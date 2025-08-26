@@ -21,8 +21,8 @@ from app.database import Database, DraftRepo, UserRepo
 from app.dependencies import FindingModelCreationSession
 from app.main import app
 from app.models import FindingModelDraft, FindingModelInputs, User
-from app.routers.finding_models_creation import render_step_template
-from app.routers.finding_models_drafts import parse_synonyms
+from app.routers.creation import render_step_template
+from app.routers.drafts import parse_synonyms
 from app.services.creation_service import CreationService
 
 # ===== FIXTURES =====
@@ -254,13 +254,13 @@ class TestHTMXCreationWorkflow:
 
         # Only test valid steps (1-3)
         for step in [1, 2, 3]:
-            response = authenticated_client.get(f"/api/finding-models/create/step/{step}")
+            response = authenticated_client.get(f"/create/step/{step}")
             assert response.status_code == 200
             assert len(response.text) > 0
 
     def test_get_creation_step_invalid_step(self, authenticated_client: TestClient):
         """Test GET request for invalid step number."""
-        response = authenticated_client.get("/api/finding-models/create/step/99")
+        response = authenticated_client.get("/create/step/99")
         # Now returns 422 due to Pydantic validation instead of 500
         assert response.status_code == 422
         # Check for validation error message
@@ -289,7 +289,7 @@ class TestHTMXCreationWorkflow:
             name="test-finding", description="A test description", synonyms=["test", "synonym"]
         )
 
-        response = authenticated_client.post("/api/finding-models/create/step/1", data={"name": "test-finding"})
+        response = authenticated_client.post("/create/step/1", data={"name": "test-finding"})
 
         assert response.status_code == 200
         mock_generate_info.assert_called_once()
@@ -297,7 +297,7 @@ class TestHTMXCreationWorkflow:
     def test_process_step_1_name_too_short(self, authenticated_client: TestClient):
         """Test step 1 with name too short fails validation."""
         response = authenticated_client.post(
-            "/api/finding-models/create/step/1",
+            "/create/step/1",
             data={"name": "ab"},  # Too short (min 3 chars)
         )
 
@@ -306,7 +306,7 @@ class TestHTMXCreationWorkflow:
     def test_process_step_1_name_too_long(self, authenticated_client: TestClient):
         """Test step 1 with name too long fails validation."""
         long_name = "a" * 201  # Too long (max 200 chars)
-        response = authenticated_client.post("/api/finding-models/create/step/1", data={"name": long_name})
+        response = authenticated_client.post("/create/step/1", data={"name": long_name})
 
         assert response.status_code == 422  # Validation error
 
@@ -324,7 +324,7 @@ class TestHTMXCreationWorkflow:
         mock_find_similar.return_value = mock_analysis
 
         response = authenticated_client.post(
-            "/api/finding-models/create/step/2",
+            "/create/step/2",
             data={
                 "description": "A comprehensive test finding description",
                 "synonyms": '["synonym1", "synonym2"]',
@@ -365,7 +365,7 @@ class TestHTMXCreationWorkflow:
         mock_save_draft.return_value = mock_draft
 
         response = authenticated_client.post(
-            "/api/finding-models/create/step/2",
+            "/create/step/2",
             data={
                 "description": "A comprehensive test finding description",
                 "synonyms": '["synonym1", "synonym2"]',
@@ -383,7 +383,7 @@ class TestHTMXCreationWorkflow:
         mock_cache.get.return_value = session_data
 
         response = authenticated_client.post(
-            "/api/finding-models/create/step/2",
+            "/create/step/2",
             data={
                 "description": "A comprehensive test finding description",
                 "synonyms": "[]",
@@ -399,7 +399,7 @@ class TestHTMXCreationWorkflow:
         mock_cache.get.return_value = session_data
 
         response = authenticated_client.post(
-            "/api/finding-models/create/step/2",
+            "/create/step/2",
             data={
                 "description": "A comprehensive test finding description",
                 "synonyms": "not json",
@@ -414,7 +414,7 @@ class TestHTMXCreationWorkflow:
         session_data = '{"session_id": "test-123", "current_step": 3, "name": "test-finding"}'
         mock_cache.get.return_value = session_data
 
-        response = authenticated_client.post("/api/finding-models/create/step/3", data={}, follow_redirects=False)
+        response = authenticated_client.post("/create/step/3", data={}, follow_redirects=False)
 
         assert response.status_code == 303  # Redirect to draft editor
         assert "drafts/" in response.headers["location"]
@@ -424,7 +424,7 @@ class TestHTMXCreationWorkflow:
         session_data = '{"session_id": "test-123", "current_step": 3}'  # No name
         mock_cache.get.return_value = session_data
 
-        response = authenticated_client.post("/api/finding-models/create/step/3", data={})
+        response = authenticated_client.post("/create/step/3", data={})
 
         assert response.status_code == 500
 
@@ -441,7 +441,7 @@ class TestDraftManagement:
         mock_cache.get.return_value = session_data
 
         response = authenticated_client.post(
-            "/api/finding-models/drafts/save",
+            "/drafts/save",
             data={
                 "description": "A test description for saving",
                 "attributes_markdown": "## test\n- attr: value",
@@ -459,7 +459,7 @@ class TestDraftManagement:
         mock_cache.get.return_value = session_data
 
         response = authenticated_client.post(
-            "/api/finding-models/drafts/save",
+            "/drafts/save",
             data={
                 "description": "short",  # Too short (min 10 chars)
                 "attributes_markdown": "## test\n- attr: value that is long enough",
@@ -475,7 +475,7 @@ class TestDraftManagement:
         mock_cache.get.return_value = session_data
 
         response = authenticated_client.post(
-            "/api/finding-models/drafts/save",
+            "/drafts/save",
             data={
                 "description": "A description that is long enough",
                 "attributes_markdown": "short",  # Too short (min 20 chars)
@@ -491,7 +491,7 @@ class TestDraftManagement:
         mock_cache.get.return_value = session_data
 
         response = authenticated_client.post(
-            "/api/finding-models/drafts/save",
+            "/drafts/save",
             data={
                 "description": "A test description for saving",
                 "attributes_markdown": "## test\n- attr: value",
@@ -522,7 +522,7 @@ class TestDraftManagement:
         )
         mock_database.draft_repo.get_draft = AsyncMock(return_value=draft)
 
-        response = authenticated_client.post("/api/finding-models/drafts/test-draft-id/submit")
+        response = authenticated_client.post("/drafts/test-draft-id/submit")
 
         assert response.status_code == 200
         # Should contain step 5 content with IDs/JSON
@@ -548,7 +548,7 @@ class TestDraftManagement:
         )
         mock_database.draft_repo.get_draft = AsyncMock(return_value=mock_draft)
 
-        response = authenticated_client.post("/api/finding-models/drafts/test-draft-id/delete")
+        response = authenticated_client.post("/drafts/test-draft-id/delete")
 
         assert response.status_code == 200
         assert response.headers.get("HX-Redirect") == "/profile"
@@ -563,7 +563,7 @@ class TestDraftManagement:
         # Mock draft not found
         mock_database.draft_repo.get_draft = AsyncMock(return_value=None)
 
-        response = authenticated_client.post("/api/finding-models/drafts/nonexistent/delete")
+        response = authenticated_client.post("/drafts/nonexistent/delete")
 
         assert response.status_code == 404
         assert "Draft not found" in response.text
@@ -588,7 +588,7 @@ class TestDraftManagement:
         )
         mock_database.draft_repo.get_draft = AsyncMock(return_value=mock_draft)
 
-        response = authenticated_client.post("/api/finding-models/drafts/test-draft-id/delete")
+        response = authenticated_client.post("/drafts/test-draft-id/delete")
 
         assert response.status_code == 400
         assert "Cannot delete submitted drafts" in response.text
@@ -604,7 +604,7 @@ class TestSessionManagement:
         """Test successful creation restart."""
         mock_cache.get.return_value = None  # New session
 
-        response = authenticated_client.post("/api/finding-models/create/restart")
+        response = authenticated_client.post("/create/restart")
 
         assert response.status_code == 200
         assert "creation_session_id" in response.cookies
@@ -616,7 +616,7 @@ class TestSessionManagement:
         # Mock cache failure
         mock_cache.get.side_effect = Exception("Cache failure")
 
-        response = authenticated_client.post("/api/finding-models/create/restart")
+        response = authenticated_client.post("/create/restart")
 
         # Should still succeed with fallback session
         assert response.status_code == 200
@@ -639,7 +639,7 @@ class TestSessionManagement:
         )
         mock_database.draft_repo.get_draft = AsyncMock(return_value=mock_draft)
 
-        response = authenticated_client.post("/api/finding-models/create/resume", data={"draft_id": "test-draft-id"})
+        response = authenticated_client.post("/create/resume", data={"draft_id": "test-draft-id"})
 
         assert response.status_code == 200
         # Should show step 4 (attributes editing)
@@ -663,7 +663,7 @@ class TestSessionManagement:
         )
         mock_database.draft_repo.get_draft = AsyncMock(return_value=mock_draft)
 
-        response = authenticated_client.post("/api/finding-models/create/resume", data={"draft_id": "test-draft-id"})
+        response = authenticated_client.post("/create/resume", data={"draft_id": "test-draft-id"})
 
         assert response.status_code == 200
         # Should show step 5 (review with IDs/JSON)
@@ -673,7 +673,7 @@ class TestSessionManagement:
         """Test resuming creation with non-existent draft."""
         mock_database.draft_repo.get_draft = AsyncMock(return_value=None)
 
-        response = authenticated_client.post("/api/finding-models/create/resume", data={"draft_id": "nonexistent"})
+        response = authenticated_client.post("/create/resume", data={"draft_id": "nonexistent"})
 
         assert response.status_code == 404
 
@@ -699,9 +699,7 @@ class TestDraftEditingWorkflow:
         )
         mock_database.draft_repo.get_draft = AsyncMock(return_value=mock_draft)
 
-        response = authenticated_client.get(
-            "/api/finding-models/drafts/test-draft-id/edit", headers={"HX-Request": "true"}
-        )
+        response = authenticated_client.get("/drafts/test-draft-id/edit", headers={"HX-Request": "true"})
 
         assert response.status_code == 200
         # Should return partial content for HTMX
@@ -722,7 +720,7 @@ class TestDraftEditingWorkflow:
         )
         mock_database.draft_repo.get_draft = AsyncMock(return_value=mock_draft)
 
-        response = authenticated_client.get("/api/finding-models/drafts/test-draft-id/edit")
+        response = authenticated_client.get("/drafts/test-draft-id/edit")
 
         assert response.status_code == 200
         # Should return full page content
@@ -732,7 +730,7 @@ class TestDraftEditingWorkflow:
         """Test editing non-existent draft."""
         mock_database.draft_repo.get_draft = AsyncMock(return_value=None)
 
-        response = authenticated_client.get("/api/finding-models/drafts/nonexistent/edit")
+        response = authenticated_client.get("/drafts/nonexistent/edit")
 
         assert response.status_code == 404
 
@@ -751,7 +749,7 @@ class TestDraftEditingWorkflow:
         )
         mock_database.draft_repo.get_draft = AsyncMock(return_value=mock_draft)
 
-        response = authenticated_client.get("/api/finding-models/drafts/test-draft-id/edit")
+        response = authenticated_client.get("/drafts/test-draft-id/edit")
 
         assert response.status_code == 403
         assert "Draft is not editable" in response.text
@@ -767,7 +765,7 @@ class TestErrorHandling:
         """Test that HTTPExceptions are properly propagated."""
         # Test with invalid draft ID format that should trigger HTTPException
         response = authenticated_client.post(
-            "/api/finding-models/drafts/save",
+            "/drafts/save",
             data={
                 "draft_id": "invalid-format",  # Invalid ObjectId format
                 "description": "A test description for saving",
@@ -790,7 +788,7 @@ class TestErrorHandling:
         mock_database.draft_repo.save_draft.side_effect = Exception("Database error")
 
         response = authenticated_client.post(
-            "/api/finding-models/drafts/save",
+            "/drafts/save",
             data={
                 "description": "A test description for saving",
                 "attributes_markdown": "## test\n- attr: value",
@@ -806,7 +804,7 @@ class TestErrorHandling:
         # Mock cache error
         mock_cache.get.side_effect = Exception("Cache error")
 
-        response = authenticated_client.post("/api/finding-models/create/restart")
+        response = authenticated_client.post("/create/restart")
 
         # Should still work with fallback
         assert response.status_code == 200
@@ -828,7 +826,7 @@ class TestErrorHandling:
         mock_cache.get.return_value = session_data
 
         response = authenticated_client.post(
-            "/api/finding-models/create/step/2",
+            "/create/step/2",
             data={
                 "description": "A comprehensive test finding description",
                 "synonyms": malformed_json,
@@ -855,7 +853,7 @@ class TestEdgeCases:
         large_attributes = "a" * 500  # Reasonable size under limit
 
         response = authenticated_client.post(
-            "/api/finding-models/drafts/save",
+            "/drafts/save",
             data={
                 "description": large_description,
                 "attributes_markdown": large_attributes,
@@ -874,7 +872,7 @@ class TestEdgeCases:
         oversized_description = "a" * 1001  # Over max length (1000)
 
         response = authenticated_client.post(
-            "/api/finding-models/drafts/save",
+            "/drafts/save",
             data={
                 "description": oversized_description,
                 "attributes_markdown": "## test\n- attr: value",
@@ -914,7 +912,7 @@ class TestEdgeCases:
                 name=special_name, description="A test description", synonyms=["test"]
             )
 
-            response = authenticated_client.post("/api/finding-models/create/step/1", data={"name": special_name})
+            response = authenticated_client.post("/create/step/1", data={"name": special_name})
 
             if len(special_name) >= 3 and len(special_name) <= 200:
                 assert response.status_code == 200
@@ -926,7 +924,7 @@ class TestEdgeCases:
         mock_cache.get.return_value = None  # No session data
 
         response = authenticated_client.post(
-            "/api/finding-models/create/step/2",
+            "/create/step/2",
             data={
                 "description": "A test description",
                 "synonyms": "[]",
@@ -941,7 +939,7 @@ class TestEdgeCases:
         mock_cache.get.return_value = "corrupted json data"
 
         response = authenticated_client.post(
-            "/api/finding-models/create/step/2",
+            "/create/step/2",
             data={
                 "description": "A test description",
                 "synonyms": "[]",
@@ -986,7 +984,7 @@ class TestCriticalHappyPaths:
         )
         mock_database.draft_repo.get_draft = AsyncMock(return_value=mock_draft)
 
-        response = authenticated_client.get("/api/finding-models/drafts/test-draft-id?mode=view")
+        response = authenticated_client.get("/drafts/test-draft-id?mode=view")
 
         assert response.status_code == 200
         assert "test-finding" in response.text
@@ -1011,7 +1009,7 @@ class TestCriticalHappyPaths:
         )
         mock_database.draft_repo.get_draft = AsyncMock(return_value=mock_draft)
 
-        response = authenticated_client.get("/api/finding-models/drafts/test-draft-id?mode=edit")
+        response = authenticated_client.get("/drafts/test-draft-id?mode=edit")
 
         assert response.status_code == 200
         assert "test-finding" in response.text
@@ -1061,7 +1059,7 @@ class TestCriticalHappyPaths:
         mock_database.people.get.return_value = MagicMock(organization_code="TEST")
 
         response = authenticated_client.post(
-            "/api/finding-models/drafts/test-draft-id/update-and-redirect",
+            "/drafts/test-draft-id/update-and-redirect",
             data={
                 "description": "Updated description",
                 "synonyms": '["test", "updated"]',
@@ -1125,7 +1123,7 @@ class TestDraftStateTransitions:
         mock_database.draft_repo.save_draft = AsyncMock(return_value=updated_draft)
 
         response = authenticated_client.post(
-            "/api/finding-models/drafts/save",
+            "/drafts/save",
             data={
                 "draft_id": "507f1f77bcf86cd799439011",
                 "description": "Updated description that is long enough to pass validation requirements",
@@ -1189,7 +1187,7 @@ class TestDraftStateTransitions:
         )
         mock_database.draft_repo.submit = AsyncMock(return_value=submitted_draft)
 
-        response = authenticated_client.post("/api/finding-models/drafts/507f1f77bcf86cd799439012/submit")
+        response = authenticated_client.post("/drafts/507f1f77bcf86cd799439012/submit")
 
         assert response.status_code == 200
         # Verify the response contains some content
@@ -1222,7 +1220,7 @@ class TestDraftStateTransitions:
         mock_database.draft_repo.get_draft = AsyncMock(return_value=draft)
         mock_database.draft_repo.delete_draft = AsyncMock(return_value=True)
 
-        response = authenticated_client.post("/api/finding-models/drafts/test-draft-id/delete")
+        response = authenticated_client.post("/drafts/test-draft-id/delete")
 
         assert response.status_code == 200
         assert "HX-Redirect" in response.headers
@@ -1254,7 +1252,7 @@ class TestDraftStateTransitions:
         )
         mock_database.draft_repo.get_draft = AsyncMock(return_value=draft)
 
-        response = authenticated_client.post("/api/finding-models/create/resume", data={"draft_id": "test-draft-id"})
+        response = authenticated_client.post("/create/resume", data={"draft_id": "test-draft-id"})
 
         assert response.status_code == 200
         # Should render step 4 for draft status
@@ -1285,7 +1283,7 @@ class TestDraftStateTransitions:
         )
         mock_database.draft_repo.get_draft = AsyncMock(return_value=draft)
 
-        response = authenticated_client.post("/api/finding-models/create/resume", data={"draft_id": "test-draft-id"})
+        response = authenticated_client.post("/create/resume", data={"draft_id": "test-draft-id"})
 
         assert response.status_code == 200
         # Should render step 5 for submitted status
@@ -1338,13 +1336,11 @@ class TestErrorHandlingAndEdgeCases:
         # Also mock get_draft for the redirect target
         mock_database.draft_repo.get_draft = AsyncMock(return_value=existing_draft)
 
-        response = authenticated_client.post(
-            "/api/finding-models/create/step/1", data={"name": "test-finding"}, follow_redirects=False
-        )
+        response = authenticated_client.post("/create/step/1", data={"name": "test-finding"}, follow_redirects=False)
 
         # Should redirect to draft editor when resuming existing draft
         assert response.status_code == 303  # Redirect instead of 200
-        assert response.headers.get("location") == "/api/finding-models/drafts/existing-draft-id?mode=edit"
+        assert response.headers.get("location") == "/drafts/existing-draft-id?mode=edit"
 
         # Verify draft lookup was attempted
         mock_find_editable.assert_called_once_with(user_id=123, name="test-finding")
@@ -1380,7 +1376,7 @@ class TestErrorHandlingAndEdgeCases:
         mock_database.draft_repo.find_latest_by_name = AsyncMock(return_value=submitted_draft)
         mock_database.finding_index.get = AsyncMock(return_value=None)
 
-        response = authenticated_client.post("/api/finding-models/create/step/1", data={"name": "test-finding"})
+        response = authenticated_client.post("/create/step/1", data={"name": "test-finding"})
 
         assert response.status_code == 200
         # Should render step 5 when resuming submitted draft
@@ -1437,7 +1433,7 @@ class TestErrorHandlingAndEdgeCases:
         app.dependency_overrides[get_creation_service] = lambda: mock_creation_service
 
         response = authenticated_client.post(
-            "/api/finding-models/create/step/4",
+            "/create/step/4",
             data={
                 "description": "Test description",  # Identical to existing
                 "synonyms": '["test"]',  # Identical to existing
@@ -1472,9 +1468,7 @@ class TestErrorHandlingAndEdgeCases:
         mock_database.draft_repo.get_draft = AsyncMock(return_value=mock_draft)
 
         # Test HTMX request for edit mode
-        response = authenticated_client.get(
-            "/api/finding-models/drafts/test-draft-id?mode=edit", headers={"HX-Request": "true"}
-        )
+        response = authenticated_client.get("/drafts/test-draft-id?mode=edit", headers={"HX-Request": "true"})
 
         assert response.status_code == 200
         # Should return partial content for HTMX
@@ -1489,7 +1483,7 @@ class TestErrorHandlingAndEdgeCases:
             mock_session_manager.create_session = AsyncMock(return_value="new-session-id")
             mock_session_manager.get_session = AsyncMock(return_value=None)  # No existing session
 
-            response = authenticated_client.post("/api/finding-models/create/restart")
+            response = authenticated_client.post("/create/restart")
 
             assert response.status_code == 200
             # Should set new session cookie
@@ -1519,7 +1513,7 @@ class TestAccessControlAndValidation:
         )
         mock_database.draft_repo.get_draft = AsyncMock(return_value=submitted_draft)
 
-        response = authenticated_client.get("/api/finding-models/drafts/test-draft-id/edit")
+        response = authenticated_client.get("/drafts/test-draft-id/edit")
 
         assert response.status_code == 403
 
@@ -1546,7 +1540,7 @@ class TestAccessControlAndValidation:
         )
         mock_database.draft_repo.get_draft = AsyncMock(return_value=submitted_draft)
 
-        response = authenticated_client.post("/api/finding-models/drafts/test-draft-id/delete")
+        response = authenticated_client.post("/drafts/test-draft-id/delete")
 
         assert response.status_code == 400
         assert "Cannot delete submitted drafts" in response.text
@@ -1568,7 +1562,7 @@ class TestAccessControlAndValidation:
         authenticated_client.cookies["creation_session_id"] = "test-session"
 
         response = authenticated_client.post(
-            "/api/finding-models/drafts/save",
+            "/drafts/save",
             data={
                 "draft_id": "507f1f77bcf86cd799439013",
                 "description": "Updated description",
@@ -1600,7 +1594,7 @@ class TestAccessControlAndValidation:
         mock_database.draft_repo.get_draft = AsyncMock(return_value=draft_without_json)
 
         # Request view mode when no JSON exists
-        response = authenticated_client.get("/api/finding-models/drafts/test-draft-id?mode=view")
+        response = authenticated_client.get("/drafts/test-draft-id?mode=view")
 
         # Should redirect to edit mode or return edit content
         assert response.status_code in [200, 303]
@@ -1631,7 +1625,7 @@ class TestAccessControlAndValidation:
         mock_database.draft_repo.get_draft = AsyncMock(return_value=mock_draft)
 
         # Test invalid mode parameter defaults to view
-        response = authenticated_client.get("/api/finding-models/drafts/test-draft-id?mode=invalid")
+        response = authenticated_client.get("/drafts/test-draft-id?mode=invalid")
 
         assert response.status_code == 200
         # Should default to view mode behavior
@@ -1658,7 +1652,7 @@ class TestAccessControlAndValidation:
         mock_database.draft_repo.get_draft = AsyncMock(return_value=submitted_draft)
 
         # Request edit mode for submitted draft
-        response = authenticated_client.get("/api/finding-models/drafts/test-draft-id?mode=edit")
+        response = authenticated_client.get("/drafts/test-draft-id?mode=edit")
 
         assert response.status_code == 200
         # Should be in view mode despite requesting edit

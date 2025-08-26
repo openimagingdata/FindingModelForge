@@ -3,8 +3,8 @@
 {# HTMX form wrapper macro #}
 {% macro htmx_form(step_number, method="post", extra_classes="") %}
 <form method="{{ method }}"
-      action="/api/finding-models/create/step/{{ step_number }}"
-      hx-post="/api/finding-models/create/step/{{ step_number }}"
+      action="/create/step/{{ step_number }}"
+      hx-post="/create/step/{{ step_number }}"
       hx-target="#main-content"
       hx-swap="innerHTML"
       class="{{ extra_classes }}">
@@ -31,7 +31,7 @@
 {# Back button for navigation #}
 {% macro back_button(step_number, text="← Back", extra_classes="", session_id=None, draft_id=None) %}
 <button type="button"
-        hx-get="/api/finding-models/create/step/{{ step_number }}"
+        hx-get="/create/step/{{ step_number }}"
         {% if session_id or draft_id %}
         hx-vals='{"session_id": {{ session_id|tojson }}{% if draft_id %}, "draft_id": {{ draft_id|tojson }}{% endif %}}'
         {% endif %}

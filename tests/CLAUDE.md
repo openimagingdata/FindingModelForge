@@ -225,14 +225,14 @@ class TestAPI:
         """Test multi-step creation workflow."""
         # Step 1: Enter name
         response = auth_client.post(
-            "/api/finding-models/create/step/1",
+            "/create/step/1",
             data={"name": "test-finding"}
         )
         assert response.status_code == 200
 
         # Step 2: Edit description
         response = auth_client.post(
-            "/api/finding-models/create/step/2",
+            "/create/step/2",
             data={
                 "description": "Test description",
                 "synonyms": '["test1", "test2"]'
@@ -428,7 +428,7 @@ class TestDraftEditing:
                 await page.wait_for_load_state("networkidle")
 
                 # Navigate to draft edit page
-                await page.goto(f"http://localhost:8000/api/finding-models/drafts/{draft_id}?mode=edit")
+                await page.goto(f"http://localhost:8000/drafts/{draft_id}?mode=edit")
 
                 # Test the editing workflow
                 await expect(page.locator("h1")).to_contain_text("Edit Finding Model Draft")
@@ -568,7 +568,7 @@ class TestCriticalHappyPaths:
     async def test_process_step_4_happy_path(self, authenticated_client, mock_session):
         """Test step 4 processing with complete valid data."""
         response = authenticated_client.post(
-            "/api/finding-models/create/step/4",
+            "/create/step/4",
             data={
                 "description": "Complete medical description for testing purposes",
                 "synonyms": '["synonym1", "synonym2"]',
@@ -580,20 +580,20 @@ class TestCriticalHappyPaths:
     async def test_unified_draft_page_view_mode(self, authenticated_client):
         """Test unified draft page in view mode."""
         draft_id = "507f1f77bcf86cd799439011"  # Valid ObjectId
-        response = authenticated_client.get(f"/api/finding-models/drafts/{draft_id}?mode=view")
+        response = authenticated_client.get(f"/drafts/{draft_id}?mode=view")
         assert response.status_code in [200, 404]
 
     async def test_unified_draft_page_edit_mode(self, authenticated_client):
         """Test unified draft page in edit mode (default)."""
         draft_id = "507f1f77bcf86cd799439011"
-        response = authenticated_client.get(f"/api/finding-models/drafts/{draft_id}")
+        response = authenticated_client.get(f"/drafts/{draft_id}")
         assert response.status_code in [200, 404]
 
     async def test_update_draft_and_redirect(self, authenticated_client):
         """Test updating draft and redirecting to view mode."""
         draft_id = "507f1f77bcf86cd799439011"
         response = authenticated_client.post(
-            f"/api/finding-models/drafts/{draft_id}/update-and-redirect",
+            f"/drafts/{draft_id}/update-and-redirect",
             data={
                 "description": "Updated description for redirect test",
                 "synonyms": '["updated1", "updated2"]',
@@ -610,7 +610,7 @@ class TestDraftStateTransitions:
     async def test_save_draft_with_existing_draft_id(self, authenticated_client):
         """Test updating existing draft via draft_id parameter."""
         response = authenticated_client.post(
-            "/api/finding-models/create/step/4",
+            "/create/step/4",
             data={
                 "draft_id": "507f1f77bcf86cd799439011",
                 "description": "Updated description for existing draft",
@@ -623,26 +623,26 @@ class TestDraftStateTransitions:
     async def test_submit_draft_happy_path(self, authenticated_client):
         """Test submitting draft changes status to submitted."""
         draft_id = "507f1f77bcf86cd799439011"
-        response = authenticated_client.post(f"/api/finding-models/drafts/{draft_id}/submit")
+        response = authenticated_client.post(f"/drafts/{draft_id}/submit")
         assert response.status_code in [200, 303, 404]
 
     async def test_delete_draft_happy_path(self, authenticated_client):
         """Test deleting draft (only works for draft status)."""
         draft_id = "507f1f77bcf86cd799439011"
-        response = authenticated_client.post(f"/api/finding-models/drafts/{draft_id}/delete")
+        response = authenticated_client.post(f"/drafts/{draft_id}/delete")
         assert response.status_code in [200, 303, 404]
 
     async def test_resume_creation_draft_status(self, authenticated_client):
         """Test resuming creation with draft status."""
         response = authenticated_client.post(
-            "/api/finding-models/drafts/resume",
+            "/drafts/resume",
             data={"draft_id": "507f1f77bcf86cd799439011"}
         )
         assert response.status_code in [200, 303, 404]
 
     async def test_get_step_4_autosave_on_get(self, authenticated_client, mock_session):
         """Test that GET to step 4 triggers autosave."""
-        response = authenticated_client.get("/api/finding-models/create/step/4")
+        response = authenticated_client.get("/create/step/4")
         assert response.status_code == 200
         # Should trigger autosave if session has name
 ```
@@ -654,7 +654,7 @@ class TestErrorHandlingEdgeCases:
     async def test_step_4_with_invalid_draft_id(self, authenticated_client):
         """Test step 4 with malformed draft_id."""
         response = authenticated_client.post(
-            "/api/finding-models/create/step/4",
+            "/create/step/4",
             data={
                 "draft_id": "invalid-not-objectid",
                 "description": "Valid description for error case testing",
@@ -666,13 +666,13 @@ class TestErrorHandlingEdgeCases:
 
     async def test_unified_draft_page_invalid_id(self, authenticated_client):
         """Test unified draft page with invalid draft ID."""
-        response = authenticated_client.get("/api/finding-models/drafts/invalid-id")
+        response = authenticated_client.get("/drafts/invalid-id")
         assert response.status_code == 400
 
     async def test_step_4_validation_short_description(self, authenticated_client):
         """Test step 4 with description too short."""
         response = authenticated_client.post(
-            "/api/finding-models/create/step/4",
+            "/create/step/4",
             data={
                 "description": "short",  # Too short
                 "synonyms": '["test"]',
@@ -690,13 +690,13 @@ class TestAccessControlValidation:
         """Test that users can only access their own drafts."""
         # This would test with a draft belonging to different user
         draft_id = "507f1f77bcf86cd799439011"
-        response = authenticated_client.get(f"/api/finding-models/drafts/{draft_id}")
+        response = authenticated_client.get(f"/drafts/{draft_id}")
         assert response.status_code in [200, 403, 404]
 
     async def test_step_4_session_required(self):
         """Test that step 4 requires valid session."""
         client = TestClient(app)  # No authentication
-        response = client.post("/api/finding-models/create/step/4")
+        response = client.post("/create/step/4")
         assert response.status_code in [401, 403]
 ```
 

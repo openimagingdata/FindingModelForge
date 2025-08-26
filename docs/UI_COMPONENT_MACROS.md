@@ -1,7 +1,9 @@
-# UI Component Macros Index
+# UI Component Macros Reference (v1.3.0)
 
-Reusable Jinja2 macros for consistent, Flowbite-compliant UI with Alpine.js interactivity. Import only what you use to
-keep templates clean.
+Comprehensive guide to reusable Jinja2 macros for consistent, Flowbite-compliant UI with Alpine.js interactivity.
+All components updated for the new simplified URL structure introduced in v1.3.0.
+
+**URL Changes**: All macros now use simplified URLs (`/create/*`, `/drafts/*`) instead of previous `/api/finding-models/*` structure.
 
 ## How to import
 

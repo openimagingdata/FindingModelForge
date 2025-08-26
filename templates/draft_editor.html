@@ -51,7 +51,7 @@
                         id="edit-mode-btn"
                         type="button"
                         class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:ring-4 focus:ring-primary-300 rounded-lg focus:outline-none dark:focus:ring-primary-800"
-                        hx-get="/api/finding-models/drafts/{{ draft.id }}/edit"
+                        hx-get="/drafts/{{ draft.id }}/edit"
                         hx-target="#editor-container"
                         hx-swap="innerHTML"
                         hx-push-url="true">
@@ -66,7 +66,7 @@
                         id="preview-mode-btn"
                         type="button"
                         class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:ring-4 focus:ring-gray-200 rounded-lg focus:outline-none dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600 dark:focus:ring-gray-700"
-                        hx-get="/api/finding-models/drafts/{{ draft.id }}?mode=view"
+                        hx-get="/drafts/{{ draft.id }}?mode=view"
                         hx-target="#editor-container"
                         hx-swap="innerHTML"
                         hx-push-url="true">

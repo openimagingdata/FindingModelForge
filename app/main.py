@@ -11,10 +11,9 @@ from .health import router as health_router
 from .routers import (
     auth,
     auth_pages,
-    finding_models,
+    creation,
+    drafts,
     finding_models_browse,
-    finding_models_creation,
-    finding_models_drafts,
     home,
     pages,
     profile,
@@ -111,15 +110,14 @@ def create_app() -> FastAPI:
     # Finding models browse router (Task 5)
     app.include_router(finding_models_browse.router, tags=["finding-models-browse"])
 
-    # Finding models creation router (Task 6)
-    app.include_router(finding_models_creation.router, prefix="/api/finding-models", tags=["finding-models-creation"])
+    # Finding models creation router (Task 6) - URLs simplified as per original plan
+    app.include_router(creation.router, prefix="/create", tags=["finding-models-creation"])
 
-    # Finding models drafts router (Task 7)
-    app.include_router(finding_models_drafts.router, prefix="/api/finding-models", tags=["finding-models-drafts"])
+    # Finding models drafts router (Task 7) - URLs simplified as per original plan
+    app.include_router(drafts.router, prefix="/drafts", tags=["finding-models-drafts"])
 
     # Remaining routers
     app.include_router(pages.router, tags=["pages"])
-    app.include_router(finding_models.router, prefix="/api/finding-models", tags=["finding-models"])
 
     # Test-only authentication routes (development/test only)
     app.include_router(test_auth.router, tags=["test-auth"])

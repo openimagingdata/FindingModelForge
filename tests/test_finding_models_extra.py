@@ -156,7 +156,7 @@ def test_step2_invalid_synonyms_returns_500(authenticated_client_with_cache: Tes
 
     # First, create a session with a name (step 1)
     step1_resp = authenticated_client_with_cache.post(
-        "/api/finding-models/create/step/1",
+        "/create/step/1",
         data={
             "session_id": "test-123",
             "name": "test-finding",
@@ -168,7 +168,7 @@ def test_step2_invalid_synonyms_returns_500(authenticated_client_with_cache: Tes
 
     # Now try step 2 with invalid synonyms
     resp = authenticated_client_with_cache.post(
-        "/api/finding-models/create/step/2",
+        "/create/step/2",
         data={
             "session_id": "test-123",
             "description": "A sufficiently long description",
@@ -182,7 +182,7 @@ def test_step2_invalid_synonyms_returns_500(authenticated_client_with_cache: Tes
 
 def test_restart_creation_sets_cookie() -> None:
     client = _setup_minimal()
-    resp = client.post("/api/finding-models/create/restart")
+    resp = client.post("/create/restart")
     assert resp.status_code == 200
     # Check new cookie present
     cookies = resp.headers.get("set-cookie", "")

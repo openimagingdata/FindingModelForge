@@ -325,7 +325,7 @@ class TestMultipleEditCycles:
         )
 
         # Navigate to draft page in preview mode (has generated model)
-        await page.goto(f"http://localhost:8000/api/finding-models/drafts/{draft_id}?mode=view")
+        await page.goto(f"http://localhost:8000/drafts/{draft_id}?mode=view")
         await page.wait_for_load_state("networkidle")
 
         # Verify we're in preview mode with generated model

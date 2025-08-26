@@ -61,9 +61,9 @@ Common development commands:
 
 ```sh
 task setup          # Install deps + create .env + build assets
-task test            # Run tests with coverage (40 tests passing, 100% success rate)
-task test-unit       # Fast unit tests only (22 unit tests)
-task test-ui         # Playwright UI tests only (18 UI tests)
+task test            # Run tests with coverage (144 tests passing, 100% success rate)
+task test-unit       # Fast unit tests only (unit tests)
+task test-ui         # Playwright UI tests only (UI tests)
 task lint            # Lint and fix code issues
 task format          # Format code
 task check           # Quality checks (CI-friendly)

@@ -7,6 +7,123 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [1.3.0] - 2025-08-25
+
+### Added
+
+#### URL Simplification Implementation
+
+- **Simplified URL structure** - Clean, user-friendly URLs for creation and draft management
+- **Router refactoring completion** - Extracted monolithic routers into focused, single-responsibility modules
+- **Service layer architecture** - Complete separation of business logic from HTTP concerns
+
+#### Router Architecture Overhaul
+
+- **Router file organization**:
+  - `app/routers/creation.py` - Creation workflow (was `finding_models_creation.py`)
+  - `app/routers/drafts.py` - Draft management (was `finding_models_drafts.py`)
+  - `app/routers/finding_models_browse.py` - Browse/detail functionality (unchanged)
+  - `app/routers/home.py`, `auth_pages.py`, `profile.py` - Simple page routers
+- **Service layer implementation**:
+  - `app/services/creation_service.py` - AI generation and workflow logic
+  - `app/services/draft_service.py` - Draft CRUD operations
+  - `app/services/finding_model_service.py` - Model browsing and caching
+  - `app/utils/slug.py` - URL slug generation utilities
+
+#### URL Structure Modernization
+
+**New simplified URLs**:
+```
+Creation Workflow:
+  /create/step/1, /create/step/2, /create/step/3
+  /create/restart, /create/resume
+
+Draft Management:
+  /drafts/{id}, /drafts/{id}/submit, /drafts/{id}/delete
+  /drafts/{id}/update-and-redirect
+
+Browse (unchanged):
+  /finding-models, /finding-models/{slug}
+```
+
+**Old URLs removed**:
+```
+/api/finding-models/create/* → /create/*
+/api/finding-models/drafts/* → /drafts/*
+```
+
+### Changed
+
+#### Comprehensive Template Updates
+
+- **14 template files updated** with new URL structure
+- **HTMX patterns preserved** - All content swapping and form submissions working
+- **Template consistency** - Updated all `hx-post`, `hx-get`, form actions, and navigation links
+
+#### FastAPI Router Architecture
+
+- **Prefix-based routing** - Clean separation using `app.include_router(router, prefix="/create")`
+- **Route path optimization** - Routes define relative paths, prefixes added at registration
+- **Service integration** - All business logic moved to injectable service classes
+
+#### Testing Infrastructure Updates
+
+- **URL test updates** - All test URLs updated to new structure
+- **Coverage maintenance** - 78.39% router coverage maintained
+- **UI test compatibility** - Playwright tests working with new URLs
+
+### Fixed
+
+#### Planning Process Improvements
+
+- **Critical planning rule added** - Prevention of unilateral plan changes
+- **Documentation synchronization** - All docs updated to reflect new architecture
+
+#### Development Workflow
+
+- **Live server verification** - New URLs confirmed working in development
+- **Redirect URL fixes** - All `RedirectResponse` URLs updated throughout routers
+- **Import path updates** - All module imports updated for renamed files
+
+### Technical Details
+
+#### Router Extraction Metrics
+
+- **Code reduction achieved**:
+  - `pages.py`: 539 → 49 lines (91% reduction)
+  - `finding_models.py`: 1037 → 0 lines (100% reduction, file removed)
+  - Total: 1000+ lines extracted into focused routers
+- **Service layer**: 3 services with 62 comprehensive tests
+- **Test coverage**: 144 tests passing (84.69% overall coverage)
+
+#### Architecture Quality
+
+- **Single responsibility principle** - Each router handles one concern
+- **DRY principle achieved** - Eliminated code duplication via services and utilities
+- **Clean separation** - Routers handle HTTP, services handle business logic
+- **Type safety maintained** - Complete type hints throughout refactored code
+
+#### URL Verification
+
+- **Development server testing**:
+  - New URLs return 401 (authenticated endpoints working)
+  - Old URLs return 404 (properly removed)
+  - All functionality preserved with simplified structure
+
+### Migration Notes
+
+#### For Developers
+
+1. **URL updates**: Any external references to `/api/finding-models/create/*` or `/api/finding-models/drafts/*` need updating
+2. **Import changes**: Router imports now use shorter names (`creation`, `drafts`)
+3. **Service injection**: New services available for dependency injection
+
+#### For Users
+
+- **No breaking changes**: All functionality works identically with cleaner URLs
+- **Better UX**: Shorter, more memorable URLs for creation and draft management
+- **Preserved workflows**: All existing user workflows continue working
+
 ### Added
 
 #### Finding Models Display System Complete Overhaul

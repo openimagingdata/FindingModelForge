@@ -171,7 +171,7 @@ class TestHTMXCreateSession:
         mock_cache.set = AsyncMock(return_value=None)
         mock_cache.get = AsyncMock(return_value='{"session_id": "test-123", "current_step": 1}')
 
-        response = authenticated_client_with_cache.post("/api/finding-models/create/restart")
+        response = authenticated_client_with_cache.post("/create/restart")
 
         assert response.status_code == 200
         assert response.headers["content-type"] == "text/html; charset=utf-8"
@@ -187,7 +187,7 @@ class TestHTMXCreateSession:
         mock_cache.set = AsyncMock(side_effect=Exception("Cache error"))
         mock_cache.get = AsyncMock(side_effect=Exception("Cache error"))
 
-        response = authenticated_client_with_cache.post("/api/finding-models/create/restart")
+        response = authenticated_client_with_cache.post("/create/restart")
 
         assert response.status_code == 200  # Should still work with fallback
         content = response.text
@@ -208,7 +208,7 @@ class TestHTMXStepEndpoints:
         app.state.database.finding_index.get = AsyncMock(return_value=None)
 
         response = authenticated_client_with_cache.post(
-            "/api/finding-models/create/step/1", data={"session_id": "test-123", "name": "test-finding"}
+            "/create/step/1", data={"session_id": "test-123", "name": "test-finding"}
         )
 
         assert response.status_code == 200
@@ -224,9 +224,7 @@ class TestHTMXStepEndpoints:
         mock_cache.get = AsyncMock(return_value=session_data)
         mock_cache.set = AsyncMock(return_value=None)
 
-        response = authenticated_client_with_cache.post(
-            "/api/finding-models/create/step/1", data={"session_id": "test-123", "name": "a"}
-        )
+        response = authenticated_client_with_cache.post("/create/step/1", data={"session_id": "test-123", "name": "a"})
 
         assert response.status_code == 422
 
@@ -240,7 +238,7 @@ class TestHTMXStepEndpoints:
 
         long_name = "a" * 201  # Over 200 characters (our current limit)
         response = authenticated_client_with_cache.post(
-            "/api/finding-models/create/step/1", data={"session_id": "test-123", "name": long_name}
+            "/create/step/1", data={"session_id": "test-123", "name": long_name}
         )
 
         assert response.status_code == 422
@@ -255,7 +253,7 @@ class TestHTMXStepEndpoints:
         app.state.database.finding_index.get = AsyncMock(return_value={"name": "existing-finding"})
 
         response = authenticated_client_with_cache.post(
-            "/api/finding-models/create/step/1", data={"session_id": "test-123", "name": "existing-finding"}
+            "/create/step/1", data={"session_id": "test-123", "name": "existing-finding"}
         )
 
         assert response.status_code == 200
@@ -318,7 +316,7 @@ class TestHTMXStepEndpoints:
 
         # TestClient follows redirects by default, so we need to use follow_redirects=False
         response = authenticated_client_with_cache.post(
-            "/api/finding-models/create/step/2",
+            "/create/step/2",
             data={
                 "session_id": "test-123",
                 "description": "A comprehensive test finding description",
@@ -342,7 +340,7 @@ class TestHTMXStepEndpoints:
         mock_cache.set = AsyncMock(return_value=None)
 
         response = authenticated_client_with_cache.post(
-            "/api/finding-models/create/step/2",
+            "/create/step/2",
             data={
                 "session_id": "test-123",
                 "description": "short",  # Too short
@@ -395,7 +393,7 @@ class TestHTMXStepEndpoints:
         app.dependency_overrides[get_draft_service] = lambda: mock_draft_service
 
         response = authenticated_client_with_cache.post(
-            "/api/finding-models/create/step/3", data={"session_id": "test-123"}, follow_redirects=False
+            "/create/step/3", data={"session_id": "test-123"}, follow_redirects=False
         )
 
         # Step 3 now redirects to draft editor like step 2
@@ -439,7 +437,7 @@ class TestHTMXStepEndpoints:
         """
 
         response = authenticated_client_with_cache.post(
-            "/api/finding-models/create/step/4",
+            "/create/step/4",
             data={
                 "session_id": "test-123",
                 "description": "A test finding description",
@@ -463,7 +461,7 @@ class TestHTMXStepEndpoints:
         # When session is invalid, dependency injection creates a new session
         # So this should actually work and return the name input template
         response = authenticated_client_with_cache.post(
-            "/api/finding-models/create/step/1",
+            "/create/step/1",
             data={"session_id": "nonexistent", "name": "ab"},  # Too short
         )
 
@@ -477,9 +475,7 @@ class TestHTMXStepEndpoints:
         mock_cache.set = AsyncMock(return_value=None)
 
         # Try to access step 3 when on step 1 - session lacks required name
-        response = authenticated_client_with_cache.post(
-            "/api/finding-models/create/step/3", data={"session_id": "test-123"}
-        )
+        response = authenticated_client_with_cache.post("/create/step/3", data={"session_id": "test-123"})
 
         # Step 3 requires session to have name, so should get validation error
         assert response.status_code == 500  # Error handling returns 500 with error messages
@@ -498,9 +494,7 @@ class TestHTMXStepEndpoints:
         mock_cache.set = AsyncMock(return_value=None)
 
         # Step 1 without name should result in form validation error
-        response = authenticated_client_with_cache.post(
-            "/api/finding-models/create/step/1", data={"session_id": "test-123"}
-        )
+        response = authenticated_client_with_cache.post("/create/step/1", data={"session_id": "test-123"})
 
         # FastAPI form validation will catch missing required field
         assert response.status_code == 422  # Unprocessable Entity for form validation
@@ -524,16 +518,14 @@ class TestHTMXEndpointsAuthentication:
 
     def test_create_session_requires_auth(self, unauthenticated_client_with_cache: TestClient) -> None:
         """Test that session creation requires authentication."""
-        response = unauthenticated_client_with_cache.post("/api/finding-models/create/restart")
+        response = unauthenticated_client_with_cache.post("/create/restart")
         assert response.status_code == 401
 
     def test_step_endpoints_require_auth(self, unauthenticated_client_with_cache: TestClient) -> None:
         """Test that step endpoints require authentication."""
         endpoints = [1, 2, 3]  # Only steps 1-3 exist now
         for step in endpoints:
-            response = unauthenticated_client_with_cache.post(
-                f"/api/finding-models/create/step/{step}", data={"session_id": "test"}
-            )
+            response = unauthenticated_client_with_cache.post(f"/create/step/{step}", data={"session_id": "test"})
             assert response.status_code == 401, f"Step {step} should require authentication"
 
 
@@ -610,7 +602,7 @@ class TestModalComponents:
         assert "Are you sure you want to delete this draft?" in html  # Message, not title
         assert "This action cannot be undone" in html
         assert "Yes, delete" in html
-        assert 'hx-post="/api/finding-models/drafts/test-draft-id/delete"' in html
+        assert 'hx-post="/drafts/test-draft-id/delete"' in html
         assert "bg-red-600" in html  # Red color for delete button
 
     def test_submit_draft_modal_uses_base_component(self) -> None:
@@ -643,7 +635,7 @@ class TestModalComponents:
         assert "Are you sure you want to submit this draft?" in html  # Message, not title
         assert "This will lock the draft and prevent further edits" in html
         assert "Yes, submit" in html
-        assert 'hx-post="/api/finding-models/drafts/test-draft-id/submit"' in html
+        assert 'hx-post="/drafts/test-draft-id/submit"' in html
         assert 'hx-target="#main-content"' in html
         assert 'hx-swap="innerHTML"' in html
         assert "bg-green-600" in html  # Green color for submit button
@@ -697,7 +689,7 @@ class TestHTMXErrorHandling:
         mock_cache.get = AsyncMock(side_effect=Exception("Cache failure"))
         mock_cache.set = AsyncMock(side_effect=Exception("Cache failure"))
 
-        response = authenticated_client_with_cache.post("/api/finding-models/create/restart")
+        response = authenticated_client_with_cache.post("/create/restart")
 
         # Should still work with fallback session
         assert response.status_code == 200
@@ -733,7 +725,7 @@ class TestHTMXErrorHandling:
         app.dependency_overrides[get_draft_service] = lambda: mock_draft_service
 
         response = authenticated_client_with_cache.post(
-            "/api/finding-models/create/step/1", data={"session_id": "test-123", "name": "test-finding"}
+            "/create/step/1", data={"session_id": "test-123", "name": "test-finding"}
         )
 
         # With the service layer, index errors are now handled more gracefully

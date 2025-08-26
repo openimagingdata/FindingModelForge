@@ -14,7 +14,7 @@ from app.database import Database, DraftRepo
 from app.dependencies import SessionManager
 from app.main import app
 from app.models import User
-from app.routers.finding_models_drafts import parse_synonyms
+from app.routers.drafts import parse_synonyms
 from app.services.creation_service import CreationService
 
 
@@ -108,14 +108,14 @@ def test_get_creation_session_from_query() -> None:
     # Prepare a session in cache and hit a GET endpoint reading the session
     session_json = '{"session_id":"sid-q","current_step":1,"name":"nodule","description":"d"}'
     client = _client_with_cache_session(session_json)
-    resp = client.get("/api/finding-models/create/step/1?session_id=sid-q")
+    resp = client.get("/create/step/1?session_id=sid-q")
     assert resp.status_code == 200
 
 
 def test_get_creation_session_from_cookie() -> None:
     session_json = '{"session_id":"sid-c","current_step":1,"name":"nodule","description":"d"}'
     client = _client_with_cache_session(session_json)
-    resp = client.get("/api/finding-models/create/step/1", cookies={"creation_session_id": "sid-c"})
+    resp = client.get("/create/step/1", cookies={"creation_session_id": "sid-c"})
     assert resp.status_code == 200
 
 
@@ -125,7 +125,7 @@ def test_save_draft_min_validation_error() -> None:
     client = _client_with_cache_session(session_json)
 
     resp = client.post(
-        "/api/finding-models/drafts/save",
+        "/drafts/save",
         data={
             "session_id": "sid-123",
             "description": "short",

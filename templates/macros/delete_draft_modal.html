@@ -11,7 +11,7 @@
     cancel_text="Cancel",
     confirm_color="red",
     icon_type="danger",
-    hx_post="/api/finding-models/drafts/" ~ draft_id ~ "/delete",
+    hx_post="/drafts/" ~ draft_id ~ "/delete",
     hx_target=hx_target,
     hx_swap=hx_swap,
     extra_attributes=extra_attributes

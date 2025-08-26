@@ -33,7 +33,7 @@
                  3) Else -> start fresh (restart) -->
             {% if start_draft_id and start_draft_id|length > 0 %}
             <div
-                hx-post="/api/finding-models/create/resume"
+                hx-post="/create/resume"
                 hx-trigger="load"
                 hx-target="#main-content"
                 hx-swap="innerHTML"
@@ -41,7 +41,7 @@
             ></div>
             {% elif start_name and start_name|length >= 3 %}
             <div
-                hx-post="/api/finding-models/create/step/1"
+                hx-post="/create/step/1"
                 hx-trigger="load"
                 hx-target="#main-content"
                 hx-swap="innerHTML"
@@ -49,7 +49,7 @@
             ></div>
             {% else %}
             <div
-                hx-post="/api/finding-models/create/restart"
+                hx-post="/create/restart"
                 hx-trigger="load"
                 hx-target="#main-content"
                 hx-swap="innerHTML"

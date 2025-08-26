@@ -7,14 +7,14 @@
   <div class="flex items-center gap-2">
     {% if draft.status == 'draft' %}
     <button
-      hx-post="/api/finding-models/drafts/{{ draft.id }}/submit"
+      hx-post="/drafts/{{ draft.id }}/submit"
       hx-target="#draft-actions"
       hx-swap="outerHTML"
       class="px-3 py-1 text-xs rounded bg-green-600 hover:bg-green-700 text-white">
       Submit for review
     </button>
     <button
-      hx-post="/api/finding-models/drafts/{{ draft.id }}/delete"
+      hx-post="/drafts/{{ draft.id }}/delete"
       hx-target="#draft-actions"
       hx-swap="outerHTML"
       class="px-3 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white">

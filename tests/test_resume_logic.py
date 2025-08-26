@@ -101,7 +101,7 @@ def test_step1_resumes_submitted_draft_to_draft_view():
     app.dependency_overrides[get_creation_service] = lambda: mock_creation_service
 
     resp = client.post(
-        "/api/finding-models/create/step/1",
+        "/create/step/1",
         data={"session_id": "sid-x", "name": "nodule"},
         follow_redirects=True,  # Follow redirects to get the final content
     )
@@ -134,7 +134,7 @@ def test_submit_rerenders_full_step5_and_shows_submitted():
     db.draft_repo.submit = AsyncMock(side_effect=_submit)  # type: ignore[attr-defined]
 
     resp = client.post(
-        "/api/finding-models/drafts/oid123/submit",
+        "/drafts/oid123/submit",
         data={"session_id": "sid-y"},
     )
     assert resp.status_code == 200

@@ -450,7 +450,7 @@ async def wait_for_draft_redirect(page: Page, timeout: int = 15000) -> str | Non
         # Check if we were redirected to a draft page
         current_url = page.url
         if "/drafts/" in current_url:
-            # Extract draft ID from URL like /api/finding-models/drafts/{id}?mode=edit
+            # Extract draft ID from URL like /drafts/{id}?mode=edit
             import re
 
             match = re.search(r"/drafts/([^/?]+)", current_url)

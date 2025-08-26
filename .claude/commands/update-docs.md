@@ -96,6 +96,7 @@ Create a summary of changes for the team:
 
 ## IMPORTANT RULES
 
+- Use bash's `date` command to find the current date--you won't know it otherwise (it's not January 2025)
 - NEVER remove existing valid documentation without explicit approval
 - ALWAYS preserve historical context and rationale
 - USE Serena's semantic understanding to ensure accuracy

@@ -72,7 +72,7 @@ templates.env.globals["vite_asset"] = get_vite_asset_path
 # ===== HTMX ENDPOINTS FOR STEP-BY-STEP CREATION =====
 
 
-@router.get("/create/step/{step_number}")
+@router.get("/step/{step_number}")
 async def get_creation_step(
     step_number: StepNumber,
     request: Request,
@@ -101,7 +101,7 @@ async def get_creation_step(
         return HTMLResponse(content=error_html, status_code=500)
 
 
-@router.post("/create/step/1")
+@router.post("/step/1")
 async def process_step_1(
     request: Request,
     current_user: CurrentUserDep,
@@ -137,7 +137,7 @@ async def process_step_1(
             )
             session.draft_id = draft.id
             await session_manager.update_session(session)
-            return RedirectResponse(url=f"/api/finding-models/drafts/{draft.id}?mode=edit", status_code=303)
+            return RedirectResponse(url=f"/drafts/{draft.id}?mode=edit", status_code=303)
 
         # If there's a submitted draft with this name, jump to step 5 with read-only view
         try:
@@ -162,7 +162,7 @@ async def process_step_1(
             except Exception:
                 session.submitted_display_time = None
             await session_manager.update_session(session)
-            return RedirectResponse(url=f"/api/finding-models/drafts/{latest.id}?mode=view", status_code=303)
+            return RedirectResponse(url=f"/drafts/{latest.id}?mode=view", status_code=303)
 
         # Check name availability
         is_available = await creation_service.check_name_availability(name, current_user.id)
@@ -200,7 +200,7 @@ async def process_step_1(
         return HTMLResponse(content=html_content, status_code=500)
 
 
-@router.post("/create/step/2")
+@router.post("/step/2")
 async def process_step_2(
     request: Request,
     current_user: CurrentUserDep,
@@ -268,7 +268,7 @@ async def process_step_2(
         session.draft_id = draft.id
         await session_manager.update_session(session)
 
-        return RedirectResponse(url=f"/api/finding-models/drafts/{draft.id}?mode=edit&created=true", status_code=303)
+        return RedirectResponse(url=f"/drafts/{draft.id}?mode=edit&created=true", status_code=303)
 
     except Exception as e:
         logger.error(f"Error processing step 2: {str(e)}", exc_info=True)
@@ -279,7 +279,7 @@ async def process_step_2(
         return HTMLResponse(content=html_content, status_code=500)
 
 
-@router.post("/create/step/3")
+@router.post("/step/3")
 async def process_step_3(
     request: Request,
     current_user: CurrentUserDep,
@@ -312,9 +312,7 @@ async def process_step_3(
             await session_manager.update_session(session)
 
             # Redirect to draft editor
-            return RedirectResponse(
-                url=f"/api/finding-models/drafts/{draft.id}?mode=edit&created=true", status_code=303
-            )
+            return RedirectResponse(url=f"/drafts/{draft.id}?mode=edit&created=true", status_code=303)
         else:
             raise HTTPException(status_code=400, detail="Missing session name")
 
@@ -329,7 +327,7 @@ async def process_step_3(
         return HTMLResponse(content=html_content, status_code=500)
 
 
-@router.post("/create/restart")
+@router.post("/restart")
 async def restart_creation(
     request: Request,
     current_user: CurrentUserDep,
@@ -366,7 +364,7 @@ async def restart_creation(
         return HTMLResponse(content=error_html, status_code=500)
 
 
-@router.post("/create/resume")
+@router.post("/resume")
 async def resume_creation(
     request: Request,
     current_user: CurrentUserDep,
@@ -405,10 +403,10 @@ async def resume_creation(
             except Exception:
                 session.submitted_display_time = None
             await session_manager.update_session(session)
-            return RedirectResponse(url=f"/api/finding-models/drafts/{draft.id}?mode=view", status_code=303)
+            return RedirectResponse(url=f"/drafts/{draft.id}?mode=view", status_code=303)
         else:
             await session_manager.update_session(session)
-            return RedirectResponse(url=f"/api/finding-models/drafts/{draft.id}?mode=edit", status_code=303)
+            return RedirectResponse(url=f"/drafts/{draft.id}?mode=edit", status_code=303)
 
     except HTTPException:
         raise

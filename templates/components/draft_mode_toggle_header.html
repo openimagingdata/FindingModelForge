@@ -14,7 +14,7 @@
         type="button"
         class="inline-flex items-center px-4 py-2 text-sm font-medium rounded-l-lg border focus:z-10 focus:ring-2 focus:ring-primary-300 dark:focus:ring-primary-600 focus:outline-none
                {% if mode == 'edit' %}text-white bg-primary-600 border-primary-600 hover:bg-primary-700{% else %}text-gray-700 bg-white border-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600{% endif %}"
-        hx-get="/api/finding-models/drafts/{{ draft.id }}?mode=edit"
+        hx-get="/drafts/{{ draft.id }}?mode=edit"
         hx-target="{{ target_container }}"
         hx-swap="innerHTML"
         hx-push-url="true">
@@ -30,7 +30,7 @@
         type="button"
         class="inline-flex items-center px-4 py-2 text-sm font-medium rounded-r-lg border focus:z-10 focus:ring-2 focus:ring-primary-300 dark:focus:ring-primary-600 focus:outline-none
                {% if mode == 'view' %}text-white bg-primary-600 border-primary-600 hover:bg-primary-700{% else %}text-gray-700 bg-white border-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600{% endif %}"
-        hx-get="/api/finding-models/drafts/{{ draft.id }}?mode=view"
+        hx-get="/drafts/{{ draft.id }}?mode=view"
         hx-target="{{ target_container }}"
         hx-swap="innerHTML"
         hx-push-url="true">

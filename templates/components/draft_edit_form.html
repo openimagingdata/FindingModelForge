@@ -19,7 +19,7 @@
         </div>
         {% endif %}
 
-        <form hx-post="/api/finding-models/drafts/{{ draft.id }}/update-and-redirect">
+        <form hx-post="/drafts/{{ draft.id }}/update-and-redirect">
 
             <div class="space-y-6">
                 {# Read-only name field #}
@@ -67,7 +67,7 @@
                         {% if draft.status != 'submitted' %}
                         {# Auto-save on changes to description/attributes #}
                         <div
-                            hx-post="/api/finding-models/drafts/save"
+                            hx-post="/drafts/save"
                             hx-include="closest form"
                             hx-trigger="change from:find textarea delay:500ms, keyup from:find textarea delay:1000ms changed"
                             hx-target="#draft-actions"

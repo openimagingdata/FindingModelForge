@@ -58,7 +58,7 @@ templates.env.globals["vite_asset"] = get_vite_asset_path
 # ===== DRAFT MANAGEMENT (HTMX) =====
 
 
-@router.post("/drafts/save")
+@router.post("/save")
 async def save_draft(
     request: Request,
     current_user: CurrentUserDep,
@@ -144,7 +144,7 @@ async def save_draft(
         return HTMLResponse(content=error_html, status_code=500)
 
 
-@router.post("/drafts/{draft_id}/submit")
+@router.post("/{draft_id}/submit")
 async def submit_draft(
     request: Request,
     current_user: CurrentUserDep,
@@ -203,7 +203,7 @@ async def submit_draft(
         return HTMLResponse(content=error_html, status_code=500)
 
 
-@router.post("/drafts/{draft_id}/delete")
+@router.post("/{draft_id}/delete")
 async def delete_draft(
     request: Request,
     current_user: CurrentUserDep,
@@ -254,7 +254,7 @@ async def delete_draft(
 # ===== DRAFT EDITING WORKFLOW =====
 
 
-@router.get("/drafts/{draft_id}/edit", response_class=HTMLResponse)
+@router.get("/{draft_id}/edit", response_class=HTMLResponse)
 async def edit_draft(
     request: Request,
     current_user: CurrentUserDep,
@@ -305,7 +305,7 @@ async def edit_draft(
         return HTMLResponse(content=error_html, status_code=500)
 
 
-@router.get("/drafts/{draft_id}", response_model=None)
+@router.get("/{draft_id}", response_model=None)
 async def unified_draft_page(
     request: Request,
     current_user: CurrentUserDep,
@@ -349,14 +349,14 @@ async def unified_draft_page(
                         "user": current_user,
                         "draft": draft,
                     },
-                    headers={"HX-Push-Url": f"/api/finding-models/drafts/{draft_id}?mode=edit"},
+                    headers={"HX-Push-Url": f"/drafts/{draft_id}?mode=edit"},
                 )
             else:
                 # Browser request - redirect to edit mode, preserving query parameters
                 query_params = dict(request.query_params)
                 query_params["mode"] = "edit"
                 query_string = "&".join(f"{k}={v}" for k, v in query_params.items())
-                return RedirectResponse(url=f"/api/finding-models/drafts/{draft_id}?{query_string}", status_code=303)
+                return RedirectResponse(url=f"/drafts/{draft_id}?{query_string}", status_code=303)
 
         # Check if this is an HTMX request (for mode switching)
         hx_request = request.headers.get("HX-Request")
@@ -432,7 +432,7 @@ async def unified_draft_page(
         return HTMLResponse(content=error_html, status_code=500)
 
 
-@router.post("/drafts/{draft_id}/update-and-redirect")
+@router.post("/{draft_id}/update-and-redirect")
 async def update_draft_and_redirect(
     request: Request,
     current_user: CurrentUserDep,
@@ -560,7 +560,7 @@ async def update_draft_and_redirect(
 
             # Set headers including reuse indicator and URL push
             response_headers = {
-                "HX-Push-Url": f"/api/finding-models/drafts/{draft_id}?mode=view&created=true",
+                "HX-Push-Url": f"/drafts/{draft_id}?mode=view&created=true",
                 "x-model-reused": "0" if should_generate else "1",
             }
 
@@ -607,9 +607,7 @@ async def update_draft_and_redirect(
                 )
         else:
             # Redirect to unified draft page in view mode
-            return RedirectResponse(
-                url=f"/api/finding-models/drafts/{draft_id}?mode=view&created=true", status_code=303
-            )
+            return RedirectResponse(url=f"/drafts/{draft_id}?mode=view&created=true", status_code=303)
 
     except HTTPException:
         raise

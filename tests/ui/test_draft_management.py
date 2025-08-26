@@ -50,7 +50,7 @@ class TestUnifiedDraftPage:
         )
 
         # Navigate to draft in edit mode (explicit since drafts with generated_json default to view mode)
-        await page.goto(f"http://localhost:8000/api/finding-models/drafts/{draft_id}?mode=edit")
+        await page.goto(f"http://localhost:8000/drafts/{draft_id}?mode=edit")
         await page.wait_for_load_state("networkidle")
 
         # Should be in edit mode
@@ -96,7 +96,7 @@ class TestUnifiedDraftPage:
         draft_id = await seed_draft(user_id=TEST_USER_ID, name=draft_name, generated_json=gen_json, status="draft")
 
         # Navigate to draft in preview mode
-        await page.goto(f"http://localhost:8000/api/finding-models/drafts/{draft_id}?mode=view")
+        await page.goto(f"http://localhost:8000/drafts/{draft_id}?mode=view")
         await page.wait_for_load_state("networkidle")
 
         # Should show model display without edit controls
@@ -187,7 +187,7 @@ class TestFormValidation:
             # No generated_json
         )
 
-        await page.goto(f"http://localhost:8000/api/finding-models/drafts/{draft_id}?mode=edit")
+        await page.goto(f"http://localhost:8000/drafts/{draft_id}?mode=edit")
         await page.wait_for_load_state("networkidle")
 
         # Find the button and test its state
@@ -220,7 +220,7 @@ class TestModelReuse:
             attributes_markdown="### presence\\n- absent: Not visible\\n- present: Visible\\n",
         )
 
-        await page.goto(f"http://localhost:8000/api/finding-models/drafts/{draft_id}?mode=edit")
+        await page.goto(f"http://localhost:8000/drafts/{draft_id}?mode=edit")
         await page.wait_for_load_state("networkidle")
 
         # Set up response listener to capture x-model-reused header
@@ -291,7 +291,7 @@ class TestModelReuse:
             synonyms=["original"],
         )
 
-        await page.goto(f"http://localhost:8000/api/finding-models/drafts/{draft_id}?mode=edit")
+        await page.goto(f"http://localhost:8000/drafts/{draft_id}?mode=edit")
         await page.wait_for_load_state("networkidle")
 
         # Set up response listener
@@ -418,7 +418,7 @@ class TestDraftAutosave:
             user_id=TEST_USER_ID, name=draft_name, description="Original description for autosave test."
         )
 
-        await page.goto(f"http://localhost:8000/api/finding-models/drafts/{draft_id}?mode=edit")
+        await page.goto(f"http://localhost:8000/drafts/{draft_id}?mode=edit")
         await page.wait_for_load_state("networkidle")
 
         # Make changes
@@ -470,7 +470,7 @@ class TestDraftModalWorkflows:
         draft_id = await seed_draft(user_id=TEST_USER_ID, name=draft_name, generated_json=gen_json, status="draft")
 
         # Navigate to draft in view mode to see action buttons
-        await page.goto(f"http://localhost:8000/api/finding-models/drafts/{draft_id}?mode=view")
+        await page.goto(f"http://localhost:8000/drafts/{draft_id}?mode=view")
         await page.wait_for_load_state("networkidle")
 
         # Verify the Submit Draft button is visible
@@ -537,7 +537,7 @@ class TestDraftModalWorkflows:
         draft_id = await seed_draft(user_id=TEST_USER_ID, name=draft_name, generated_json=gen_json, status="draft")
 
         # Navigate to draft in view mode to see action buttons
-        await page.goto(f"http://localhost:8000/api/finding-models/drafts/{draft_id}?mode=view")
+        await page.goto(f"http://localhost:8000/drafts/{draft_id}?mode=view")
         await page.wait_for_load_state("networkidle")
 
         # Verify the Delete button is visible (the trigger button, not the modal confirmation button)
@@ -602,7 +602,7 @@ class TestDraftModalWorkflows:
         gen_json = await generate_valid_generated_json(draft_name)
         draft_id = await seed_draft(user_id=TEST_USER_ID, name=draft_name, generated_json=gen_json, status="draft")
 
-        await page.goto(f"http://localhost:8000/api/finding-models/drafts/{draft_id}?mode=view")
+        await page.goto(f"http://localhost:8000/drafts/{draft_id}?mode=view")
         await page.wait_for_load_state("networkidle")
 
         # Test submit modal accessibility
@@ -644,7 +644,7 @@ class TestDraftModalWorkflows:
         gen_json = await generate_valid_generated_json(draft_name)
         draft_id = await seed_draft(user_id=TEST_USER_ID, name=draft_name, generated_json=gen_json, status="draft")
 
-        await page.goto(f"http://localhost:8000/api/finding-models/drafts/{draft_id}?mode=view")
+        await page.goto(f"http://localhost:8000/drafts/{draft_id}?mode=view")
         await page.wait_for_load_state("networkidle")
 
         # Open submit modal and check HTMX attributes
@@ -658,7 +658,7 @@ class TestDraftModalWorkflows:
         # Check HTMX attributes point to correct target
         await expect(confirm_button).to_have_attribute("hx-target", "#main-content")
         await expect(confirm_button).to_have_attribute("hx-swap", "innerHTML")
-        await expect(confirm_button).to_have_attribute("hx-post", f"/api/finding-models/drafts/{draft_id}/submit")
+        await expect(confirm_button).to_have_attribute("hx-post", f"/drafts/{draft_id}/submit")
 
         # Close this modal
         await page.keyboard.press("Escape")
@@ -673,9 +673,7 @@ class TestDraftModalWorkflows:
         delete_confirm_button = delete_modal.locator("button:has-text('Yes, delete')")
 
         # Delete modal should have correct attributes too
-        await expect(delete_confirm_button).to_have_attribute(
-            "hx-post", f"/api/finding-models/drafts/{draft_id}/delete"
-        )
+        await expect(delete_confirm_button).to_have_attribute("hx-post", f"/drafts/{draft_id}/delete")
         # Delete modal might have different target/swap based on context
 
         await verify_no_console_errors(errors, warnings)

@@ -36,13 +36,31 @@ The backend follows a layered architecture:
   - Cookie-based auth
   - User session management
 
-### Routers
+### Routers (Refactored Architecture v1.3.0)
 
-- `finding_models.py` - Core finding model operations
-  - Multi-step creation workflow
-  - Draft autosave and resume
-  - Model generation via AI
-- `pages.py` - HTML page rendering for UI
+**Creation Workflow:**
+- `creation.py` - Multi-step finding model creation workflow
+  - AI-powered generation and similarity detection
+  - Session management and state recovery
+  - HTMX step navigation (URLs: `/create/*`)
+
+**Draft Management:**
+- `drafts.py` - Complete draft lifecycle management
+  - Unified edit/view pages with mode parameter
+  - Submit, delete, and update operations
+  - Session adoption and recovery (URLs: `/drafts/*`)
+
+**Public Browse:**
+- `finding_models_browse.py` - Public finding models library
+  - Search, pagination, and model details
+  - HTMX navigation with caching (URLs: `/finding-models/*`)
+
+**Simple Pages:**
+- `home.py` - Landing page (URL: `/`)
+- `auth_pages.py` - Login page UI (URL: `/login`)
+- `profile.py` - User profile with draft management (URL: `/profile`)
+
+**Core Services:**
 - `auth.py` - Authentication endpoints
 - `users.py` - User profile management
 - `static.py` - Static file serving

@@ -30,7 +30,7 @@
                 <button
                     type="button"
                     class="inline-flex items-center px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg focus:outline-none focus:ring-4 focus:ring-primary-300 transition-colors dark:focus:ring-primary-800"
-                    hx-get="/api/finding-models/drafts/{{ draft.id }}/edit"
+                    hx-get="/drafts/{{ draft.id }}/edit"
                     hx-target="#editor-container"
                     hx-swap="innerHTML"
                     hx-push-url="true">
