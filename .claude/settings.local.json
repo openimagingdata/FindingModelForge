@@ -108,7 +108,11 @@
       "Bash(task pre-commit:*)",
       "Bash(git restore:*)",
       "Bash(curl:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Bash(~/.claude-code-project-index/scripts/project_index.py)",
+      "mcp__Ref__ref_search_documentation",
+      "Read(//Users/talkasab/.claude/**)",
+      "mcp__Ref__ref_read_url"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"
