@@ -394,11 +394,18 @@ async def unified_draft_page(
                     target_container=target_container,
                 )
 
-                # Combine main content with OOB swap for mode toggle header
+                # Create OOB swap for page title
+                page_title_text = "Edit Finding Model Draft" if mode == "edit" else "Preview Finding Model Draft"
+                title_oob = f"""<h1 id="page-title" class="text-3xl font-bold text-gray-900 dark:text-white mb-2" hx-swap-oob="true">
+                        {page_title_text}
+                    </h1>"""  # noqa: E501
+
+                # Combine main content with OOB swaps for both mode toggle header and title
                 combined_content = f"""{main_content}
 <div id="draft-mode-toggle-header" hx-swap-oob="true">
 {mode_toggle_header}
-</div>"""
+</div>
+{title_oob}"""
 
                 return HTMLResponse(content=combined_content)
             else:

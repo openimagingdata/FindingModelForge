@@ -84,6 +84,76 @@
     </div>
 {%- endmacro %}
 
+{# ===== INDEX CODE COMPONENTS ===== #}
+
+{# Index code badge - displays single code with two-line format #}
+{% macro index_code_badge(code) -%}
+    <span class="inline-flex flex-col items-center px-2 py-1 text-xs bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300 rounded border border-indigo-200 dark:border-indigo-800">
+        <span class="font-mono font-medium">{{ code.system }}:{{ code.code }}</span>
+        <span class="text-center leading-tight">{{ code.display }}</span>
+    </span>
+{%- endmacro %}
+
+{# Index codes display section - shows multiple codes with title #}
+{% macro index_codes_display(codes, title="Index Codes") -%}
+    {% if codes and codes|length > 0 %}
+    <div class="mb-4">
+        <h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">{{ title }}</h4>
+        <div class="flex flex-wrap gap-2">
+            {% for code in codes %}
+                {{ index_code_badge(code) }}
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+{%- endmacro %}
+
+{# Value popover - displays value details on hover #}
+{% macro value_popover(value, attr_name) -%}
+    {% set value_name = value.name if value.name else value.value %}
+    {# Create unique ID using attribute name, value, and loop index for guaranteed uniqueness #}
+    {% if loop %}
+        {% set popover_id = "popover-" + (attr_name|replace(" ", "-")|lower) + "-" + loop.index0|string %}
+    {% else %}
+        {% set popover_id = "popover-" + (attr_name|replace(" ", "-")|lower) + "-" + (value_name|replace(" ", "-")|replace("(", "")|replace(")", "")|replace(",", "")|lower) %}
+    {% endif %}
+
+    <div class="inline-block">
+        <button data-popover-target="{{ popover_id }}"
+                data-popover-trigger="hover"
+                data-popover-placement="top"
+                type="button"
+                class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 rounded cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors">
+            {{ value_name }}
+        </button>
+
+        <div data-popover id="{{ popover_id }}"
+             role="tooltip"
+             class="absolute z-10 invisible inline-block w-64 text-sm text-gray-500 transition-opacity duration-300 bg-white border border-gray-200 rounded-lg shadow-sm opacity-0 dark:text-gray-400 dark:border-gray-600 dark:bg-gray-800">
+            <div class="px-3 py-2">
+                {% if value.description %}
+                <p class="font-medium text-gray-900 dark:text-white mb-2">{{ value.description }}</p>
+                {% endif %}
+
+                {% if value.index_codes and value.index_codes|length > 0 %}
+                <div>
+                    <h5 class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Codes</h5>
+                    <div class="space-y-1">
+                        {% for code in value.index_codes %}
+                        <div class="text-xs">
+                            <span class="font-mono font-medium text-gray-900 dark:text-white">{{ code.system }}:{{ code.code }}</span>
+                            <div class="text-gray-600 dark:text-gray-400">{{ code.display }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            <div data-popper-arrow></div>
+        </div>
+    </div>
+{%- endmacro %}
+
 {# ===== ICONS ===== #}
 
 {# GitHub Icon #}

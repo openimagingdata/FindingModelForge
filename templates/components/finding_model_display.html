@@ -1,5 +1,5 @@
 {% from 'macros/flowbite_components.html' import flowbite_badge %}
-{% from 'macros/app_components.html' import required_badge, id_badge, type_badge, attribute_value, contributor_avatar %}
+{% from 'macros/app_components.html' import required_badge, id_badge, type_badge, attribute_value, contributor_avatar, index_codes_display, value_popover %}
 
 <!-- Finding Model Display Component -->
 <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
@@ -26,7 +26,7 @@
         <!-- Synonyms -->
         {% if finding_model.synonyms and finding_model.synonyms|length > 0 %}
         <div>
-            <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Synonyms</h3>
+            <h3 class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Synonyms</h3>
             <div class="flex flex-wrap gap-2">
                 {% for synonym in finding_model.synonyms %}
                     {{ flowbite_badge(synonym, "gray", "xs", true) }}
@@ -38,7 +38,7 @@
         <!-- Tags -->
         {% if finding_model.tags and finding_model.tags|length > 0 %}
         <div>
-            <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Tags</h3>
+            <h3 class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Tags</h3>
             <div class="flex flex-wrap gap-2">
                 {% for tag in finding_model.tags %}
                     {{ flowbite_badge(tag, "green", "xs", true) }}
@@ -51,7 +51,7 @@
     <!-- Contributors -->
     {% if finding_model.contributors and finding_model.contributors|length > 0 %}
     <div class="mb-6">
-        <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Contributors</h3>
+        <h3 class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Contributors</h3>
         <div class="space-y-2">
             {% for contributor in finding_model.contributors %}
                 {{ contributor_avatar(contributor) }}
@@ -60,10 +60,13 @@
     </div>
     {% endif %}
 
+    <!-- Finding Model Index Codes -->
+    {{ index_codes_display(finding_model.index_codes, "Codes") }}
+
     <!-- Attributes -->
     {% if finding_model.attributes and finding_model.attributes|length > 0 %}
     <div class="mb-6">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Attributes</h3>
+        <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Attributes</h3>
         <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {% for attribute in finding_model.attributes %}
             <div class="border border-gray-200 dark:border-gray-600 rounded-lg p-4 bg-gray-50 dark:bg-gray-900/50 hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors">
@@ -101,13 +104,16 @@
                 </div>
                 {% endif %}
 
+                <!-- Attribute Index Codes -->
+                {{ index_codes_display(attribute.index_codes, "Codes") }}
+
                 <!-- Attribute Values -->
                 {% if attribute.values and attribute.values|length > 0 %}
                 <div class="mb-3">
                     <h5 class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Values</h5>
                     <div class="flex flex-wrap gap-2">
                         {% for value in attribute.values %}
-                            {{ attribute_value(value) }}
+                            {{ value_popover(value, attribute.name) }}
                         {% endfor %}
                     </div>
                 </div>

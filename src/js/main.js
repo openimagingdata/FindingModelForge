@@ -1,11 +1,10 @@
 // Main JavaScript entry point for FindingModelForge
 import Alpine from "alpinejs"
-import { initFlowbite } from "flowbite"
+// Flowbite loaded via CDN for optimal performance and reliability
 import htmx from "htmx.org"
 
 // Make Alpine and other libraries globally available
 window.Alpine = Alpine
-window.initFlowbite = initFlowbite
 window.htmx = htmx
 
 // Dark mode management
@@ -247,29 +246,31 @@ document.addEventListener("htmx:historyRestore", function(event) {
       }
     }
   }
+
+  // Reinitialize components for history-restored content
+  if (mainContent && window.Alpine) {
+    try {
+      Alpine.initTree(mainContent)
+    } catch (error) {
+      console.warn('Error reinitializing Alpine.js after history restore:', error)
+    }
+  }
 })
 
-// Smart Flowbite + HTMX Integration with duplicate prevention
-let flowbiteInitialized = false
-
+// HTMX Integration with component reinitialization
 htmx.onLoad(function(content) {
-  // Only initialize Flowbite if it hasn't been initialized yet
-  if (!flowbiteInitialized) {
-    console.log('Initializing Flowbite for the first time')
-    initFlowbite()
-    flowbiteInitialized = true
-  } else {
-    // For subsequent loads, only initialize if we have new interactive components
-    const flowbiteElements = content?.querySelectorAll ?
-      content.querySelectorAll('[data-modal-target], [data-dropdown-target], [data-collapse-target], [data-accordion]') :
-      []
+  // Skip processing if this is the full document body
+  if (content === document.body) {
+    return
+  }
 
-    if (flowbiteElements && flowbiteElements.length > 0) {
-      console.log('Found new interactive components, reinitializing Flowbite')
-      initFlowbite()
-    } else {
-      console.log('No new interactive components found, skipping Flowbite initialization')
-    }
+  // Reinitialize Flowbite components for new content
+  if (typeof initFlowbite === 'function') {
+    initFlowbite()
+  } else if (window.Flowbite && typeof window.Flowbite.init === 'function') {
+    window.Flowbite.init()
+  } else if (window.Flowbite && typeof window.Flowbite.initFlowbite === 'function') {
+    window.Flowbite.initFlowbite()
   }
 
   // Process new content with Alpine.js
@@ -288,13 +289,9 @@ htmx.onLoad(function(content) {
 // Initialize Alpine
 Alpine.start()
 
-// Initialize Flowbite components on DOM ready
-document.addEventListener("DOMContentLoaded", () => {
-  initFlowbite()
-})
 
 // Console welcome message
 console.log("%cWelcome to Finding Model Forge! ⚒︎", "color: #3b82f6; font-size: 16px; font-weight: bold;")
 
 // For any modules that need these
-export { Alpine, initFlowbite, htmx }
+export { Alpine, htmx }

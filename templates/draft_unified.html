@@ -79,12 +79,5 @@
     </div>
 </div>
 
-<script>
-document.addEventListener('htmx:afterSwap', function(event) {
-    // Reinitialize Flowbite components after HTMX swaps
-    if (typeof initFlowbite !== 'undefined') {
-        initFlowbite();
-    }
-});
-</script>
+<!-- Flowbite component reinitialization now handled by main.js -->
 {% endblock %}

@@ -51,8 +51,11 @@
     <!-- Footer -->
     {% include 'components/footer.html' %}
 
-    <!-- Bundled JavaScript (includes HTMX, Alpine.js, Flowbite, SimpleDatatables, and app utilities) -->
+    <!-- Bundled JavaScript (includes HTMX, Alpine.js, and app utilities) -->
     <script src="{{ url_for('static', path=vite_asset()) }}" defer></script>
+
+    <!-- Flowbite JavaScript - CDN for compatibility (CSS compiled via Tailwind) -->
+    <script src="https://cdn.jsdelivr.net/npm/flowbite@3.1.2/dist/flowbite.min.js" defer></script>
 
     {% block scripts %}{% endblock %}
 </body>
