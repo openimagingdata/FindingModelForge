@@ -7,6 +7,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+#### Three-Level Index Code Display System
+
+- **Complete index code display functionality** implemented across model, attribute, and value levels (August 27, 2025)
+- **New Flowbite-based components** in `templates/macros/app_components.html`:
+  - `index_code_badge(code)` - Two-line badge format with system:code and display text
+  - `index_codes_display(codes, title)` - Section display with title and multiple badges
+  - `value_popover(value, attr_name)` - Hover popovers showing value descriptions and codes
+- **Three-level integration** in `templates/components/finding_model_display.html`:
+  - **Model level**: Top-level index codes displayed with "Codes" heading using indigo styling
+  - **Attribute level**: Attribute-specific codes shown within each attribute section
+  - **Value level**: Interactive hover popovers on value buttons showing detailed code information
+- **Accessibility features**: Proper ARIA attributes, role="tooltip", and keyboard navigation support
+- **Visual consistency**: Unified indigo color scheme and two-line badge format across all levels
+- **Comprehensive test coverage**: 7 Playwright tests integrated into existing UI test infrastructure covering all three levels
+
+### Fixed
+
+#### Playwright Test Infrastructure
+
+- **Fixed multiple technical issues** in initial test implementation:
+  - Regex compilation errors (`/font-mono/` → `re.compile(r'.*\\bfont-mono\\b.*')`)
+  - Playwright selector syntax (`page.locator().first()` → `page.locator().first`)
+  - Strict mode violations with more specific selectors (`.font-mono` for SNOMED badges)
+- **Established proper testing patterns** following UI test conventions with console error collection and verification
+
 ## [1.3.0] - 2025-08-25
 
 ### Added

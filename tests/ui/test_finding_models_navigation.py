@@ -1,5 +1,7 @@
 """Test finding models navigation and display functionality."""
 
+import re
+
 import pytest
 from playwright.async_api import Page, expect
 
@@ -47,6 +49,237 @@ class TestFindingModelsListPage:
         await expect(table).to_be_visible()
         await expect(table.locator("thead")).to_contain_text("ID")
         await expect(table.locator("thead")).to_contain_text("Name")
+
+        await verify_no_console_errors(
+            errors,
+            warnings,
+            allowed_patterns=[
+                "Failed to load resource",
+                "favicon.ico",
+            ],
+        )
+
+
+class TestIndexCodeDisplay:
+    """Test index code display at all three levels on model detail pages."""
+
+    async def test_finding_model_level_index_codes(self, page: Page) -> None:
+        """Test that finding model level index codes display correctly."""
+        errors, warnings = collect_console_errors(page)
+
+        # Navigate to abdominal abscess model (has index codes)
+        await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
+        await page.wait_for_load_state("networkidle")
+
+        # Check for "Codes" heading at model level
+        codes_heading = page.locator("h4").filter(has_text="Codes").first
+        await expect(codes_heading).to_be_visible()
+
+        # Check for index code badges with indigo styling
+        model_badges = page.locator("span.bg-indigo-100, span.bg-indigo-900").first
+        await expect(model_badges).to_be_visible()
+
+        # Verify badge contains expected content (two-line format)
+        badge_content = await model_badges.text_content()
+        assert "GAMUTS:4244" in badge_content
+        assert "abdominal abscess" in badge_content
+
+        await verify_no_console_errors(
+            errors,
+            warnings,
+            allowed_patterns=[
+                "Failed to load resource",
+                "favicon.ico",
+            ],
+        )
+
+    async def test_attribute_level_index_codes(self, page: Page) -> None:
+        """Test that attribute level index codes display correctly."""
+        errors, warnings = collect_console_errors(page)
+
+        await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
+        await page.wait_for_load_state("networkidle")
+
+        # Should have multiple "Codes" headings (model + attributes)
+        codes_headings = page.locator("h4").filter(has_text="Codes")
+        await expect(codes_headings).to_have_count(3)  # 1 model + 2 attributes
+
+        # Check attribute-specific badges
+        attribute_badges = page.locator("span.bg-indigo-100, span.bg-indigo-900")
+        await expect(attribute_badges).to_have_count(4)  # 1 model + 3 attribute codes
+
+        # Verify specific attribute code content (use more specific selectors)
+        snomed_badge = page.locator(".font-mono").filter(has_text="SNOMED:705057003")
+        await expect(snomed_badge).to_be_visible()
+
+        radlex_badge = page.locator(".font-mono").filter(has_text="RADLEX:RID49896")
+        await expect(radlex_badge).to_be_visible()
+
+        await verify_no_console_errors(
+            errors,
+            warnings,
+            allowed_patterns=[
+                "Failed to load resource",
+                "favicon.ico",
+            ],
+        )
+
+    async def test_value_level_popovers(self, page: Page) -> None:
+        """Test that value level popovers display correctly on hover."""
+        errors, warnings = collect_console_errors(page)
+
+        await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
+        await page.wait_for_load_state("networkidle")
+
+        # Check that value buttons have popover attributes
+        value_buttons = page.locator('button[data-popover-trigger="hover"]')
+        await expect(value_buttons).to_have_count(12)  # 4 + 8 values
+
+        # Test specific value button
+        absent_button = page.get_by_role("button", name="absent")
+        await expect(absent_button).to_be_visible()
+
+        # Hover over button to trigger popover
+        await absent_button.hover()
+
+        # Check that popover appears
+        popover = page.locator('div[role="tooltip"]').filter(has_text="Abdominal abscess is absent")
+        await expect(popover).to_be_visible()
+
+        # Verify popover content structure
+        await expect(popover.locator("p")).to_contain_text("Abdominal abscess is absent")
+
+        # Check for "Codes" section in popover
+        codes_section = popover.locator("h5").filter(has_text="Codes")
+        await expect(codes_section).to_be_visible()
+
+        # Verify specific codes in popover
+        await expect(popover).to_contain_text("RADLEX:RID28473")
+        await expect(popover).to_contain_text("SNOMED:2667000")
+        await expect(popover).to_contain_text("Absent (qualifier value)")
+
+        await verify_no_console_errors(
+            errors,
+            warnings,
+            allowed_patterns=[
+                "Failed to load resource",
+                "favicon.ico",
+            ],
+        )
+
+    async def test_multiple_value_popovers(self, page: Page) -> None:
+        """Test that multiple value popovers work correctly."""
+        errors, warnings = collect_console_errors(page)
+
+        await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
+        await page.wait_for_load_state("networkidle")
+
+        # Test different value buttons
+        test_values = ["present", "indeterminate", "unchanged"]
+
+        for value_name in test_values:
+            value_button = page.get_by_role("button", name=value_name)
+            await expect(value_button).to_be_visible()
+
+            # Hover to show popover
+            await value_button.hover()
+
+            # Check popover appears with value-specific content
+            popover = page.locator('div[role="tooltip"]:visible')
+            await expect(popover).to_be_visible()
+
+            # Each popover should have codes
+            codes_heading = popover.locator("h5").filter(has_text="Codes")
+            await expect(codes_heading).to_be_visible()
+
+            # Move away to hide popover
+            await page.locator("h2").first.hover()
+            await expect(popover).not_to_be_visible()
+
+        await verify_no_console_errors(
+            errors,
+            warnings,
+            allowed_patterns=[
+                "Failed to load resource",
+                "favicon.ico",
+            ],
+        )
+
+    async def test_index_code_badge_structure(self, page: Page) -> None:
+        """Test that index code badges have correct two-line structure."""
+        errors, warnings = collect_console_errors(page)
+
+        await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
+        await page.wait_for_load_state("networkidle")
+
+        # Get the first badge and check internal structure
+        first_badge = page.locator("span.bg-indigo-100, span.bg-indigo-900").first
+        await expect(first_badge).to_be_visible()
+
+        # Check that badge contains two span elements (two-line format)
+        inner_spans = first_badge.locator("span")
+        await expect(inner_spans).to_have_count(2)
+
+        # First span should be monospace (system:code)
+        system_code_span = inner_spans.first
+        await expect(system_code_span).to_have_class(re.compile(r".*\bfont-mono\b.*"))
+
+        # Verify content structure
+        system_code_text = await system_code_span.text_content()
+        assert ":" in system_code_text  # Should contain system:code format
+
+        await verify_no_console_errors(
+            errors,
+            warnings,
+            allowed_patterns=[
+                "Failed to load resource",
+                "favicon.ico",
+            ],
+        )
+
+    async def test_no_index_codes_handling(self, page: Page) -> None:
+        """Test that pages without index codes don't show empty sections."""
+        errors, warnings = collect_console_errors(page)
+
+        # Navigate to finding models list (shouldn't have index code sections)
+        await page.goto("http://localhost:8000/finding-models")
+        await page.wait_for_load_state("networkidle")
+
+        # Should not have "Codes" headings on the listing page
+        codes_headings = page.locator("h4").filter(has_text="Codes")
+        await expect(codes_headings).to_have_count(0)
+
+        # Should not have index code badges
+        index_badges = page.locator("span.bg-indigo-100, span.bg-indigo-900")
+        await expect(index_badges).to_have_count(0)
+
+        await verify_no_console_errors(
+            errors,
+            warnings,
+            allowed_patterns=[
+                "Failed to load resource",
+                "favicon.ico",
+            ],
+        )
+
+    async def test_popover_accessibility(self, page: Page) -> None:
+        """Test that popovers have proper accessibility attributes."""
+        errors, warnings = collect_console_errors(page)
+
+        await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
+        await page.wait_for_load_state("networkidle")
+
+        # Check popover ARIA attributes
+        value_button = page.get_by_role("button", name="absent")
+        popover_target = await value_button.get_attribute("data-popover-target")
+        assert popover_target is not None
+
+        # Find corresponding popover
+        popover = page.locator(f'div[id="{popover_target}"]')
+        await expect(popover).to_have_attribute("role", "tooltip")
+
+        # Check trigger attribute
+        await expect(value_button).to_have_attribute("data-popover-trigger", "hover")
 
         await verify_no_console_errors(
             errors,

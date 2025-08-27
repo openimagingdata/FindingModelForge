@@ -112,7 +112,11 @@
       "Bash(~/.claude-code-project-index/scripts/project_index.py)",
       "mcp__Ref__ref_search_documentation",
       "Read(//Users/talkasab/.claude/**)",
-      "mcp__Ref__ref_read_url"
+      "mcp__Ref__ref_read_url",
+      "Bash(PLAYWRIGHT_HEADLESS=true uv run pytest tests/test_index_code_display_playwright.py -v --no-cov --tb=short)",
+      "Bash(PLAYWRIGHT_HEADLESS=true uv run pytest tests/test_index_code_display_playwright.py::TestIndexCodeDisplay::test_finding_model_level_index_codes -v --no-cov --tb=short)",
+      "Bash(PLAYWRIGHT_HEADLESS=true uv run pytest tests/ui/test_finding_models_navigation.py::TestIndexCodeDisplay::test_finding_model_level_index_codes -v --no-cov --tb=short)",
+      "Bash(PLAYWRIGHT_HEADLESS=true uv run pytest tests/ui/test_finding_models_navigation.py::TestIndexCodeDisplay -v --no-cov --tb=short)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"
