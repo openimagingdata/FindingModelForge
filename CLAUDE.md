@@ -196,6 +196,7 @@ Simple Pages:
 ```
 
 **Replaced URLs (removed in v1.3.0):**
+
 - `/api/finding-models/create/*` → `/create/*`
 - `/api/finding-models/drafts/*` → `/drafts/*`
 

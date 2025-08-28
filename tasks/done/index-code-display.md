@@ -2,7 +2,9 @@
 
 ## Overview
 
-Add comprehensive index code displays at three levels in the finding model template to improve the visibility of semantic coding information. This enhancement will make it easier for users to understand the standardized medical terminology associated with finding models.
+Add comprehensive index code displays at three levels in the finding model template to improve the visibility of
+semantic coding information. This enhancement will make it easier for users to understand the standardized medical
+terminology associated with finding models.
 
 ## Requirements
 
@@ -13,7 +15,9 @@ Add comprehensive index code displays at three levels in the finding model templ
 ## Visual Design
 
 ### Index Code Badge Format
+
 Each index code should display as a small badge with:
+
 - Line 1: `SYSTEM:CODE` (monospace font)
 - Line 2: Display text (regular font)
 - Example:
@@ -23,6 +27,7 @@ Each index code should display as a small badge with:
   ```
 
 ### Color Scheme
+
 - Indigo color palette for visibility
 - Light mode: `bg-indigo-100` with `text-indigo-800`
 - Dark mode: `bg-indigo-900` with `text-indigo-300`
@@ -55,6 +60,7 @@ Add three new macros:
 Modifications needed:
 
 1. **Import new macros** (line ~2):
+
    ```jinja
    {% from 'macros/app_components.html' import index_codes_display, value_popover %}
    ```
@@ -74,6 +80,7 @@ Modifications needed:
 ### Phase 3: Ensure Flowbite Compatibility
 
 **Popover Implementation:**
+
 - Use Flowbite's native popover with `data-popover-trigger="hover"`
 - Include `data-popover-target` and matching `id` attributes
 - Add `data-popper-arrow` for arrow positioning
@@ -82,15 +89,17 @@ Modifications needed:
 ## Data Structure
 
 ### Index Code Object
+
 ```json
 {
-  "system": "SNOMED",           // Coding system (SNOMED, RADLEX, etc.)
-  "code": "705057003",          // System-specific code
-  "display": "Presence (property) (qualifier value)"  // Human-readable text
+  "system": "SNOMED", // Coding system (SNOMED, RADLEX, etc.)
+  "code": "705057003", // System-specific code
+  "display": "Presence (property) (qualifier value)" // Human-readable text
 }
 ```
 
 ### Example Finding Model with Index Codes
+
 ```json
 {
   "name": "abdominal abscess",
@@ -163,6 +172,7 @@ Modifications needed:
 ## Test Data Sources
 
 Use existing test data files:
+
 - `tests/data/abdominal_abscess.fm.json`
 - `tests/data/coronary_artery_calcifications.fm.json`
 

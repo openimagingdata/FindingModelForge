@@ -22,7 +22,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - **Value level**: Interactive hover popovers on value buttons showing detailed code information
 - **Accessibility features**: Proper ARIA attributes, role="tooltip", and keyboard navigation support
 - **Visual consistency**: Unified indigo color scheme and two-line badge format across all levels
-- **Comprehensive test coverage**: 7 Playwright tests integrated into existing UI test infrastructure covering all three levels
+- **Comprehensive test coverage**: 7 Playwright tests integrated into existing UI test infrastructure covering all three
+  levels
 
 ### Fixed
 
@@ -60,6 +61,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 #### URL Structure Modernization
 
 **New simplified URLs**:
+
 ```
 Creation Workflow:
   /create/step/1, /create/step/2, /create/step/3
@@ -74,6 +76,7 @@ Browse (unchanged):
 ```
 
 **Old URLs removed**:
+
 ```
 /api/finding-models/create/* → /create/*
 /api/finding-models/drafts/* → /drafts/*
@@ -141,7 +144,8 @@ Browse (unchanged):
 
 #### For Developers
 
-1. **URL updates**: Any external references to `/api/finding-models/create/*` or `/api/finding-models/drafts/*` need updating
+1. **URL updates**: Any external references to `/api/finding-models/create/*` or `/api/finding-models/drafts/*` need
+   updating
 2. **Import changes**: Router imports now use shorter names (`creation`, `drafts`)
 3. **Service injection**: New services available for dependency injection
 
