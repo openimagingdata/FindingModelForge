@@ -1,8 +1,6 @@
 ---
 name: backend-test-updater
-description:
-  Use IMMEDIATELY AFTER backend refactoring to update tests. MUST BE USED to fix broken imports, update mocks for new
-  services, and ensure 75%+ coverage maintained.
+description: Use IMMEDIATELY AFTER backend refactoring to update tests. MUST BE USED to fix broken imports, update mocks for new services, and ensure 75%+ coverage maintained.
 tools: Read, Write, Edit, Grep, Bash
 model: sonnet
 color: green

@@ -1,8 +1,6 @@
 ---
 name: refactor-reviewer
-description:
-  Use AFTER each refactoring task completes to verify quality. MUST BE USED before committing to ensure code meets
-  specifications and project standards.
+description: Use AFTER each refactoring task completes to verify quality. MUST BE USED before committing to ensure code meets specifications and project standards.
 tools: Read, Grep, Bash
 model: sonnet
 color: red

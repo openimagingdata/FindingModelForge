@@ -1,12 +1,7 @@
 ---
 name: ui-test-updater
-description:
-  Use AFTER endpoint URL changes to update HTMX and Playwright tests. MUST BE USED when routes move from
-  /api/finding-models/* to new locations.
-tools:
-  Read, Write, Edit, Grep, mcp__playwright__browser_navigate, mcp__playwright__browser_click,
-  mcp__playwright__browser_type, mcp__playwright__browser_snapshot, mcp__playwright__browser_wait_for,
-  mcp__playwright__browser_close
+description: Use AFTER endpoint URL changes to update HTMX and Playwright tests. MUST BE USED when routes move from /api/finding-models/* to new locations.
+tools: Read, Write, Edit, Grep, mcp__playwright__browser_navigate, mcp__playwright__browser_click,  mcp__playwright__browser_type, mcp__playwright__browser_snapshot, mcp__playwright__browser_wait_for, mcp__playwright__browser_close
 model: sonnet
 color: yellow
 ---
