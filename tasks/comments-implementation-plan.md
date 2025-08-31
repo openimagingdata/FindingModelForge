@@ -1,13 +1,13 @@
 # Comments Feature Implementation Plan
 
-## Current Status: Phase 2 Complete
+## Current Status: Phase 3 Complete
 **Last Updated**: January 31, 2025
 
 ### Progress Summary
 - ✅ **Phase 1**: Backend Data Models (Steps 1-3) - COMPLETED
 - ✅ **Phase 2**: Repository Layer (Steps 4-6) - COMPLETED
-- ✅ **Tests**: Unit tests for models, repository, and dependencies - COMPLETED (38 tests)
-- ⏳ **Phase 3**: Helper Functions (Steps 7-8) - PENDING
+- ✅ **Phase 3**: Helper Functions (Steps 7-8) - COMPLETED
+- ✅ **Tests**: Unit tests for all completed phases - COMPLETED (75 tests)
 - ⏳ **Phase 4**: Service Layer Integration (Steps 9-10) - PENDING
 - ⏳ **Phase 5**: Frontend Component (Steps 11-13) - PENDING
 - ⏳ **Phase 6**: Router Endpoints (Steps 14-17) - PENDING
@@ -162,9 +162,9 @@ CommentRepoDep = Annotated[CommentRepo, Depends(get_comment_repo)]
 
 **Testing**: Test dependency injection works properly ✅
 
-## Phase 3: Helper Functions (Step 7-8)
+## Phase 3: Helper Functions (Step 7-8) ✅ COMPLETED
 
-### Step 7: Create Comment Helpers
+### Step 7: Create Comment Helpers ✅
 
 **File**: `app/services/comment_helpers.py` (new file) **Standards**: Pure functions where possible, clear docstrings
 
@@ -187,25 +187,38 @@ def is_reply_allowed(comment: Comment) -> bool:
     return len(comment.replies) == 0 or True  # Simplified check
 ```
 
-**Testing**: Create `tests/test_comment_helpers.py`
+**Testing**: Create `tests/test_comment_helpers.py` ✅
 
 ---
 
-### Step 8: Add Humanize Support
+### Step 8: Add Humanize Support ✅
 
-**File**: `app/main.py` **Standards**: Register as Jinja2 filter
+**File**: ~~`app/main.py`~~ `app/templates.py` (created new file) **Standards**: Register as Jinja2 filter
 
-**Add**:
+**Implementation Note**: Created centralized `app/templates.py` module instead of modifying `app/main.py`. This provides a single source of truth for template configuration and custom filters. All routers now import from this centralized location.
 
+**Added**:
 ```python
+# app/templates.py
 import humanize
-# After templates initialization
-templates.env.filters['humanize'] = humanize.naturaltime
+from fastapi.templating import Jinja2Templates
+
+templates = Jinja2Templates(directory="templates")
+
+def humanize_time(dt: datetime | None) -> str:
+    """Convert datetime to human-readable format."""
+    if not dt:
+        return ""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=UTC)
+    return humanize.naturaltime(dt, when=datetime.now(UTC))
+
+templates.env.filters["humanize"] = humanize_time
 ```
 
-**Dependencies**: Add to pyproject.toml: `uv add humanize`
+**Dependencies**: Add to pyproject.toml: `uv add humanize` ✅
 
-**Testing**: Verify filter works in template rendering
+**Testing**: Verify filter works in template rendering ✅
 
 ## Phase 4: Service Layer Integration (Step 9-10)
 
@@ -517,6 +530,25 @@ async def remove_comment(thread_id, comment_id):
 - Rich text editor
 - Email notifications
 
+## Known Issues & Technical Debt
+
+### Minor Issues Identified (Non-Blocking)
+
+1. **Repository Pattern Violation in `add_to_comment_index()`**
+   - Currently directly accesses `user_repo.collection.update_one()`
+   - Should ideally use a UserRepo method like `add_comment_index_entry()`
+   - Works but bypasses repository abstraction layer
+   - **Impact**: Low - can be refactored later
+
+2. **Redundant Template Configuration**
+   - Each router sets `templates.env.globals["vite_asset"]` individually
+   - Could be centralized in `app/templates.py`
+   - **Impact**: Low - minor code duplication
+
+3. **Architectural Improvement Made (Not Planned)**
+   - Created centralized `app/templates.py` instead of modifying `app/main.py`
+   - **Impact**: Positive - better architecture, single source of truth
+
 ## Success Criteria
 
 Each step is complete when:
@@ -549,6 +581,16 @@ uv run pytest tests/test_database.py -v  # Verify DB connection
   - `docs/humanize-usage.md` - Time formatting
   - `docs/htmx-comment-patterns.md` - HTMX patterns
   - `tasks/comments-feature-prd.md` - Full requirements
+
+## Completed Implementation Details
+
+### Phase 1-3 Accomplishments
+- **75 unit tests** created and passing
+- **3 Pydantic models** for comment system
+- **5 repository methods** with atomic MongoDB operations
+- **4 helper functions** for business logic
+- **1 template filter** for time formatting
+- **Centralized templates** module created (architectural improvement)
 
 ## Implementation Approach
 

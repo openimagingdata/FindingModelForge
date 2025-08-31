@@ -8,7 +8,11 @@
       "mcp__serena__search_for_pattern",
       "mcp__serena__get_symbols_overview",
       "mcp__serena__find_symbol",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "mcp__serena__list_dir",
+      "mcp__filesystem__write_file",
+      "Bash(uv add:*)",
+      "Bash(task test-unit)"
     ],
     "deny": [],
     "ask": [],

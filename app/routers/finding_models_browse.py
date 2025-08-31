@@ -4,16 +4,16 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Header, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 
 from app.auth import OptionalUserDep
 from app.config import logger
 from app.dependencies import FindingModelServiceDep
 from app.services import NotFoundError
+from app.templates import templates
 from app.vite_manifest import get_vite_asset_path
 
 router = APIRouter()
-templates = Jinja2Templates(directory="templates")
+
 
 # Add vite asset helper to template globals
 templates.env.globals["vite_asset"] = get_vite_asset_path

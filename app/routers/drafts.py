@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
-from fastapi.templating import Jinja2Templates
+
 from bson import ObjectId
 
 from findingmodel import FindingInfo, FindingModelBase, FindingModelFull
@@ -20,6 +20,7 @@ from findingmodel.tools import (
 
 from app.auth import CurrentUserDep
 from app.config import logger
+from app.templates import templates
 from app.vite_manifest import get_vite_asset_path
 from app.dependencies import (
     CreationSessionDep,
@@ -50,7 +51,7 @@ def parse_synonyms(synonyms: str) -> list[str]:
 
 
 router = APIRouter()
-templates = Jinja2Templates(directory="templates")
+
 # Ensure shared template globals are set (e.g., vite asset helper used by base.html)
 templates.env.globals["vite_asset"] = get_vite_asset_path
 

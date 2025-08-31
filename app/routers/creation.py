@@ -7,12 +7,13 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Form, HTTPException, Path, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
-from fastapi.templating import Jinja2Templates
+
 
 from findingmodel.tools.similar_finding_models import SimilarModelAnalysis  # noqa: F401
 
 from app.auth import CurrentUserDep
 from app.config import logger
+from app.templates import templates
 from app.vite_manifest import get_vite_asset_path
 from app.dependencies import (
     CreationServiceDep,
@@ -64,7 +65,7 @@ def render_step_template(
 
 
 router = APIRouter()
-templates = Jinja2Templates(directory="templates")
+
 # Ensure shared template globals are set (e.g., vite asset helper used by base.html)
 templates.env.globals["vite_asset"] = get_vite_asset_path
 
