@@ -18,7 +18,7 @@ from findingmodel.index import Index
 from pydantic import BaseModel
 
 from .cache import RedisCache
-from .database import Database, DraftRepo, UserRepo
+from .database import CommentRepo, Database, DraftRepo, UserRepo
 
 
 def get_database(request: Request) -> Database:
@@ -47,6 +47,16 @@ def get_draft_repo(database: DatabaseDep) -> DraftRepo:
 
 
 DraftRepoDep = Annotated[DraftRepo, Depends(get_draft_repo)]
+
+
+def get_comment_repo(database: DatabaseDep) -> CommentRepo:
+    """Get CommentRepo instance from the database."""
+    if database.comment_repo is None:
+        raise RuntimeError("Database not initialized or CommentRepo not available")
+    return database.comment_repo
+
+
+CommentRepoDep = Annotated[CommentRepo, Depends(get_comment_repo)]
 
 
 def get_finding_index(database: DatabaseDep) -> Index:

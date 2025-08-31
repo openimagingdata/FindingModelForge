@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Any, Literal
+from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
@@ -38,6 +39,7 @@ class User(UserBase):
     is_active: bool = True
     created_at: datetime
     updated_at: datetime
+    comment_index: list["UserCommentEntry"] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}
 
@@ -86,6 +88,47 @@ class HealthCheck(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.now)
     version: str
     environment: str
+
+
+# Comment System Models
+
+
+class UserCommentEntry(BaseModel):
+    """User comment entry for rate limiting and user comment index."""
+
+    reference_type: Literal["finding_model", "draft"]
+    reference_id: str  # oifm_id for models, draft ObjectId for drafts
+    finding_name: str  # Human-readable name for display
+    comment_id: str  # Comment ID for direct access
+    created_at: datetime
+
+
+class Comment(BaseModel):
+    """Individual comment with optional nested replies."""
+
+    id: str = Field(default_factory=lambda: str(uuid4()))  # Unique ID for references
+    user_id: int  # GitHub user ID
+    user_name: str  # Cached for display
+    user_avatar_url: str | None = None
+    content: str  # 1-2000 chars
+    created_at: datetime
+    replies: list["Comment"] = Field(default_factory=list)  # Single-level only
+    reported: bool = False
+    reported_by: int | None = None  # User ID who reported
+    reported_at: datetime | None = None
+
+
+class CommentThread(BaseModel):
+    """Comment thread for a specific finding model or draft."""
+
+    id: str  # MongoDB ObjectId
+    reference_type: Literal["finding_model", "draft"]
+    reference_id: str  # oifm_id for models, draft ObjectId for drafts
+    created_at: datetime
+    updated_at: datetime
+    comment_count: int = 0
+    reported_count: int = 0
+    comments: list[Comment] = Field(default_factory=list)
 
 
 # Finding Model Creation Models

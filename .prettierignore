@@ -28,3 +28,6 @@ zOld/
 .idea/
 *.swp
 *.swo
+
+# Claude agent markdown files
+.claude/**/*.md

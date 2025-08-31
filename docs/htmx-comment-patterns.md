@@ -6,27 +6,23 @@
 
 ```html
 <!-- Main comment thread container -->
-<div id="comment-thread-finding_model-{{ oifm_id }}"
-     class="comments-section">
-    <!-- Comments content here -->
+<div id="comment-thread-finding_model-{{ oifm_id }}" class="comments-section">
+  <!-- Comments content here -->
 </div>
 ```
 
 ### Add Comment Form
 
 ```html
-<form hx-post="/finding-models/{{ slug }}/comments"
-      hx-target="#comment-thread-finding_model-{{ oifm_id }}"
-      hx-swap="outerHTML"
-      hx-trigger="submit">
-    <input type="hidden" name="parent_comment_id" value="">
-    <textarea name="content" 
-              x-model="commentText"
-              maxlength="2000"></textarea>
-    <button type="submit" 
-            :disabled="!commentText.trim() || commentText.length > 2000">
-        Comment
-    </button>
+<form
+  hx-post="/finding-models/{{ slug }}/comments"
+  hx-target="#comment-thread-finding_model-{{ oifm_id }}"
+  hx-swap="outerHTML"
+  hx-trigger="submit"
+>
+  <input type="hidden" name="parent_comment_id" value="" />
+  <textarea name="content" x-model="commentText" maxlength="2000"></textarea>
+  <button type="submit" :disabled="!commentText.trim() || commentText.length > 2000">Comment</button>
 </form>
 ```
 
@@ -35,25 +31,29 @@
 ```html
 <!-- Hidden reply form template -->
 <template x-if="replyingTo === '{{ comment.id }}'">
-    <form hx-post="/finding-models/{{ slug }}/comments"
-          hx-target="#comment-thread-finding_model-{{ oifm_id }}"
-          hx-swap="outerHTML">
-        <input type="hidden" name="parent_comment_id" value="{{ comment.id }}">
-        <textarea name="content"></textarea>
-        <button type="submit">Post Reply</button>
-        <button type="button" @click="replyingTo = null">Cancel</button>
-    </form>
+  <form
+    hx-post="/finding-models/{{ slug }}/comments"
+    hx-target="#comment-thread-finding_model-{{ oifm_id }}"
+    hx-swap="outerHTML"
+  >
+    <input type="hidden" name="parent_comment_id" value="{{ comment.id }}" />
+    <textarea name="content"></textarea>
+    <button type="submit">Post Reply</button>
+    <button type="button" @click="replyingTo = null">Cancel</button>
+  </form>
 </template>
 ```
 
 ### Report Comment
 
 ```html
-<button hx-post="/finding-models/{{ slug }}/comments/{{ comment.id }}/report"
-        hx-target="#alert-container"
-        hx-swap="beforeend"
-        hx-confirm="Report this comment as inappropriate?">
-    Report ⚑
+<button
+  hx-post="/finding-models/{{ slug }}/comments/{{ comment.id }}/report"
+  hx-target="#alert-container"
+  hx-swap="beforeend"
+  hx-confirm="Report this comment as inappropriate?"
+>
+  Report ⚑
 </button>
 ```
 
@@ -62,17 +62,19 @@
 ### Comment Form State
 
 ```html
-<div x-data="{
+<div
+  x-data="{
     commentText: '',
     replyingTo: null,
     get charCount() { return this.commentText.length },
-    get canSubmit() { 
-        return this.commentText.trim().length > 0 && 
-               this.commentText.length <= 2000 
+    get canSubmit() {
+        return this.commentText.trim().length > 0 &&
+               this.commentText.length <= 2000
     }
-}">
-    <!-- Form content -->
-    <span x-text="charCount + '/2000'"></span>
+}"
+>
+  <!-- Form content -->
+  <span x-text="charCount + '/2000'"></span>
 </div>
 ```
 
@@ -85,7 +87,7 @@
 async def add_comment(...):
     # Add comment to thread
     updated_thread = await comment_repo.add_comment(...)
-    
+
     # Return entire comment section HTML
     return templates.TemplateResponse(
         "components/comment_thread.html",
@@ -138,15 +140,14 @@ if not rate_limit_ok:
 
 ```html
 <!-- Show spinner during request -->
-<form hx-post="/finding-models/{{ slug }}/comments"
-      hx-indicator="#comment-spinner">
-    <!-- form content -->
+<form hx-post="/finding-models/{{ slug }}/comments" hx-indicator="#comment-spinner">
+  <!-- form content -->
 </form>
 
 <div id="comment-spinner" class="htmx-indicator">
-    <div class="spinner-border" role="status">
-        <span class="visually-hidden">Loading...</span>
-    </div>
+  <div class="spinner-border" role="status">
+    <span class="visually-hidden">Loading...</span>
+  </div>
 </div>
 ```
 
@@ -163,7 +164,8 @@ if not rate_limit_ok:
 
 ```html
 <!-- Global error handler -->
-<div hx-on::htmx:response-error="
+<div
+  hx-on::htmx:response-error="
     if (event.detail.xhr.status === 429) {
         alert('Rate limit exceeded. Please wait a moment before commenting again.');
     } else if (event.detail.xhr.status === 403) {
@@ -171,8 +173,9 @@ if not rate_limit_ok:
     } else {
         alert('An error occurred. Please try again.');
     }
-">
-    <!-- Comment section content -->
+"
+>
+  <!-- Comment section content -->
 </div>
 ```
 
@@ -183,11 +186,11 @@ if not rate_limit_ok:
 async def test_add_comment():
     # Fill comment form
     await page.fill('textarea[name="content"]', 'Test comment')
-    
+
     # Submit and wait for HTMX swap
     await page.click('button:has-text("Comment")')
     await wait_for_htmx_swap(page, '.comment-item:has-text("Test comment")')
-    
+
     # Verify comment appears
     await expect(page.locator('.comment-item')).to_contain_text('Test comment')
 ```

@@ -1,9 +1,12 @@
 # Product Requirements Document: Comments Feature
 
 ## Overview
-Add a commenting system to FindingModelForge to enable collaborative refinement of finding models through user discussions and feedback.
+
+Add a commenting system to FindingModelForge to enable collaborative refinement of finding models through user
+discussions and feedback.
 
 ## Goals
+
 - Enable users to provide feedback on finding models
 - Foster collaborative improvement of model definitions
 - Build community knowledge around medical imaging terminology
@@ -12,6 +15,7 @@ Add a commenting system to FindingModelForge to enable collaborative refinement 
 ## Core Requirements
 
 ### 1. Scope of Comments
+
 - Comments can be added to:
   - **Submitted drafts** (status = "submitted", "under-review", "added", "declined")
   - **Public finding models** (published models in the browse interface)
@@ -20,23 +24,27 @@ Add a commenting system to FindingModelForge to enable collaborative refinement 
   - The creation workflow steps
 
 ### 2. Comment Threading
+
 - **Single-level replies** only (comment → reply, no reply → reply)
 - This keeps discussions focused while avoiding deep nesting complexity
 - UI shows replies indented under parent comments
 
 ### 3. Comment Features
+
 - **Text content**: 1-2000 characters, markdown support
 - **Author attribution**: Display user name and avatar from GitHub profile
 - **Timestamps**: Show relative time (e.g., "2 hours ago")
 - **Report button**: Flag inappropriate content for moderation
 
 ### 4. User Capabilities
+
 - Any authenticated user can comment
 - Users can report inappropriate comments
 - Users cannot edit or delete their own comments (immutability for accountability)
 - Rate limiting: Maximum 3 comments per minute per user
 
 ### 5. Display Order
+
 - **Oldest first** (chronological order)
 - This allows readers to follow the discussion naturally
 - New comments appear at the bottom
@@ -46,6 +54,7 @@ Add a commenting system to FindingModelForge to enable collaborative refinement 
 ### Data Model
 
 #### Comment Structure
+
 ```python
 class Comment(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid4()))  # Unique ID for references
@@ -61,6 +70,7 @@ class Comment(BaseModel):
 ```
 
 #### Comment Thread Structure
+
 ```python
 class CommentThread(BaseModel):
     id: str  # MongoDB ObjectId
@@ -74,11 +84,13 @@ class CommentThread(BaseModel):
 ```
 
 #### Storage Architecture
+
 - **Dedicated Collection**: `comment_threads`
 - **One document per finding model or draft** (created lazily on first comment)
 - **Clean separation** between content (models/drafts) and discussions (comments)
 
 #### MongoDB Indices
+
 ```python
 # Primary lookup index
 comment_threads.create_index([
@@ -98,7 +110,9 @@ comment_threads.create_index([
 ```
 
 ### Rate Limiting Implementation
+
 Track recent comments in user document:
+
 ```python
 class User(BaseModel):
     # ... existing fields ...
@@ -115,8 +129,10 @@ class UserCommentEntry(BaseModel):
 Rate limit check: Count entries in last 60 seconds, reject if >= 3
 
 ### Moderation Approach
+
 1. **Reporting**: Any user can flag a comment
-2. **Blacklist**: Environment variable `COMMENT_BLACKLIST_USER_IDS` with comma-separated GitHub user IDs (admin adjusts directly)
+2. **Blacklist**: Environment variable `COMMENT_BLACKLIST_USER_IDS` with comma-separated GitHub user IDs (admin adjusts
+   directly)
 3. **CLI Script**: Offline moderation tool for admins
    ```bash
    uv run scripts/moderate_comments.py list-reported
@@ -126,12 +142,14 @@ Rate limit check: Count entries in last 60 seconds, reject if >= 3
 ## UI/UX Specifications
 
 ### Comment Thread Component
+
 - **Single reusable Jinja template**: `templates/components/comment_thread.html`
 - **Usage**: Included in both finding model and draft display templates
 - **Location**: Below finding model/draft display, above JSON accordion
 - **Parameters**: `thread` (CommentThread object), `reference_type`, `reference_id`
 
 ### Component Structure
+
 ```jinja
 {# templates/components/comment_thread.html #}
 <div id="comment-thread-{{ reference_type }}-{{ reference_id }}">
@@ -146,6 +164,7 @@ Rate limit check: Count entries in last 60 seconds, reject if >= 3
 ```
 
 ### Comment Display
+
 ```
 [Avatar] **User Name** • 2 hours ago [Report ⚑]
 Comment text here with **markdown** support...
@@ -154,25 +173,29 @@ Comment text here with **markdown** support...
       Reply text here...
 ```
 
-**Time Display**: Use `humanize` library for relative timestamps (e.g., "2 hours ago", "yesterday", "3 days ago") instead of raw UTC timestamps
+**Time Display**: Use `humanize` library for relative timestamps (e.g., "2 hours ago", "yesterday", "3 days ago")
+instead of raw UTC timestamps
 
 ### Add Comment Form
+
 - Textarea with character counter (X/2000)
 - Submit button (disabled when empty or over limit)
 - Rate limit message when triggered
 
 ### Template Integration
+
 ```jinja
 {# In finding_model_detail.html #}
-{% include 'components/comment_thread.html' with thread=comment_thread, 
+{% include 'components/comment_thread.html' with thread=comment_thread,
            reference_type="finding_model", reference_id=model.oifm_id %}
 
 {# In draft_view.html #}
-{% include 'components/comment_thread.html' with thread=comment_thread, 
+{% include 'components/comment_thread.html' with thread=comment_thread,
            reference_type="draft", reference_id=draft.id %}
 ```
 
 ### Technologies
+
 - **Frontend**: HTMX for dynamic updates, Alpine.js for form state
 - **Components**: Flowbite UI components
 - **Time formatting**: `humanize` library for user-friendly timestamps
@@ -181,6 +204,7 @@ Comment text here with **markdown** support...
 ## Implementation Architecture
 
 ### Backend Structure
+
 ```
 app/
 ├── models.py              # Add Comment, CommentThread models
@@ -194,6 +218,7 @@ app/
 ```
 
 ### CommentRepo Operations
+
 ```python
 class CommentRepo:
     async def get_thread(reference_type: str, reference_id: str) -> CommentThread | None
@@ -208,17 +233,18 @@ class CommentRepo:
 ```
 
 ### HTMX Endpoints (Return HTML Fragments)
+
 ```
 POST /finding-models/{slug}/comments
   - Add comment to finding model
   - Body: {content: str, parent_comment_id: str | None}
   - Returns: Updated comments section HTML (hx-swap="outerHTML")
-  
+
 POST /finding-models/{slug}/comments/{comment_id}/report
   - Report a comment on finding model
   - Returns: Success/error alert HTML (hx-swap="beforebegin")
-  
-POST /drafts/{draft_id}/comments  
+
+POST /drafts/{draft_id}/comments
   - Add comment to submitted draft
   - Body: {content: str, parent_comment_id: str | None}
   - Returns: Updated comments section HTML (hx-swap="outerHTML")
@@ -231,12 +257,14 @@ POST /drafts/{draft_id}/comments/{comment_id}/report
 ### Service Layer Integration
 
 The `FindingModelService` will:
+
 1. Fetch the finding model/draft data
 2. Query the `comment_threads` collection for associated comments
 3. Return both to the template layer
 4. Templates access comments as a separate object, not embedded in the model
 
 ## Security Considerations
+
 - Rate limiting prevents spam
 - Blacklist for bad actors
 - Report system for community moderation
@@ -244,6 +272,7 @@ The `FindingModelService` will:
 - Sanitize markdown to prevent XSS
 
 ## Performance Considerations
+
 - Separate collection with indexed lookups (minimal overhead)
 - Primary compound index on `(reference_type, reference_id)` for fast queries
 - Comments can be cached independently of models
@@ -253,6 +282,7 @@ The `FindingModelService` will:
 ## Feature Prioritization
 
 ### Now (Initial Implementation)
+
 - Basic comment creation and display
 - Single-level replies
 - Rate limiting (3 per minute)
@@ -262,12 +292,14 @@ The `FindingModelService` will:
 - HTMX dynamic updates
 
 ### Soon
+
 - Flippable sort order (oldest/newest first)
 - User profile showing comment history
 - Moderation CLI tool improvements
 - Comment permalinks
 
 ### Later
+
 - Pagination for threads > 100 comments
 - Rich text editor for markdown
 - Comment search/filtering
@@ -275,8 +307,9 @@ The `FindingModelService` will:
 - Voting/reactions on comments
 
 ## Open Questions Resolved
+
 - ✅ Threading depth: Single-level only
-- ✅ Edit/Delete: Not allowed for accountability  
+- ✅ Edit/Delete: Not allowed for accountability
 - ✅ Sort order: Oldest first (default), flippable to newest first (soon)
 - ✅ Rate limiting: 3 per minute via user document
 - ✅ Architecture: Separate `comment_threads` collection for clean separation
@@ -289,12 +322,14 @@ The `FindingModelService` will:
 ## Important Implementation Notes
 
 ### Process Lessons Learned
+
 - **Always create PRD first** before implementation
 - **Discuss architecture decisions** before coding
 - **Clean separation of concerns** - Comments in separate collection, not embedded in content
 - **Avoid mutable defaults** in Python - Use `Field(default_factory=list)`
 
 ### Technical Decisions Made
+
 - **No CommentedIndex pattern needed** - Comments are separate from finding models
 - **CommentRepo handles all DB operations** - Including thread creation on first comment
 - **Atomic count updates** - Counts updated within add/report operations, not separately

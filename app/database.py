@@ -13,7 +13,7 @@ from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from pymongo.errors import DuplicateKeyError
 
 from .config import settings
-from .models import FindingModelDraft, FindingModelInputs, User, UserCreate, UserUpdate
+from .models import Comment, CommentThread, FindingModelDraft, FindingModelInputs, User, UserCreate, UserUpdate
 
 
 class Database:
@@ -24,6 +24,7 @@ class Database:
         self.db: AsyncIOMotorDatabase[Any] | None = None
         self.user_repo: UserRepo | None = None
         self.draft_repo: DraftRepo | None = None
+        self.comment_repo: CommentRepo | None = None
         self.finding_index: Index | None = None
         self.people: dict[str, Person] = {}
         self.organizations: dict[str, Organization] = {}
@@ -34,9 +35,16 @@ class Database:
         self.db = self.client[settings.mongodb_db]
         self.user_repo = UserRepo(self.db)
         self.draft_repo = DraftRepo(self.db)
+        self.comment_repo = CommentRepo(self.db)
 
         # Initialize finding index with the same database client
         self.finding_index = Index(client=self.client, db_name=settings.mongodb_db)
+
+        # Create indices for comment threads collection
+        comment_threads = self.db.comment_threads
+        await comment_threads.create_index([("reference_type", 1), ("reference_id", 1)], unique=True)
+        await comment_threads.create_index([("reported_count", -1)])
+
         await self._load_people_and_organizations()
 
     async def _load_people_and_organizations(self) -> None:
@@ -58,6 +66,7 @@ class Database:
             self.client.close()
         self.user_repo = None
         self.draft_repo = None
+        self.comment_repo = None
         self.finding_index = None
 
 
@@ -320,3 +329,142 @@ class UserRepo:
             {"id": user_id}, {"$set": {"is_active": False, "updated_at": datetime.now(UTC)}}
         )
         return bool(result.modified_count > 0)
+
+
+class CommentRepo:
+    """Comment repository for MongoDB operations."""
+
+    def __init__(self, db: AsyncIOMotorDatabase[Any]) -> None:
+        self.db = db
+        self.collection = db.comment_threads
+
+    async def get_thread(self, reference_type: str, reference_id: str) -> CommentThread | None:
+        """Get comment thread for a specific reference."""
+        doc = await self.collection.find_one({"reference_type": reference_type, "reference_id": reference_id})
+        if not doc:
+            return None
+        return self._to_model(doc)
+
+    async def add_comment(self, reference_type: str, reference_id: str, comment: Comment) -> CommentThread:
+        """Create thread if doesn't exist, add comment atomically.
+        Uses $push for comments array, $inc for comment_count.
+        """
+        now = datetime.now(UTC)
+
+        # Use upsert to create thread if it doesn't exist
+        await self.collection.update_one(
+            {"reference_type": reference_type, "reference_id": reference_id},
+            {
+                "$push": {"comments": comment.model_dump(mode="json")},
+                "$inc": {"comment_count": 1},
+                "$set": {"updated_at": now},
+                "$setOnInsert": {
+                    "id": str(ObjectId()),
+                    "reference_type": reference_type,
+                    "reference_id": reference_id,
+                    "created_at": now,
+                    "reported_count": 0,
+                },
+            },
+            upsert=True,
+        )
+
+        # Get the updated thread
+        doc = await self.collection.find_one({"reference_type": reference_type, "reference_id": reference_id})
+        if not doc:
+            raise RuntimeError("Failed to retrieve thread after update")
+        return self._to_model(doc)
+
+    async def add_reply(self, thread_id: str, parent_id: str, reply: Comment) -> bool:
+        """Add reply to specific parent comment.
+        Uses $push with array filters to add reply to correct parent.
+        Single-level only - enforced by checking parent is top-level.
+        """
+        if not ObjectId.is_valid(thread_id):
+            return False
+
+        now = datetime.now(UTC)
+
+        # First verify parent comment exists and is not itself a reply
+        # (i.e., it's in the top-level comments array, not in someone's replies)
+        thread_doc = await self.collection.find_one({"_id": ObjectId(thread_id), "comments.id": parent_id})
+        if not thread_doc:
+            return False
+
+        # Find the parent comment and verify it's not a reply itself
+        parent_comment = None
+        for comment in thread_doc.get("comments", []):
+            if comment["id"] == parent_id:
+                parent_comment = comment
+                break
+
+        if not parent_comment:
+            return False
+
+        # Update the thread by adding reply to the parent's replies array
+        result = await self.collection.update_one(
+            {"_id": ObjectId(thread_id), "comments.id": parent_id},
+            {
+                "$push": {"comments.$.replies": reply.model_dump(mode="json")},
+                "$inc": {"comment_count": 1},
+                "$set": {"updated_at": now},
+            },
+        )
+
+        return bool(result.modified_count > 0)
+
+    async def report_comment(self, thread_id: str, comment_id: str, user_id: int) -> bool:
+        """Mark comment as reported.
+        Uses $set with array filters, $inc for reported_count.
+        """
+        if not ObjectId.is_valid(thread_id):
+            return False
+
+        now = datetime.now(UTC)
+
+        # Try to update a top-level comment first
+        result = await self.collection.update_one(
+            {"_id": ObjectId(thread_id), "comments.id": comment_id},
+            {
+                "$set": {
+                    "comments.$.reported": True,
+                    "comments.$.reported_by": user_id,
+                    "comments.$.reported_at": now,
+                },
+                "$inc": {"reported_count": 1},
+            },
+        )
+
+        if result.modified_count > 0:
+            return True
+
+        # If not found in top-level, try replies using array filters
+        # We need to use arrayFilters to update nested replies
+        result = await self.collection.update_one(
+            {"_id": ObjectId(thread_id), "comments.replies.id": comment_id},
+            {
+                "$set": {
+                    "comments.$[comment].replies.$[reply].reported": True,
+                    "comments.$[comment].replies.$[reply].reported_by": user_id,
+                    "comments.$[comment].replies.$[reply].reported_at": now,
+                },
+                "$inc": {"reported_count": 1},
+            },
+            array_filters=[{"comment.replies.id": comment_id}, {"reply.id": comment_id}],
+        )
+
+        return bool(result.modified_count > 0)
+
+    async def get_threads_with_reported(self) -> list[CommentThread]:
+        """Find threads where reported_count > 0."""
+        cursor = self.collection.find({"reported_count": {"$gt": 0}}).sort("reported_count", -1)
+        threads: list[CommentThread] = []
+        async for doc in cursor:
+            threads.append(self._to_model(doc))
+        return threads
+
+    def _to_model(self, doc: dict[str, Any]) -> CommentThread:
+        """Convert MongoDB document to CommentThread model."""
+        doc = dict(doc)
+        doc["id"] = str(doc.pop("_id"))
+        return CommentThread.model_validate(doc)
