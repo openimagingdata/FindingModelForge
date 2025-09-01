@@ -10,7 +10,7 @@ import pytest
 from starlette.testclient import TestClient
 
 from app.cache import RedisCache
-from app.database import Database, DraftRepo
+from app.database import CommentRepo, Database, DraftRepo, UserRepo
 from app.dependencies import (
     CreationServiceDep,
     DraftServiceDep,
@@ -32,14 +32,18 @@ class TestServiceDependencyInjection:
         # Mock dependencies
         mock_index = MagicMock()
         mock_cache = MagicMock(spec=RedisCache)
+        mock_comment_repo = MagicMock(spec=CommentRepo)
+        mock_user_repo = MagicMock(spec=UserRepo)
 
         # Call the dependency function
-        service = get_finding_model_service(mock_index, mock_cache)
+        service = get_finding_model_service(mock_index, mock_cache, mock_comment_repo, mock_user_repo)
 
         # Verify service is created correctly
         assert isinstance(service, FindingModelService)
         assert service.index is mock_index
         assert service.cache is mock_cache
+        assert service.comment_repo is mock_comment_repo
+        assert service.user_repo is mock_user_repo
 
     def test_get_creation_service(self):
         """Test that get_creation_service creates a CreationService."""
@@ -59,13 +63,17 @@ class TestServiceDependencyInjection:
         """Test that get_draft_service creates a DraftService."""
         # Mock dependencies
         mock_draft_repo = MagicMock(spec=DraftRepo)
+        mock_comment_repo = MagicMock(spec=CommentRepo)
+        mock_user_repo = MagicMock(spec=UserRepo)
 
         # Call the dependency function
-        service = get_draft_service(mock_draft_repo)
+        service = get_draft_service(mock_draft_repo, mock_comment_repo, mock_user_repo)
 
         # Verify service is created correctly
         assert isinstance(service, DraftService)
         assert service.draft_repo is mock_draft_repo
+        assert service.comment_repo is mock_comment_repo
+        assert service.user_repo is mock_user_repo
 
 
 class TestServiceDependenciesInRouters:
@@ -230,7 +238,7 @@ class TestCircularImportPrevention:
     def test_services_can_be_instantiated_independently(self):
         """Test that services can be created without FastAPI context."""
         from app.cache import RedisCache
-        from app.database import Database, DraftRepo
+        from app.database import CommentRepo, Database, DraftRepo, UserRepo
         from app.services.creation_service import CreationService
         from app.services.draft_service import DraftService
         from app.services.finding_model_service import FindingModelService
@@ -240,11 +248,13 @@ class TestCircularImportPrevention:
         mock_cache = MagicMock(spec=RedisCache)
         mock_database = MagicMock(spec=Database)
         mock_draft_repo = MagicMock(spec=DraftRepo)
+        mock_comment_repo = MagicMock(spec=CommentRepo)
+        mock_user_repo = MagicMock(spec=UserRepo)
 
         # Should be able to create services directly
-        finding_service = FindingModelService(mock_index, mock_cache)
+        finding_service = FindingModelService(mock_index, mock_cache, mock_comment_repo, mock_user_repo)
         creation_service = CreationService(mock_index, mock_database)
-        draft_service = DraftService(mock_draft_repo)
+        draft_service = DraftService(mock_draft_repo, mock_comment_repo, mock_user_repo)
 
         # Verify they're the correct types
         assert isinstance(finding_service, FindingModelService)

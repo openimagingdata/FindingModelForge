@@ -12,7 +12,8 @@
       "mcp__serena__list_dir",
       "mcp__filesystem__write_file",
       "Bash(uv add:*)",
-      "Bash(task test-unit)"
+      "Bash(task test-unit)",
+      "mcp__serena__replace_symbol_body"
     ],
     "deny": [],
     "ask": [],

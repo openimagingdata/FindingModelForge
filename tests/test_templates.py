@@ -3,8 +3,6 @@
 from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
-import pytest
-
 from app.templates import humanize_time, templates
 
 
@@ -25,7 +23,7 @@ class TestHumanizeTime:
 
         five_minutes_ago = mock_now - timedelta(minutes=5)
         result = humanize_time(five_minutes_ago)
-        
+
         # Should contain "5 minutes ago" or similar
         assert "ago" in result
         assert "minute" in result
@@ -39,7 +37,7 @@ class TestHumanizeTime:
 
         two_hours_ago = mock_now - timedelta(hours=2)
         result = humanize_time(two_hours_ago)
-        
+
         # Should contain "2 hours ago" or similar
         assert "ago" in result
         assert "hour" in result
@@ -53,7 +51,7 @@ class TestHumanizeTime:
 
         yesterday = mock_now - timedelta(days=1)
         result = humanize_time(yesterday)
-        
+
         # Should contain "day ago" or similar
         assert "ago" in result
         assert "day" in result
@@ -68,7 +66,7 @@ class TestHumanizeTime:
         # Create timezone-naive datetime
         naive_dt = datetime(2024, 1, 1, 11, 55, 0)  # 5 minutes ago, but naive
         result = humanize_time(naive_dt)
-        
+
         # Should not raise any timezone-related errors
         assert isinstance(result, str)
         assert "ago" in result
@@ -83,7 +81,7 @@ class TestHumanizeTime:
         # Create timezone-aware datetime
         aware_dt = datetime(2024, 1, 1, 11, 55, 0, tzinfo=UTC)
         result = humanize_time(aware_dt)
-        
+
         assert isinstance(result, str)
         assert "ago" in result
 
@@ -96,7 +94,7 @@ class TestHumanizeTime:
 
         future_dt = mock_now + timedelta(hours=2)
         result = humanize_time(future_dt)
-        
+
         # Should handle future times gracefully
         assert isinstance(result, str)
         # Humanize library should say "in 2 hours" or similar
@@ -147,14 +145,14 @@ class TestTemplatesInitialization:
         """Test that the filter can be accessed through the templates environment."""
         # This tests the integration - that the filter is properly bound
         filter_func = templates.env.filters["humanize"]
-        
+
         # Test it with a simple case
         test_dt = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
         with patch("app.templates.datetime") as mock_datetime:
             mock_now = datetime(2024, 1, 1, 12, 5, 0, tzinfo=UTC)  # 5 minutes later
             mock_datetime.now.return_value = mock_now
             mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
-            
+
             result = filter_func(test_dt)
             assert isinstance(result, str)
             assert "ago" in result

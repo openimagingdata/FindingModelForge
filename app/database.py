@@ -169,13 +169,19 @@ class DraftRepo:
 
         return await self._load_by_oid(oid)
 
-    async def get_draft(self, draft_id: str, user_id: int) -> FindingModelDraft | None:
-        """Return draft if owned by user; otherwise None."""
+    async def get_draft(self, draft_id: str, user_id: int | None = None) -> FindingModelDraft | None:
+        """Get draft, optionally checking ownership when user_id is provided."""
         try:
             oid = ObjectId(draft_id)
         except Exception:
             return None
-        doc = await self.collection.find_one({"_id": oid, "user_id": user_id})
+
+        # Build query based on whether ownership check is needed
+        query: dict[str, Any] = {"_id": oid}
+        if user_id is not None:
+            query["user_id"] = user_id
+
+        doc = await self.collection.find_one(query)
         if not doc:
             return None
         return self._to_model(doc)

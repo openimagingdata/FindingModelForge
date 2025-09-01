@@ -4,25 +4,38 @@ from datetime import UTC, datetime
 from typing import Any
 
 import humanize
+from fastapi import HTTPException
 from findingmodel import FindingModelFull
 
 from app.config import logger
-from app.database import DraftRepo
+from app.database import CommentRepo, DraftRepo, UserRepo
+from app.models import Comment, CommentThread, User
 from app.utils.slug import slugify
 
 from . import AuthorizationError, NotFoundError
+from .comment_helpers import (
+    add_to_comment_index,
+    check_rate_limit,
+    get_blacklist_user_ids,
+    validate_comment_content,
+    validate_parent_comment,
+)
 
 
 class DraftService:
     """Service for draft operations and display formatting."""
 
-    def __init__(self, draft_repo: DraftRepo) -> None:
+    def __init__(self, draft_repo: DraftRepo, comment_repo: CommentRepo, user_repo: UserRepo) -> None:
         """Initialize with required dependencies.
 
         Args:
             draft_repo: Repository for draft data access
+            comment_repo: Repository for comment operations
+            user_repo: Repository for user operations
         """
         self.draft_repo = draft_repo
+        self.comment_repo = comment_repo
+        self.user_repo = user_repo
 
     async def get_drafts_for_user(self, user_id: int) -> list[dict[str, Any]]:
         """Get formatted drafts list for a user.
@@ -81,18 +94,17 @@ class DraftService:
 
         Raises:
             NotFoundError: If draft not found
-            AuthorizationError: If user doesn't own draft
+            AuthorizationError: If user doesn't own draft (when user_id provided)
         """
         try:
-            if user_id is not None:
-                draft = await self.draft_repo.get_draft(draft_id, user_id)
-                if not draft:
+            draft = await self.draft_repo.get_draft(draft_id, user_id)
+            if not draft:
+                if user_id is not None:
+                    # With user_id, not found means either doesn't exist or not owned
                     raise NotFoundError(f"Draft {draft_id} not found")
-            else:
-                # For admin/system access without ownership check
-                # We need a different method - for now just raise error
-                raise AuthorizationError("User ID required for draft access")
-
+                else:
+                    # Without user_id, not found means doesn't exist
+                    raise NotFoundError(f"Draft {draft_id} not found")
             return draft
         except Exception as e:
             if isinstance(e, NotFoundError | AuthorizationError):
@@ -232,20 +244,20 @@ class DraftService:
             logger.warning(f"Error finding latest draft by name '{name}' for user {user_id}: {e}")
             return None
 
-    async def get_draft(self, draft_id: str, user_id: int) -> Any | None:
-        """Get draft by ID for a user.
+    async def get_draft(self, draft_id: str, user_id: int | None = None) -> Any | None:
+        """Get draft by ID, optionally checking ownership.
 
         Args:
             draft_id: Draft ID to retrieve
-            user_id: User ID for ownership verification
+            user_id: User ID for ownership verification (optional)
 
         Returns:
-            Draft if found and owned by user, None otherwise
+            Draft if found (and owned by user if user_id provided), None otherwise
         """
         try:
             return await self.draft_repo.get_draft(draft_id, user_id)
         except Exception as e:
-            logger.warning(f"Error getting draft {draft_id} for user {user_id}: {e}")
+            logger.warning(f"Error getting draft {draft_id}: {e}")
             return None
 
     async def save_draft(
@@ -317,3 +329,110 @@ class DraftService:
             "has_generated": has_generated,
             "attribute_names": self.extract_attribute_names_from_generated_json(getattr(draft, "generated_json", None)),
         }
+
+    async def get_comments_for_draft(self, draft_id: str) -> CommentThread | None:
+        """Get comment thread for a draft.
+
+        Args:
+            draft_id: The draft ObjectId
+
+        Returns:
+            CommentThread if exists, None otherwise
+        """
+        return await self.comment_repo.get_thread("draft", draft_id)
+
+    async def add_comment_to_draft(
+        self, draft_id: str, user: User, content: str, parent_id: str | None = None
+    ) -> Comment:
+        """Add comment to draft with validations.
+
+        IMPORTANT: Only submitted drafts can have comments!
+
+        Args:
+            draft_id: The draft ObjectId
+            user: Current user object
+            content: Comment content (1-2000 chars)
+            parent_id: Optional parent comment ID for replies
+
+        Returns:
+            The created Comment
+
+        Raises:
+            HTTPException: If draft is not submitted, rate limited, etc.
+        """
+        # 1. CRITICAL: Check draft status (no ownership check for comments)
+        draft = await self.get_draft(draft_id)  # No user_id - anyone can comment on submitted drafts
+        if not draft:
+            raise HTTPException(404, "Draft not found")
+        if draft.status == "draft":
+            raise HTTPException(403, "Cannot comment on draft models")
+
+        # 2. Check if user is blacklisted
+        blacklist = get_blacklist_user_ids()
+        if user.id in blacklist:
+            raise HTTPException(403, "User is not allowed to comment")
+
+        # 3. Validate content
+        content = validate_comment_content(content)
+
+        # 4. Check rate limit
+        user_doc = await self.user_repo.collection.find_one({"id": user.id})
+        if not user_doc or not check_rate_limit(user_doc):
+            raise HTTPException(429, "Rate limit exceeded. Please wait before commenting again.")
+
+        # 5. If parent_id provided, validate it's a top-level comment
+        if parent_id:
+            thread = await self.comment_repo.get_thread("draft", draft_id)
+            if thread:
+                validate_parent_comment(thread, parent_id)
+
+        # 6. Create comment
+        comment = Comment(
+            user_id=user.id,
+            user_name=user.login,
+            user_avatar_url=user.avatar_url,
+            content=content,
+            created_at=datetime.now(UTC),
+        )
+
+        # 7. Add to thread
+        if parent_id:
+            # thread is guaranteed to exist because validate_parent_comment would have raised if not
+            thread = await self.comment_repo.get_thread("draft", draft_id)
+            if thread:
+                await self.comment_repo.add_reply(thread.id, parent_id, comment)
+        else:
+            await self.comment_repo.add_comment("draft", draft_id, comment)
+
+        # 8. Track in user's comment index
+        finding_name = draft.name if draft else draft_id
+        await add_to_comment_index(self.user_repo, user.id, finding_name, "draft", draft_id, comment.id)
+
+        return comment
+
+    async def report_draft_comment(self, draft_id: str, comment_id: str, user_id: int) -> None:
+        """Report a comment on a draft.
+
+        Args:
+            draft_id: The draft ObjectId
+            comment_id: The comment to report
+            user_id: The user reporting
+
+        Raises:
+            HTTPException: If comment not found or already reported by user
+        """
+        thread = await self.comment_repo.get_thread("draft", draft_id)
+        if not thread:
+            raise HTTPException(404, "Comment thread not found")
+
+        # Check if already reported by this user
+        for comment in thread.comments:
+            if comment.id == comment_id and comment.reported_by == user_id:
+                raise HTTPException(400, "You have already reported this comment")
+            for reply in comment.replies:
+                if reply.id == comment_id and reply.reported_by == user_id:
+                    raise HTTPException(400, "You have already reported this comment")
+
+        success = await self.comment_repo.report_comment(thread.id, comment_id, user_id)
+        if not success:
+            raise HTTPException(404, "Comment not found")

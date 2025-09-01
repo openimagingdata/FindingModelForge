@@ -7,13 +7,26 @@ from unittest.mock import AsyncMock, MagicMock
 from fastapi.testclient import TestClient
 
 from app.auth import get_current_user
-from app.database import Database, DraftRepo, UserRepo
+from app.database import CommentRepo, Database, DraftRepo, UserRepo
 from app.models import FindingModelDraft, FindingModelInputs, User
 
 
 def _client_with_state(session_json: str) -> TestClient:
     db = Database()
+
+    # Mock UserRepo
     db.user_repo = MagicMock(spec=UserRepo)
+    db.user_repo.collection = MagicMock()
+    db.user_repo.collection.find_one = AsyncMock()
+    db.user_repo.collection.update_one = AsyncMock()
+
+    # Mock CommentRepo
+    db.comment_repo = MagicMock(spec=CommentRepo)
+    db.comment_repo.get_thread = AsyncMock()
+    db.comment_repo.add_comment = AsyncMock()
+    db.comment_repo.add_reply = AsyncMock()
+    db.comment_repo.report_comment = AsyncMock()
+
     db.finding_index = MagicMock()
     db.draft_repo = MagicMock(spec=DraftRepo)
     db.people = {}
@@ -50,7 +63,7 @@ def _client_with_state(session_json: str) -> TestClient:
     from app.services.draft_service import DraftService
 
     def get_mock_draft_service() -> DraftService:
-        return DraftService(db.draft_repo)
+        return DraftService(draft_repo=db.draft_repo, comment_repo=db.comment_repo, user_repo=db.user_repo)
 
     app.dependency_overrides[get_current_user] = mock_user
     app.dependency_overrides[get_draft_service] = get_mock_draft_service

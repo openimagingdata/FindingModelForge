@@ -7,6 +7,7 @@ import pytest
 from findingmodel import FindingModelFull
 
 from app.cache import RedisCache
+from app.database import CommentRepo, UserRepo
 from app.services import NotFoundError
 from app.services.finding_model_service import FindingModelService
 
@@ -33,9 +34,39 @@ class TestFindingModelService:
         return cache
 
     @pytest.fixture
-    def service(self, mock_index: MagicMock, mock_cache: MagicMock) -> FindingModelService:
+    def mock_comment_repo(self) -> MagicMock:
+        """Mock comment repository."""
+        repo = MagicMock(spec=CommentRepo)
+        repo.get_thread = AsyncMock()
+        repo.add_comment = AsyncMock()
+        repo.add_reply = AsyncMock()
+        repo.report_comment = AsyncMock()
+        return repo
+
+    @pytest.fixture
+    def mock_user_repo(self) -> MagicMock:
+        """Mock user repository."""
+        repo = MagicMock(spec=UserRepo)
+        repo.collection = MagicMock()
+        repo.collection.find_one = AsyncMock()
+        repo.collection.update_one = AsyncMock()
+        return repo
+
+    @pytest.fixture
+    def service(
+        self,
+        mock_index: MagicMock,
+        mock_cache: MagicMock,
+        mock_comment_repo: MagicMock,
+        mock_user_repo: MagicMock,
+    ) -> FindingModelService:
         """FindingModelService instance with mocked dependencies."""
-        return FindingModelService(index=mock_index, cache=mock_cache)
+        return FindingModelService(
+            index=mock_index,
+            cache=mock_cache,
+            comment_repo=mock_comment_repo,
+            user_repo=mock_user_repo,
+        )
 
     @pytest.fixture
     def sample_finding_models(self) -> list[dict[str, str]]:

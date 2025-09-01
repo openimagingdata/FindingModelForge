@@ -1,31 +1,46 @@
 """Finding Model service with browsing, caching, and slug operations."""
 
 import re
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
 
 import httpx
+from fastapi import HTTPException
 from findingmodel import FindingModelFull
 
 from app.cache import RedisCache
 from app.config import logger, settings
+from app.database import CommentRepo, UserRepo
+from app.models import Comment, CommentThread, User
 from app.utils.slug import generate_slug_variants, normalize_for_cache, slugify
 
 from . import NotFoundError
+from .comment_helpers import (
+    add_to_comment_index,
+    check_rate_limit,
+    get_blacklist_user_ids,
+    validate_comment_content,
+    validate_parent_comment,
+)
 
 
 class FindingModelService:
     """Service for finding model operations including browsing and caching."""
 
-    def __init__(self, index: Any, cache: RedisCache) -> None:
+    def __init__(self, index: Any, cache: RedisCache, comment_repo: CommentRepo, user_repo: UserRepo) -> None:
         """Initialize with required dependencies.
 
         Args:
             index: FindingModel index for database queries
             cache: Redis cache for performance optimization
+            comment_repo: Repository for comment operations
+            user_repo: Repository for user operations
         """
         self.index = index
         self.cache = cache
+        self.comment_repo = comment_repo
+        self.user_repo = user_repo
 
     async def list_models(
         self, search: str | None = None, page: int = 1, per_page: int = 20
@@ -245,3 +260,118 @@ class FindingModelService:
             logger.debug(f"Cached finding model '{raw_slug}' (cache key: {cache_slug}) for future requests")
 
         return finding_model, index_entry
+
+    async def get_by_oifm_id(self, oifm_id: str) -> Any:
+        """Get finding model by OIFM ID.
+
+        Args:
+            oifm_id: The finding model ID
+
+        Returns:
+            Index entry if found, None otherwise
+        """
+        try:
+            return await self.index.index_collection.find_one({"oifm_id": oifm_id})
+        except Exception:
+            return None
+
+    async def get_comments_for_model(self, oifm_id: str) -> CommentThread | None:
+        """Get comment thread for a finding model.
+
+        Args:
+            oifm_id: The finding model ID
+
+        Returns:
+            CommentThread if exists, None otherwise
+        """
+        return await self.comment_repo.get_thread("finding_model", oifm_id)
+
+    async def add_comment_to_model(
+        self, oifm_id: str, user: User, content: str, parent_id: str | None = None
+    ) -> Comment:
+        """Add comment to finding model with validations.
+
+        Args:
+            oifm_id: The finding model ID
+            user: Current user object
+            content: Comment content (1-2000 chars)
+            parent_id: Optional parent comment ID for replies
+
+        Returns:
+            The created Comment
+
+        Raises:
+            ValueError: If content invalid
+            HTTPException: If rate limited, blacklisted, or parent invalid
+        """
+        # 1. Check if user is blacklisted
+        blacklist = get_blacklist_user_ids()
+        if user.id in blacklist:
+            raise HTTPException(403, "User is not allowed to comment")
+
+        # 2. Validate content
+        content = validate_comment_content(content)
+
+        # 3. Check rate limit
+        user_doc = await self.user_repo.collection.find_one({"id": user.id})
+        if not user_doc or not check_rate_limit(user_doc):
+            raise HTTPException(429, "Rate limit exceeded. Please wait before commenting again.")
+
+        # 4. If parent_id provided, validate it's a top-level comment
+        if parent_id:
+            thread = await self.comment_repo.get_thread("finding_model", oifm_id)
+            if thread:
+                validate_parent_comment(thread, parent_id)
+
+        # 5. Create comment
+        comment = Comment(
+            user_id=user.id,
+            user_name=user.login,
+            user_avatar_url=user.avatar_url,
+            content=content,
+            created_at=datetime.now(UTC),
+        )
+
+        # 6. Add to thread
+        if parent_id:
+            # thread is guaranteed to exist because validate_parent_comment would have raised if not
+            thread = await self.comment_repo.get_thread("finding_model", oifm_id)
+            if thread:
+                await self.comment_repo.add_reply(thread.id, parent_id, comment)
+        else:
+            await self.comment_repo.add_comment("finding_model", oifm_id, comment)
+
+        # 7. Track in user's comment index
+        # Get finding model name for display
+        model = await self.get_by_oifm_id(oifm_id)
+        finding_name = model.get("name") if model else oifm_id
+        await add_to_comment_index(self.user_repo, user.id, finding_name, "finding_model", oifm_id, comment.id)
+
+        return comment
+
+    async def report_model_comment(self, oifm_id: str, comment_id: str, user_id: int) -> None:
+        """Report a comment on a finding model.
+
+        Args:
+            oifm_id: The finding model ID
+            comment_id: The comment to report
+            user_id: The user reporting
+
+        Raises:
+            HTTPException: If comment not found or already reported by user
+        """
+        thread = await self.comment_repo.get_thread("finding_model", oifm_id)
+        if not thread:
+            raise HTTPException(404, "Comment thread not found")
+
+        # Check if already reported by this user
+        for comment in thread.comments:
+            if comment.id == comment_id and comment.reported_by == user_id:
+                raise HTTPException(400, "You have already reported this comment")
+            for reply in comment.replies:
+                if reply.id == comment_id and reply.reported_by == user_id:
+                    raise HTTPException(400, "You have already reported this comment")
+
+        success = await self.comment_repo.report_comment(thread.id, comment_id, user_id)
+        if not success:
+            raise HTTPException(404, "Comment not found")

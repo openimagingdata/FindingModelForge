@@ -17,7 +17,7 @@ from findingmodel import FindingInfo
 
 from app.auth import get_current_user
 from app.cache import RedisCache
-from app.database import Database, DraftRepo, UserRepo
+from app.database import CommentRepo, Database, DraftRepo, UserRepo
 from app.dependencies import FindingModelCreationSession
 from app.main import app
 from app.models import FindingModelDraft, FindingModelInputs, User
@@ -59,7 +59,20 @@ def mock_cache() -> MagicMock:
 def mock_database() -> Database:
     """Create a mock database with repositories."""
     db = Database()
+
+    # Mock UserRepo
     db.user_repo = MagicMock(spec=UserRepo)
+    db.user_repo.collection = MagicMock()
+    db.user_repo.collection.find_one = AsyncMock()
+    db.user_repo.collection.update_one = AsyncMock()
+
+    # Mock CommentRepo
+    db.comment_repo = MagicMock(spec=CommentRepo)
+    db.comment_repo.get_thread = AsyncMock()
+    db.comment_repo.add_comment = AsyncMock()
+    db.comment_repo.add_reply = AsyncMock()
+    db.comment_repo.report_comment = AsyncMock()
+
     db.finding_index = MagicMock()
     db.people = {}
     db.organizations = {}
@@ -147,7 +160,11 @@ def authenticated_client(
 
     # Override draft service dependency to use our mocked database
     def get_mock_draft_service() -> DraftService:
-        return DraftService(mock_database.draft_repo)
+        return DraftService(
+            draft_repo=mock_database.draft_repo,
+            comment_repo=mock_database.comment_repo,
+            user_repo=mock_database.user_repo,
+        )
 
     app.dependency_overrides[get_draft_service] = get_mock_draft_service
 

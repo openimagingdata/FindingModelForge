@@ -1,11 +1,14 @@
 """Helper functions for comment system business logic."""
 
+import re
 from datetime import UTC, datetime, timedelta
 from os import environ
 from typing import Any, Literal
 
+from fastapi import HTTPException
+
 from app.database import UserRepo
-from app.models import Comment, UserCommentEntry
+from app.models import Comment, CommentThread, UserCommentEntry
 
 
 def check_rate_limit(user_doc: dict[str, Any]) -> bool:
@@ -97,4 +100,66 @@ def is_reply_allowed(comment: Comment) -> bool:
     # Simplified for now - will be enforced at UI level
     # In the future, we'll need to know if this comment is already nested
     # within another comment's replies array
+    return True
+
+
+def validate_comment_content(content: str) -> str:
+    """Validate and sanitize comment content.
+
+    Args:
+        content: Raw comment content
+
+    Returns:
+        Cleaned content
+
+    Raises:
+        ValueError: If content is invalid
+    """
+    if not content or not content.strip():
+        raise ValueError("Comment content cannot be empty")
+
+    content = content.strip()
+
+    if len(content) < 1:
+        raise ValueError("Comment must be at least 1 character")
+    if len(content) > 2000:
+        raise ValueError("Comment cannot exceed 2000 characters")
+
+    # Basic XSS prevention - remove script tags and event handlers
+    # This is a simple sanitization. In production, use a library like bleach
+    content = re.sub(r"<script[^>]*>.*?</script>", "", content, flags=re.IGNORECASE | re.DOTALL)
+    content = re.sub(r'on\w+\s*=\s*["\'][^"\']*["\']', "", content, flags=re.IGNORECASE)
+
+    return content
+
+
+def validate_parent_comment(thread: CommentThread, parent_id: str) -> bool:
+    """Verify parent comment exists and is top-level.
+
+    Args:
+        thread: The comment thread
+        parent_id: ID of the parent comment
+
+    Returns:
+        True if valid
+
+    Raises:
+        HTTPException: If parent not found or is not top-level
+    """
+    # Find parent in top-level comments
+    parent_found = False
+    for comment in thread.comments:
+        if comment.id == parent_id:
+            parent_found = True
+            break
+
+    if not parent_found:
+        # Check if parent is a reply (not allowed)
+        for comment in thread.comments:
+            for reply in comment.replies:
+                if reply.id == parent_id:
+                    raise HTTPException(400, "Cannot reply to a reply. Only single-level threading is allowed.")
+        # Parent not found at all
+        raise HTTPException(404, "Parent comment not found")
+
     return True

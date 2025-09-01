@@ -428,9 +428,33 @@ def validate_parent_comment(thread: CommentThread, parent_id: str) -> bool:
 
 **Testing**: Unit tests for each validation function
 
-## Phase 7: Testing (Step 18-20)
+## Phase 7: Testing (Step 18-21)
 
-### Step 18: Unit Tests
+### Step 18: Refactor Duplicated Comment Logic
+
+**File**: Create new `app/services/base_comment_service.py` or refactor existing services
+**Standards**: DRY principle, single responsibility
+
+**Refactor**:
+- Extract duplicated comment validation and creation logic from `FindingModelService.add_comment_to_model()` and `DraftService.add_comment_to_draft()`
+- Create shared base methods or a mixin for:
+  - Blacklist checking
+  - Content validation
+  - Rate limit checking
+  - Parent comment validation
+  - Comment creation and thread addition
+  - User comment index tracking
+
+**Options**:
+1. Create a `BaseCommentService` class that both services inherit from
+2. Create a `CommentMixin` with shared methods
+3. Extract to a single `CommentService` that handles both entity types
+
+**Testing**: Ensure existing tests still pass after refactoring
+
+---
+
+### Step 19: Unit Tests
 
 **Files**: Create new test files **Standards**: Follow patterns in tests/CLAUDE.md
 
@@ -444,7 +468,7 @@ def validate_parent_comment(thread: CommentThread, parent_id: str) -> bool:
 
 ---
 
-### Step 19: Integration Tests
+### Step 20: Integration Tests
 
 **File**: `tests/test_comments_integration.py` **Standards**: Mark with `@pytest.mark.integration`
 
@@ -461,7 +485,7 @@ Test full flow:
 
 ---
 
-### Step 20: Playwright UI Tests
+### Step 21: Playwright UI Tests
 
 **File**: `tests/test_comments_playwright.py` **Standards**: Use test-auth system (user ID 999999)
 
@@ -477,7 +501,7 @@ Test scenarios:
 
 **Run**: `uv run python scripts/run_playwright_tests.py tests/test_comments_playwright.py`
 
-## Phase 8: CLI Tool (Step 21)
+## Phase 8: CLI Tool (Step 22)
 
 ### Step 21: Create Moderation Script
 

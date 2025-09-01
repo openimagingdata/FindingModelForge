@@ -239,11 +239,13 @@ CreationSessionDep = Annotated[FindingModelCreationSession, Depends(get_creation
 # ===== SERVICE LAYER DEPENDENCIES =====
 
 
-def get_finding_model_service(index: FindingIndexDep, cache: CacheDep) -> FindingModelService:
+def get_finding_model_service(
+    index: FindingIndexDep, cache: CacheDep, comment_repo: CommentRepoDep, user_repo: UserRepoDep
+) -> FindingModelService:
     """Get FindingModelService instance."""
     from .services.finding_model_service import FindingModelService
 
-    return FindingModelService(index, cache)
+    return FindingModelService(index, cache, comment_repo, user_repo)
 
 
 FindingModelServiceDep = Annotated["FindingModelService", Depends(get_finding_model_service)]
@@ -259,11 +261,11 @@ def get_creation_service(index: FindingIndexDep, database: DatabaseDep) -> Creat
 CreationServiceDep = Annotated["CreationService", Depends(get_creation_service)]
 
 
-def get_draft_service(draft_repo: DraftRepoDep) -> DraftService:
+def get_draft_service(draft_repo: DraftRepoDep, comment_repo: CommentRepoDep, user_repo: UserRepoDep) -> DraftService:
     """Get DraftService instance."""
     from .services.draft_service import DraftService
 
-    return DraftService(draft_repo)
+    return DraftService(draft_repo, comment_repo, user_repo)
 
 
 DraftServiceDep = Annotated["DraftService", Depends(get_draft_service)]

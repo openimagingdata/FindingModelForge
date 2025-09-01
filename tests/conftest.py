@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
-from app.database import Database, DraftRepo, UserRepo
+from app.database import CommentRepo, Database, DraftRepo, UserRepo
 from app.main import app
 from app.models import FindingModelDraft, FindingModelInputs
 
@@ -19,7 +19,18 @@ def client() -> TestClient:
 
     # Create a mock UserRepo
     mock_user_repo = MagicMock(spec=UserRepo)
+    mock_user_repo.collection = MagicMock()
+    mock_user_repo.collection.find_one = AsyncMock()
+    mock_user_repo.collection.update_one = AsyncMock()
     mock_database.user_repo = mock_user_repo
+
+    # Create a mock CommentRepo
+    mock_comment_repo = MagicMock(spec=CommentRepo)
+    mock_comment_repo.get_thread = AsyncMock()
+    mock_comment_repo.add_comment = AsyncMock()
+    mock_comment_repo.add_reply = AsyncMock()
+    mock_comment_repo.report_comment = AsyncMock()
+    mock_database.comment_repo = mock_comment_repo
 
     # Create a mock DraftRepo with minimal async behavior
     mock_draft_repo = MagicMock(spec=DraftRepo)

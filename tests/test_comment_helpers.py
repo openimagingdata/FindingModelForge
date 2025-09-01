@@ -8,7 +8,7 @@ from uuid import uuid4
 import pytest
 
 from app.database import UserRepo
-from app.models import Comment, UserCommentEntry
+from app.models import Comment
 from app.services.comment_helpers import (
     add_to_comment_index,
     check_rate_limit,
@@ -172,22 +172,20 @@ class TestAddToCommentIndex:
             mock_datetime.now.return_value = mock_now
             mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
-            await add_to_comment_index(
-                mock_user_repo, user_id, finding_name, reference_type, reference_id, comment_id
-            )
+            await add_to_comment_index(mock_user_repo, user_id, finding_name, reference_type, reference_id, comment_id)
 
             # Verify update_one was called with correct parameters
             mock_user_repo.collection.update_one.assert_called_once()
             call_args = mock_user_repo.collection.update_one.call_args
-            
+
             # Check filter
             assert call_args[0][0] == {"id": user_id}
-            
+
             # Check update operation
             update_op = call_args[0][1]
             assert "$push" in update_op
             assert "comment_index" in update_op["$push"]
-            
+
             # Check the entry data
             entry_data = update_op["$push"]["comment_index"]
             assert entry_data["reference_type"] == reference_type
@@ -211,9 +209,7 @@ class TestAddToCommentIndex:
             mock_datetime.now.return_value = mock_now
             mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
-            await add_to_comment_index(
-                mock_user_repo, user_id, finding_name, reference_type, reference_id, comment_id
-            )
+            await add_to_comment_index(mock_user_repo, user_id, finding_name, reference_type, reference_id, comment_id)
 
             # Verify the entry was created with correct reference_type
             call_args = mock_user_repo.collection.update_one.call_args
@@ -330,6 +326,6 @@ class TestIsReplyAllowed:
         sample_comment.reported = True
         sample_comment.reported_by = 99999
         sample_comment.reported_at = datetime.now(UTC)
-        
+
         result = is_reply_allowed(sample_comment)
         assert result is True  # Placeholder returns True regardless

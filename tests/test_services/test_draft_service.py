@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.database import DraftRepo
+from app.database import CommentRepo, DraftRepo, UserRepo
 from app.models import FindingModelDraft, FindingModelInputs
 from app.services import NotFoundError
 from app.services.draft_service import DraftService
@@ -25,9 +25,30 @@ class TestDraftService:
         return repo
 
     @pytest.fixture
-    def service(self, mock_draft_repo: MagicMock) -> DraftService:
+    def mock_comment_repo(self) -> MagicMock:
+        """Mock comment repository."""
+        repo = MagicMock(spec=CommentRepo)
+        repo.get_thread = AsyncMock()
+        repo.add_comment = AsyncMock()
+        repo.add_reply = AsyncMock()
+        repo.report_comment = AsyncMock()
+        return repo
+
+    @pytest.fixture
+    def mock_user_repo(self) -> MagicMock:
+        """Mock user repository."""
+        repo = MagicMock(spec=UserRepo)
+        repo.collection = MagicMock()
+        repo.collection.find_one = AsyncMock()
+        repo.collection.update_one = AsyncMock()
+        return repo
+
+    @pytest.fixture
+    def service(
+        self, mock_draft_repo: MagicMock, mock_comment_repo: MagicMock, mock_user_repo: MagicMock
+    ) -> DraftService:
         """DraftService instance with mocked dependencies."""
-        return DraftService(draft_repo=mock_draft_repo)
+        return DraftService(draft_repo=mock_draft_repo, comment_repo=mock_comment_repo, user_repo=mock_user_repo)
 
     @pytest.fixture
     def sample_draft(self) -> FindingModelDraft:

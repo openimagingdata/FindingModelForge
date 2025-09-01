@@ -10,7 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.auth import get_current_user
-from app.database import Database, DraftRepo
+from app.database import CommentRepo, Database, DraftRepo, UserRepo
 from app.dependencies import SessionManager
 from app.main import app
 from app.models import User
@@ -85,6 +85,20 @@ def _client_with_cache_session(session_json: str) -> TestClient:
     db = Database()
     db.finding_index = MagicMock()
     db.draft_repo = MagicMock(spec=DraftRepo)
+
+    # Add CommentRepo mock
+    db.comment_repo = MagicMock(spec=CommentRepo)
+    db.comment_repo.get_thread = AsyncMock()
+    db.comment_repo.add_comment = AsyncMock()
+    db.comment_repo.add_reply = AsyncMock()
+    db.comment_repo.report_comment = AsyncMock()
+
+    # Add UserRepo mock
+    db.user_repo = MagicMock(spec=UserRepo)
+    db.user_repo.collection = MagicMock()
+    db.user_repo.collection.find_one = AsyncMock()
+    db.user_repo.collection.update_one = AsyncMock()
+
     app.state.database = db
 
     # Auth: override to return a mock user

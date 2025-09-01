@@ -10,7 +10,7 @@ from findingmodel import FindingInfo
 
 from app.auth import get_current_user
 from app.cache import RedisCache
-from app.database import Database, DraftRepo, UserRepo
+from app.database import CommentRepo, Database, DraftRepo, UserRepo
 from app.dependencies import FindingModelCreationSession, SessionManager
 from app.main import app
 from app.models import FindingModelDraft, FindingModelInputs, User
@@ -33,8 +33,22 @@ def authenticated_client_with_cache(mock_cache: MagicMock) -> Generator[TestClie
     """Create an authenticated test client with mocked cache."""
     # Mock database
     mock_database = Database()
+
+    # Mock UserRepo
     mock_user_repo = MagicMock(spec=UserRepo)
+    mock_user_repo.collection = MagicMock()
+    mock_user_repo.collection.find_one = AsyncMock()
+    mock_user_repo.collection.update_one = AsyncMock()
     mock_database.user_repo = mock_user_repo
+
+    # Mock CommentRepo
+    mock_comment_repo = MagicMock(spec=CommentRepo)
+    mock_comment_repo.get_thread = AsyncMock()
+    mock_comment_repo.add_comment = AsyncMock()
+    mock_comment_repo.add_reply = AsyncMock()
+    mock_comment_repo.report_comment = AsyncMock()
+    mock_database.comment_repo = mock_comment_repo
+
     mock_database.finding_index = MagicMock()
 
     # Mock DraftRepo (required dependency) with minimal async behavior
