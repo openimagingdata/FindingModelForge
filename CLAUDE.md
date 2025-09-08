@@ -207,6 +207,20 @@ Simple Pages:
 - **Draft autosave and resume functionality** - Seamless workflow interruption/resumption
 - **Submit and lock mechanism** - Prevent edits after submission
 
+### Comment System
+
+**Collaborative feedback and discussion system:**
+
+- **Scope**: Comments on submitted drafts and public finding models only
+- **Single-level threading**: Comments can have replies (no nested replies)
+- **Rate limiting**: 3 comments per minute per user with 429 enforcement
+- **Report functionality**: Flag inappropriate content with double-report prevention
+- **User comment index**: Track comment history for user profiles
+- **Authentication required**: Only logged-in users can comment
+- **Character limits**: 1-2000 characters with real-time validation
+- **HTMX dynamic updates**: Comments update without page reload
+- **MongoDB architecture**: Separate `comment_threads` collection for clean separation
+
 ### Draft Management System
 
 **Complete lifecycle with unified approach:**
@@ -250,6 +264,15 @@ Simple Pages:
 3. **Follow conventions** - Match existing code style
 4. **Document complex logic** - But avoid obvious comments
 5. **Test critical paths** - Especially auth and data operations
+
+## Technical Debt Management
+
+When deferring features or identifying technical debt:
+
+- Document issues in `tasks/technical_debt.md`
+- Include priority, effort estimate, and proposed solution
+- Reference the technical debt file in relevant code comments
+- Review and address high-priority items before new features
 
 ## Critical Planning Rule
 

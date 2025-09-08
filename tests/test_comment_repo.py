@@ -339,7 +339,13 @@ class TestCommentRepo:
             assert mock_db.comment_threads.update_one.call_count == 1
 
             call_args = mock_db.comment_threads.update_one.call_args
-            assert call_args[0][0] == {"_id": mock_objectid_instance, "comments.id": comment_id}
+            expected_filter = {
+                "_id": mock_objectid_instance,
+                "comments": {
+                    "$elemMatch": {"id": comment_id, "$or": [{"reported": {"$exists": False}}, {"reported": False}]}
+                },
+            }
+            assert call_args[0][0] == expected_filter
 
             update_ops = call_args[0][1]
             assert "$set" in update_ops
@@ -379,7 +385,13 @@ class TestCommentRepo:
 
             # Check second call (reply update)
             second_call_args = mock_db.comment_threads.update_one.call_args_list[1]
-            assert second_call_args[0][0] == {"_id": mock_objectid_instance, "comments.replies.id": comment_id}
+            expected_reply_filter = {
+                "_id": mock_objectid_instance,
+                "comments.replies": {
+                    "$elemMatch": {"id": comment_id, "$or": [{"reported": {"$exists": False}}, {"reported": False}]}
+                },
+            }
+            assert second_call_args[0][0] == expected_reply_filter
 
             update_ops = second_call_args[0][1]
             assert "$set" in update_ops
@@ -391,7 +403,11 @@ class TestCommentRepo:
             assert "array_filters" in second_call_args[1]
             array_filters = second_call_args[1]["array_filters"]
             assert {"comment.replies.id": comment_id} in array_filters
-            assert {"reply.id": comment_id} in array_filters
+            expected_reply_filter = {
+                "reply.id": comment_id,
+                "$or": [{"reply.reported": {"$exists": False}}, {"reply.reported": False}],
+            }
+            assert expected_reply_filter in array_filters
 
     async def test_report_comment_invalid_thread_id(self, comment_repo: CommentRepo, mock_db: MagicMock):
         """Test report_comment with invalid thread ID."""

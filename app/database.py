@@ -12,8 +12,17 @@ from findingmodel.index import Index
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from pymongo.errors import DuplicateKeyError
 
-from .config import settings
-from .models import Comment, CommentThread, FindingModelDraft, FindingModelInputs, User, UserCreate, UserUpdate
+from .config import logger, settings
+from .models import (
+    Comment,
+    CommentThread,
+    FindingModelDraft,
+    FindingModelInputs,
+    User,
+    UserCommentEntry,
+    UserCreate,
+    UserUpdate,
+)
 
 
 class Database:
@@ -336,6 +345,15 @@ class UserRepo:
         )
         return bool(result.modified_count > 0)
 
+    async def add_comment_to_index(self, user_id: int, entry: UserCommentEntry) -> None:
+        """Add a comment entry to user's comment index for rate limiting.
+
+        Args:
+            user_id: GitHub user ID
+            entry: UserCommentEntry with comment details
+        """
+        await self.collection.update_one({"id": user_id}, {"$push": {"comment_index": entry.model_dump(mode="json")}})
+
 
 class CommentRepo:
     """Comment repository for MongoDB operations."""
@@ -407,21 +425,31 @@ class CommentRepo:
         if not parent_comment:
             return False
 
+        # Log the reply data being saved
+        reply_data = reply.model_dump(mode="json")
+        logger.info(
+            f"Saving reply to MongoDB: reply_id={reply_data.get('id')}, "
+            + f"user_id={reply_data.get('user_id')}, parent_id={parent_id}",
+        )
+
         # Update the thread by adding reply to the parent's replies array
         result = await self.collection.update_one(
             {"_id": ObjectId(thread_id), "comments.id": parent_id},
             {
-                "$push": {"comments.$.replies": reply.model_dump(mode="json")},
+                "$push": {"comments.$.replies": reply_data},
                 "$inc": {"comment_count": 1},
                 "$set": {"updated_at": now},
             },
         )
 
-        return bool(result.modified_count > 0)
+        success = bool(result.modified_count > 0)
+        logger.info(f"Reply save result: success={success}, modified_count={result.modified_count}")
+        return success
 
     async def report_comment(self, thread_id: str, comment_id: str, user_id: int) -> bool:
         """Mark comment as reported.
         Uses $set with array filters, $inc for reported_count.
+        Only reports comments that haven't been reported yet.
         """
         if not ObjectId.is_valid(thread_id):
             return False
@@ -429,8 +457,14 @@ class CommentRepo:
         now = datetime.now(UTC)
 
         # Try to update a top-level comment first
+        # Only update if comment exists and hasn't been reported yet
         result = await self.collection.update_one(
-            {"_id": ObjectId(thread_id), "comments.id": comment_id},
+            {
+                "_id": ObjectId(thread_id),
+                "comments": {
+                    "$elemMatch": {"id": comment_id, "$or": [{"reported": {"$exists": False}}, {"reported": False}]}
+                },
+            },
             {
                 "$set": {
                     "comments.$.reported": True,
@@ -446,8 +480,14 @@ class CommentRepo:
 
         # If not found in top-level, try replies using array filters
         # We need to use arrayFilters to update nested replies
+        # Only update if reply exists and hasn't been reported yet
         result = await self.collection.update_one(
-            {"_id": ObjectId(thread_id), "comments.replies.id": comment_id},
+            {
+                "_id": ObjectId(thread_id),
+                "comments.replies": {
+                    "$elemMatch": {"id": comment_id, "$or": [{"reported": {"$exists": False}}, {"reported": False}]}
+                },
+            },
             {
                 "$set": {
                     "comments.$[comment].replies.$[reply].reported": True,
@@ -456,7 +496,10 @@ class CommentRepo:
                 },
                 "$inc": {"reported_count": 1},
             },
-            array_filters=[{"comment.replies.id": comment_id}, {"reply.id": comment_id}],
+            array_filters=[
+                {"comment.replies.id": comment_id},
+                {"reply.id": comment_id, "$or": [{"reply.reported": {"$exists": False}}, {"reply.reported": False}]},
+            ],
         )
 
         return bool(result.modified_count > 0)

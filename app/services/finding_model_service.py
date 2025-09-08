@@ -304,6 +304,9 @@ class FindingModelService:
             ValueError: If content invalid
             HTTPException: If rate limited, blacklisted, or parent invalid
         """
+        # Log user details for debugging
+        logger.info(f"Adding comment for user: id={user.id}, login={user.login}")
+
         # 1. Check if user is blacklisted
         blacklist = get_blacklist_user_ids()
         if user.id in blacklist:
@@ -313,9 +316,9 @@ class FindingModelService:
         content = validate_comment_content(content)
 
         # 3. Check rate limit
-        user_doc = await self.user_repo.collection.find_one({"id": user.id})
-        if not user_doc or not check_rate_limit(user_doc):
-            raise HTTPException(429, "Rate limit exceeded. Please wait before commenting again.")
+        allowed, error_msg = check_rate_limit(user)
+        if not allowed:
+            raise HTTPException(429, error_msg)
 
         # 4. If parent_id provided, validate it's a top-level comment
         if parent_id:
@@ -332,13 +335,18 @@ class FindingModelService:
             created_at=datetime.now(UTC),
         )
 
+        # Log comment details before saving
+        logger.info(f"Created comment object: id={comment.id}, user_id={comment.user_id}, parent_id={parent_id}")
+
         # 6. Add to thread
         if parent_id:
             # thread is guaranteed to exist because validate_parent_comment would have raised if not
             thread = await self.comment_repo.get_thread("finding_model", oifm_id)
             if thread:
+                logger.info(f"Adding reply to thread: thread_id={thread.id}, parent_id={parent_id}")
                 await self.comment_repo.add_reply(thread.id, parent_id, comment)
         else:
+            logger.info(f"Adding top-level comment for model: {oifm_id}")
             await self.comment_repo.add_comment("finding_model", oifm_id, comment)
 
         # 7. Track in user's comment index

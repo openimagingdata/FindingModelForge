@@ -98,10 +98,15 @@ PLAYWRIGHT_HEADLESS=false uv run pytest tests/ui/test_profile.py::TestDraftCards
 
 - `authenticate_user()`: Handle test-auth login
 - `seed_draft()` / `seed_drafts()`: Create test drafts in database
-- `generate_valid_generated_json()`: Create valid FindingModel JSON
+- `generate_valid_generated_json()`: Create valid FindingModel JSON **(CRITICAL - see note below)**
 - `verify_model_display()`: Verify model display elements
 - `verify_no_console_errors()`: Check for frontend errors
 - `wait_for_htmx_to_settle()`: Wait for HTMX operations to complete
+
+**⚠️ IMPORTANT**: When creating test drafts that need to display finding models (especially for comment functionality),
+you MUST use `generate_valid_generated_json()` to create valid FindingModelFull JSON. Simple JSON objects will NOT pass
+backend validation. See [tests/CLAUDE.md](../CLAUDE.md#generating-valid-draft-data-for-ui-tests) for detailed
+documentation on why this is critical and how to use it correctly.
 
 ## Test Data Management
 

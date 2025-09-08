@@ -319,6 +319,118 @@ The `FindingModelService` will:
 - ✅ Time display: Use `humanize` library for relative timestamps
 - ✅ Comment IDs: Each comment has unique ID for reply references
 
+## Implementation Status
+
+### ✅ Completed (September 7, 2025)
+
+#### Core Functionality
+
+- **Data models**: Comment and CommentThread models fully implemented
+- **Database repository**: CommentRepo with all CRUD operations
+- **Service layer**: Comment helpers and integration with finding model service
+- **HTMX endpoints**: All 4 primary endpoints (add comment/reply for models and drafts)
+- **UI components**: Complete comment_thread.html template with Alpine.js interactions
+- **Single-level replies**: Full reply system with proper nesting
+- **Authentication checks**: Comments require authenticated users
+- **Draft restrictions**: Only submitted drafts can have comments
+- **Empty states**: Different messages for authenticated vs anonymous users
+- **Comment persistence**: Comments stored in separate collection
+- **UI Testing**: 14 comprehensive Playwright tests covering all core functionality
+
+#### UI Features Working
+
+- Comment display with user avatars and timestamps
+- Character counting (X/2000) with Alpine.js
+- Form validation (disabled submit when empty/over limit)
+- Dynamic content updates via HTMX
+- Reply forms with show/hide functionality
+- Chronological ordering (oldest first)
+- Proper indentation for replies
+
+### ✅ Recently Completed Features (December 7, 2024)
+
+#### High Priority (COMPLETED)
+
+1. **Rate limiting** ✅ - Fully implemented and enforced in endpoints
+2. **Blacklist checking** ⏳ - Helper exists, not yet enforced
+3. **User comment index** ✅ - Populating after each comment creation
+
+#### Medium Priority (COMPLETED)
+
+4. **Report functionality** ✅ - Working with double-report prevention
+5. **Markdown rendering** - Add markdown-to-HTML conversion
+6. **Time humanization** - Use humanize library for "2 hours ago" format
+
+#### Low Priority (Future enhancements)
+
+7. **Moderation CLI tool** - Admin script for managing reported comments
+8. **Sort order toggle** - Allow newest-first ordering
+9. **Comment permalinks** - Direct links to specific comments
+10. **Pagination** - For threads with >100 comments
+
+### 📋 Remaining Implementation Tasks
+
+#### 1. Blacklist Checking (Next Priority)
+
+**Implementation Details:**
+
+```python
+# Helper already exists in app/services/comment_helpers.py
+def get_blacklist_user_ids() -> list[int]:
+    """Get list of blacklisted user IDs from environment."""
+    blacklist_str = os.getenv("COMMENT_BLACKLIST_USER_IDS", "")
+    if not blacklist_str:
+        return []
+    try:
+        return [int(uid.strip()) for uid in blacklist_str.split(",") if uid.strip()]
+    except ValueError:
+        return []
+
+# Add to routers before comment creation:
+if current_user.id in get_blacklist_user_ids():
+    if request.headers.get("HX-Request") == "true":
+        error_html = '<div class="p-4 text-red-600 bg-red-50">You are not allowed to comment.</div>'
+        return HTMLResponse(content=error_html, status_code=403)
+    else:
+        raise HTTPException(status_code=403, detail="User blocked from commenting")
+```
+
+#### 2. Markdown Support (Next Feature)
+
+**Implementation Details:**
+
+```python
+# Install markdown library
+uv add markdown2
+
+# In comment display template
+import markdown2
+
+def render_comment_content(content: str) -> str:
+    """Convert markdown to HTML with sanitization."""
+    # Basic sanitization - strip dangerous tags
+    html = markdown2.markdown(content, extras=["code-friendly"])
+    # Additional sanitization with bleach or similar
+    return sanitized_html
+```
+
+### 📋 Future Enhancements (Lower Priority)
+
+3. **Blacklist Checking** (After rate limiting)
+   - Read COMMENT_BLACKLIST_USER_IDS environment variable
+   - Parse as comma-separated list of GitHub user IDs
+   - Check before allowing comment creation
+
+4. **User Experience Polish**
+   - Add markdown rendering for rich text
+   - Implement humanized timestamps
+   - Create moderation CLI tool
+
+5. **Advanced Features**
+   - Add comment permalinks
+   - Implement sort order toggle
+   - Add pagination for large threads
+
 ## Important Implementation Notes
 
 ### Process Lessons Learned

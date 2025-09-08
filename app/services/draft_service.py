@@ -376,9 +376,9 @@ class DraftService:
         content = validate_comment_content(content)
 
         # 4. Check rate limit
-        user_doc = await self.user_repo.collection.find_one({"id": user.id})
-        if not user_doc or not check_rate_limit(user_doc):
-            raise HTTPException(429, "Rate limit exceeded. Please wait before commenting again.")
+        allowed, error_msg = check_rate_limit(user)
+        if not allowed:
+            raise HTTPException(429, error_msg)
 
         # 5. If parent_id provided, validate it's a top-level comment
         if parent_id:

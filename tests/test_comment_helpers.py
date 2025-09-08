@@ -8,7 +8,7 @@ from uuid import uuid4
 import pytest
 
 from app.database import UserRepo
-from app.models import Comment
+from app.models import Comment, User, UserCommentEntry
 from app.services.comment_helpers import (
     add_to_comment_index,
     check_rate_limit,
@@ -27,8 +27,18 @@ class TestCheckRateLimit:
         mock_datetime.now.return_value = mock_now
         mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
-        user_doc = {}
-        assert check_rate_limit(user_doc) is True
+        user = User(
+            id=12345,
+            login="testuser",
+            avatar_url="https://example.com/avatar.jpg",
+            is_active=True,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            comment_index=[],
+        )
+        allowed, error_msg = check_rate_limit(user)
+        assert allowed is True
+        assert error_msg == ""
 
     @patch("app.services.comment_helpers.datetime")
     def test_empty_comment_index_allows_comment(self, mock_datetime):
@@ -37,8 +47,18 @@ class TestCheckRateLimit:
         mock_datetime.now.return_value = mock_now
         mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
-        user_doc = {"comment_index": []}
-        assert check_rate_limit(user_doc) is True
+        user = User(
+            id=12345,
+            login="testuser",
+            avatar_url="https://example.com/avatar.jpg",
+            is_active=True,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            comment_index=[],
+        )
+        allowed, error_msg = check_rate_limit(user)
+        assert allowed is True
+        assert error_msg == ""
 
     @patch("app.services.comment_helpers.datetime")
     def test_old_comments_allows_new_comment(self, mock_datetime):
@@ -49,14 +69,41 @@ class TestCheckRateLimit:
 
         # Comments from 2 minutes ago
         old_time = mock_now - timedelta(seconds=120)
-        user_doc = {
-            "comment_index": [
-                {"created_at": old_time, "comment_id": "1"},
-                {"created_at": old_time, "comment_id": "2"},
-                {"created_at": old_time, "comment_id": "3"},
-            ]
-        }
-        assert check_rate_limit(user_doc) is True
+        comment_entries = [
+            UserCommentEntry(
+                reference_type="finding_model",
+                reference_id="oifm_1",
+                finding_name="Test Finding",
+                comment_id="1",
+                created_at=old_time,
+            ),
+            UserCommentEntry(
+                reference_type="finding_model",
+                reference_id="oifm_2",
+                finding_name="Test Finding",
+                comment_id="2",
+                created_at=old_time,
+            ),
+            UserCommentEntry(
+                reference_type="finding_model",
+                reference_id="oifm_3",
+                finding_name="Test Finding",
+                comment_id="3",
+                created_at=old_time,
+            ),
+        ]
+        user = User(
+            id=12345,
+            login="testuser",
+            avatar_url="https://example.com/avatar.jpg",
+            is_active=True,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            comment_index=comment_entries,
+        )
+        allowed, error_msg = check_rate_limit(user)
+        assert allowed is True
+        assert error_msg == ""
 
     @patch("app.services.comment_helpers.datetime")
     def test_two_recent_comments_allows_third(self, mock_datetime):
@@ -67,13 +114,34 @@ class TestCheckRateLimit:
 
         # Comments from 30 seconds ago
         recent_time = mock_now - timedelta(seconds=30)
-        user_doc = {
-            "comment_index": [
-                {"created_at": recent_time, "comment_id": "1"},
-                {"created_at": recent_time, "comment_id": "2"},
-            ]
-        }
-        assert check_rate_limit(user_doc) is True
+        comment_entries = [
+            UserCommentEntry(
+                reference_type="finding_model",
+                reference_id="oifm_1",
+                finding_name="Test Finding",
+                comment_id="1",
+                created_at=recent_time,
+            ),
+            UserCommentEntry(
+                reference_type="finding_model",
+                reference_id="oifm_2",
+                finding_name="Test Finding",
+                comment_id="2",
+                created_at=recent_time,
+            ),
+        ]
+        user = User(
+            id=12345,
+            login="testuser",
+            avatar_url="https://example.com/avatar.jpg",
+            is_active=True,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            comment_index=comment_entries,
+        )
+        allowed, error_msg = check_rate_limit(user)
+        assert allowed is True
+        assert error_msg == ""
 
     @patch("app.services.comment_helpers.datetime")
     def test_three_recent_comments_blocks_fourth(self, mock_datetime):
@@ -84,14 +152,41 @@ class TestCheckRateLimit:
 
         # Comments from 30 seconds ago
         recent_time = mock_now - timedelta(seconds=30)
-        user_doc = {
-            "comment_index": [
-                {"created_at": recent_time, "comment_id": "1"},
-                {"created_at": recent_time, "comment_id": "2"},
-                {"created_at": recent_time, "comment_id": "3"},
-            ]
-        }
-        assert check_rate_limit(user_doc) is False
+        comment_entries = [
+            UserCommentEntry(
+                reference_type="finding_model",
+                reference_id="oifm_1",
+                finding_name="Test Finding",
+                comment_id="1",
+                created_at=recent_time,
+            ),
+            UserCommentEntry(
+                reference_type="finding_model",
+                reference_id="oifm_2",
+                finding_name="Test Finding",
+                comment_id="2",
+                created_at=recent_time,
+            ),
+            UserCommentEntry(
+                reference_type="finding_model",
+                reference_id="oifm_3",
+                finding_name="Test Finding",
+                comment_id="3",
+                created_at=recent_time,
+            ),
+        ]
+        user = User(
+            id=12345,
+            login="testuser",
+            avatar_url="https://example.com/avatar.jpg",
+            is_active=True,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            comment_index=comment_entries,
+        )
+        allowed, error_msg = check_rate_limit(user)
+        assert allowed is False
+        assert error_msg == "Rate limit exceeded. Maximum 3 comments per minute."
 
     @patch("app.services.comment_helpers.datetime")
     def test_mixed_old_and_new_comments_only_counts_recent(self, mock_datetime):
@@ -103,33 +198,80 @@ class TestCheckRateLimit:
         old_time = mock_now - timedelta(seconds=120)
         recent_time = mock_now - timedelta(seconds=30)
 
-        user_doc = {
-            "comment_index": [
-                {"created_at": old_time, "comment_id": "1"},
-                {"created_at": old_time, "comment_id": "2"},
-                {"created_at": recent_time, "comment_id": "3"},
-                {"created_at": recent_time, "comment_id": "4"},
-            ]
-        }
-        assert check_rate_limit(user_doc) is True  # Only 2 recent comments
+        comment_entries = [
+            UserCommentEntry(
+                reference_type="finding_model",
+                reference_id="oifm_1",
+                finding_name="Test Finding",
+                comment_id="1",
+                created_at=old_time,
+            ),
+            UserCommentEntry(
+                reference_type="finding_model",
+                reference_id="oifm_2",
+                finding_name="Test Finding",
+                comment_id="2",
+                created_at=old_time,
+            ),
+            UserCommentEntry(
+                reference_type="finding_model",
+                reference_id="oifm_3",
+                finding_name="Test Finding",
+                comment_id="3",
+                created_at=recent_time,
+            ),
+            UserCommentEntry(
+                reference_type="finding_model",
+                reference_id="oifm_4",
+                finding_name="Test Finding",
+                comment_id="4",
+                created_at=recent_time,
+            ),
+        ]
+        user = User(
+            id=12345,
+            login="testuser",
+            avatar_url="https://example.com/avatar.jpg",
+            is_active=True,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            comment_index=comment_entries,
+        )
+        allowed, error_msg = check_rate_limit(user)
+        assert allowed is True  # Only 2 recent comments
+        assert error_msg == ""
 
     @patch("app.services.comment_helpers.datetime")
     def test_malformed_comment_index_entries_handled_gracefully(self, mock_datetime):
-        """Test that malformed entries in comment_index are handled gracefully."""
+        """Test that valid User objects with valid UserCommentEntry objects work correctly."""
         mock_now = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
         mock_datetime.now.return_value = mock_now
         mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
         recent_time = mock_now - timedelta(seconds=30)
-        user_doc = {
-            "comment_index": [
-                "invalid_string_entry",  # Invalid - not a dict
-                {"comment_id": "2"},  # Missing created_at
-                {"created_at": None, "comment_id": "3"},  # None created_at
-                {"created_at": recent_time, "comment_id": "4"},  # Valid entry
-            ]
-        }
-        assert check_rate_limit(user_doc) is True  # Only 1 valid recent comment
+        # Since we're using proper Pydantic models, malformed data would be caught at validation
+        # This test now verifies that valid entries work correctly
+        comment_entries = [
+            UserCommentEntry(
+                reference_type="finding_model",
+                reference_id="oifm_4",
+                finding_name="Test Finding",
+                comment_id="4",
+                created_at=recent_time,
+            ),
+        ]
+        user = User(
+            id=12345,
+            login="testuser",
+            avatar_url="https://example.com/avatar.jpg",
+            is_active=True,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            comment_index=comment_entries,
+        )
+        allowed, error_msg = check_rate_limit(user)
+        assert allowed is True  # Only 1 valid recent comment
+        assert error_msg == ""
 
     @patch("app.services.comment_helpers.datetime")
     def test_exactly_at_cutoff_time_not_counted(self, mock_datetime):
@@ -139,12 +281,27 @@ class TestCheckRateLimit:
         mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
         cutoff_time = mock_now - timedelta(seconds=60)
-        user_doc = {
-            "comment_index": [
-                {"created_at": cutoff_time, "comment_id": "1"},  # Exactly at cutoff
-            ]
-        }
-        assert check_rate_limit(user_doc) is True  # Not counted as recent
+        comment_entries = [
+            UserCommentEntry(
+                reference_type="finding_model",
+                reference_id="oifm_1",
+                finding_name="Test Finding",
+                comment_id="1",
+                created_at=cutoff_time,  # Exactly at cutoff
+            ),
+        ]
+        user = User(
+            id=12345,
+            login="testuser",
+            avatar_url="https://example.com/avatar.jpg",
+            is_active=True,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            comment_index=comment_entries,
+        )
+        allowed, error_msg = check_rate_limit(user)
+        assert allowed is True  # Not counted as recent
+        assert error_msg == ""
 
 
 class TestAddToCommentIndex:
@@ -154,8 +311,7 @@ class TestAddToCommentIndex:
     def mock_user_repo(self) -> MagicMock:
         """Mock user repository."""
         repo = MagicMock(spec=UserRepo)
-        repo.collection = MagicMock()
-        repo.collection.update_one = AsyncMock()
+        repo.add_comment_to_index = AsyncMock()
         return repo
 
     @pytest.mark.asyncio
@@ -174,26 +330,21 @@ class TestAddToCommentIndex:
 
             await add_to_comment_index(mock_user_repo, user_id, finding_name, reference_type, reference_id, comment_id)
 
-            # Verify update_one was called with correct parameters
-            mock_user_repo.collection.update_one.assert_called_once()
-            call_args = mock_user_repo.collection.update_one.call_args
+            # Verify add_comment_to_index was called with correct parameters
+            mock_user_repo.add_comment_to_index.assert_called_once()
+            call_args = mock_user_repo.add_comment_to_index.call_args
 
-            # Check filter
-            assert call_args[0][0] == {"id": user_id}
+            # Check user_id parameter
+            assert call_args[0][0] == user_id
 
-            # Check update operation
-            update_op = call_args[0][1]
-            assert "$push" in update_op
-            assert "comment_index" in update_op["$push"]
-
-            # Check the entry data
-            entry_data = update_op["$push"]["comment_index"]
-            assert entry_data["reference_type"] == reference_type
-            assert entry_data["reference_id"] == reference_id
-            assert entry_data["finding_name"] == finding_name
-            assert entry_data["comment_id"] == comment_id
-            # created_at is serialized to ISO string in JSON mode
-            assert entry_data["created_at"] == "2024-01-01T12:00:00Z"
+            # Check UserCommentEntry parameter
+            entry = call_args[0][1]
+            assert isinstance(entry, UserCommentEntry)
+            assert entry.reference_type == reference_type
+            assert entry.reference_id == reference_id
+            assert entry.finding_name == finding_name
+            assert entry.comment_id == comment_id
+            assert entry.created_at == mock_now
 
     @pytest.mark.asyncio
     async def test_add_to_comment_index_draft_reference(self, mock_user_repo):
@@ -211,11 +362,21 @@ class TestAddToCommentIndex:
 
             await add_to_comment_index(mock_user_repo, user_id, finding_name, reference_type, reference_id, comment_id)
 
-            # Verify the entry was created with correct reference_type
-            call_args = mock_user_repo.collection.update_one.call_args
-            entry_data = call_args[0][1]["$push"]["comment_index"]
-            assert entry_data["reference_type"] == "draft"
-            assert entry_data["reference_id"] == reference_id
+            # Verify add_comment_to_index was called with correct parameters
+            mock_user_repo.add_comment_to_index.assert_called_once()
+            call_args = mock_user_repo.add_comment_to_index.call_args
+
+            # Check user_id parameter
+            assert call_args[0][0] == user_id
+
+            # Check UserCommentEntry parameter
+            entry = call_args[0][1]
+            assert isinstance(entry, UserCommentEntry)
+            assert entry.reference_type == "draft"
+            assert entry.reference_id == reference_id
+            assert entry.finding_name == finding_name
+            assert entry.comment_id == comment_id
+            assert entry.created_at == mock_now
 
 
 class TestGetBlacklistUserIds:

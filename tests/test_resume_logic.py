@@ -146,10 +146,22 @@ def test_submit_rerenders_full_step5_and_shows_submitted():
 
     db.draft_repo.submit = AsyncMock(side_effect=_submit)  # type: ignore[attr-defined]
 
+    # Mock the get_draft to return the submitted draft for the view page
+    submitted_draft = _draft("submitted")
+    submitted_draft.generated_json = '{"name":"nodule","description":"d"}'
+    db.draft_repo.get_draft = AsyncMock(return_value=submitted_draft)  # type: ignore[attr-defined]
+
     resp = client.post(
         "/drafts/oid123/submit",
         data={"session_id": "sid-y"},
+        follow_redirects=False,  # Don't follow redirects automatically
     )
+    # The submit endpoint now redirects to the view page
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/drafts/oid123?mode=view"
+
+    # Follow the redirect to get the actual page content
+    resp = client.get(resp.headers["location"])
     assert resp.status_code == 200
     text = resp.text.lower()
     assert "submitted" in text

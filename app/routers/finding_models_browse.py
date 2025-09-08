@@ -1,14 +1,17 @@
 # ruff: noqa: B008
 # mypy: disable-error-code="prop-decorator"
+from datetime import UTC, datetime
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Header, HTTPException, Query, Request
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Form, Header, HTTPException, Query, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
 
-from app.auth import OptionalUserDep
+from app.auth import CurrentUserDep, OptionalUserDep
 from app.config import logger
-from app.dependencies import FindingModelServiceDep
+from app.dependencies import CommentRepoDep, FindingModelServiceDep, UserRepoDep
+from app.models import UserCommentEntry
 from app.services import NotFoundError
+from app.services.comment_helpers import check_rate_limit
 from app.templates import templates
 from app.vite_manifest import get_vite_asset_path
 
@@ -45,12 +48,18 @@ async def finding_models(
             # Return detail fragment
             try:
                 finding_model, index_entry = await finding_model_service.get_model_by_slug(slug)
+                # Get the comment thread for this finding model
+                thread = await finding_model_service.get_comments_for_model(finding_model.oifm_id)
                 response = templates.TemplateResponse(
                     request=request,
                     name="fragments/finding_model_detail_content.html",
                     context={
                         "finding_model": finding_model,
                         "index_entry": index_entry,
+                        "thread": thread,
+                        "reference_type": "finding_model",
+                        "reference_id": slug,
+                        "current_user": current_user,
                         "show_json": True,
                         "show_ids": True,
                         "is_htmx_request": True,
@@ -141,11 +150,17 @@ async def finding_models(
         # Preload the detail data for initial render
         try:
             finding_model, index_entry = await finding_model_service.get_model_by_slug(slug)
+            # Get the comment thread for this finding model
+            thread = await finding_model_service.get_comments_for_model(finding_model.oifm_id)
             context.update(
                 {
                     "initial_model": finding_model,
                     "finding_model": finding_model,  # Also add for fragment compatibility
                     "index_entry": index_entry,
+                    "thread": thread,
+                    "reference_type": "finding_model",
+                    "reference_id": slug,
+                    "current_user": current_user,
                     "show_detail": True,
                     "model_slug": slug,
                 }
@@ -229,3 +244,136 @@ async def finding_models(
         )
 
     return templates.TemplateResponse(request=request, name="finding_models_base.html", context=context)
+
+
+@router.post("/finding-models/{slug}/comments", response_model=None)
+async def add_finding_model_comment(
+    slug: str,
+    request: Request,
+    current_user: CurrentUserDep,
+    finding_model_service: FindingModelServiceDep,
+    user_repo: UserRepoDep,
+    content: str = Form(...),
+    parent_comment_id: str | None = Form(None),
+) -> HTMLResponse | RedirectResponse:
+    """Add a comment to a finding model."""
+    try:
+        # Check if user is logged in
+        if not current_user:
+            raise HTTPException(status_code=401, detail="Authentication required")
+
+        # Check rate limit
+        allowed, error_msg = check_rate_limit(current_user)
+        if not allowed:
+            if request.headers.get("HX-Request") == "true":
+                error_html = (
+                    f'<div class="p-4 text-red-600 bg-red-50 dark:bg-red-900 dark:text-red-200 rounded-lg">'
+                    f"{error_msg}</div>"
+                )
+                return HTMLResponse(content=error_html, status_code=429)
+            else:
+                raise HTTPException(status_code=429, detail=error_msg)
+
+        # Get the finding model to get its oifm_id
+        finding_model, _ = await finding_model_service.get_model_by_slug(slug)
+        if not finding_model:
+            raise HTTPException(status_code=404, detail=f"Finding model '{slug}' not found")
+
+        # Add the comment (service handles validation and threading)
+        if parent_comment_id:
+            comment = await finding_model_service.add_comment_to_model(
+                finding_model.oifm_id, current_user, content, parent_comment_id
+            )
+        else:
+            comment = await finding_model_service.add_comment_to_model(finding_model.oifm_id, current_user, content)
+
+        # Update user's comment index for rate limiting
+        await user_repo.add_comment_to_index(
+            user_id=current_user.id,
+            entry=UserCommentEntry(
+                reference_type="finding_model",
+                reference_id=finding_model.oifm_id,
+                finding_name=finding_model.name,
+                comment_id=comment.id,
+                created_at=datetime.now(UTC),
+            ),
+        )
+
+        # Get updated thread
+        thread = await finding_model_service.get_comments_for_model(finding_model.oifm_id)
+
+        # Check if this is an HTMX request
+        is_htmx = request.headers.get("HX-Request") == "true"
+
+        if is_htmx:
+            # Return rendered comment thread for HTMX swap
+            return templates.TemplateResponse(
+                request=request,
+                name="components/comment_thread.html",
+                context={
+                    "thread": thread,
+                    "reference_type": "finding_model",
+                    "reference_id": slug,
+                    "current_user": current_user,
+                },
+            )
+        else:
+            # Non-HTMX: redirect back to the finding model page
+            return RedirectResponse(url=f"/finding-models/{slug}", status_code=303)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error adding comment to finding model '{slug}': {e}")
+        if request.headers.get("HX-Request") == "true":
+            error_html = (
+                f'<div class="p-4 text-red-600 bg-red-50 dark:bg-red-900 dark:text-red-200 rounded-lg">'
+                f"Error adding comment: {str(e)}</div>"
+            )
+            return HTMLResponse(content=error_html, status_code=500)
+        else:
+            raise HTTPException(status_code=500, detail=f"Error adding comment: {str(e)}") from e
+
+
+@router.post("/finding-models/{slug}/comments/{comment_id}/report", response_model=None)
+async def report_model_comment(
+    slug: str,
+    comment_id: str,
+    request: Request,
+    current_user: CurrentUserDep,
+    finding_model_service: FindingModelServiceDep,
+    comment_repo: CommentRepoDep,
+) -> HTMLResponse:
+    """Report a comment on a finding model."""
+    # Check if user is logged in
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    try:
+        # Get the finding model to verify it exists and get its oifm_id
+        finding_model, _ = await finding_model_service.get_model_by_slug(slug)
+        if not finding_model:
+            return HTMLResponse('<div class="alert alert-danger">Model not found</div>', status_code=404)
+
+        # Get the comment thread
+        thread = await comment_repo.get_thread("finding_model", finding_model.oifm_id)
+        if not thread:
+            return HTMLResponse('<div class="alert alert-danger">No comments found</div>', status_code=404)
+
+        # Report the comment
+        success = await comment_repo.report_comment(thread.id, comment_id, current_user.id)
+
+        if success:
+            # Return a success message that replaces the report button
+            success_html = '<span class="text-xs text-green-600 dark:text-green-400">Reported</span>'
+            return HTMLResponse(success_html)
+        else:
+            # Return error message that replaces the button
+            error_html = '<span class="text-xs text-red-600 dark:text-red-400">Already reported</span>'
+            return HTMLResponse(error_html, status_code=400)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error reporting comment on model '{slug}': {e}")
+        error_html = '<span class="text-xs text-red-600 dark:text-red-400">Error</span>'
+        return HTMLResponse(error_html, status_code=500)

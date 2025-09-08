@@ -7,6 +7,11 @@
         {# Include the standard finding model display directly #}
         {% include 'components/finding_model_display.html' %}
 
+        {# Comment Thread - show only for submitted drafts #}
+        {% if draft.status == "submitted" and thread is defined %}
+            {% include 'components/comment_thread.html' %}
+        {% endif %}
+
         {# JSON Data Accordion - show only for submitted drafts or when explicitly allowed #}
         {% if show_json %}
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">

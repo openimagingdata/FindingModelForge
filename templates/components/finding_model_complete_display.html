@@ -5,6 +5,11 @@
         {# Formatted Display #}
         {% include 'components/finding_model_display.html' %}
 
+        {# Comment Thread - show after main content but before JSON accordion #}
+        {% if thread is defined %}
+            {% include 'components/comment_thread.html' %}
+        {% endif %}
+
         {# JSON Data Accordion - show only when allowed (e.g., after submit) #}
         {% if show_json is not defined or show_json %}
             {{ json_accordion(finding_model, "finding-model-json", "JSON Data") }}

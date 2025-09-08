@@ -4,12 +4,15 @@ These tests verify the finding models browsing functionality that was extracted
 from pages.py into finding_models_browse.py during the router refactoring.
 """
 
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 from fastapi.testclient import TestClient
 
-from app.dependencies import get_finding_model_service
+from app.auth import get_current_user
+from app.dependencies import get_comment_repo, get_finding_model_service
 from app.main import app
+from app.models import User
 from app.services import NotFoundError
 
 
@@ -60,6 +63,7 @@ def test_finding_models_detail_valid_slug(client: TestClient) -> None:
     mock_finding_model.oifm_id = None
     mock_index_entry = MagicMock()
     mock_service.get_model_by_slug.return_value = (mock_finding_model, mock_index_entry)
+    mock_service.get_comments_for_model.return_value = None  # No comments for test
 
     app.dependency_overrides[get_finding_model_service] = lambda: mock_service
     try:
@@ -86,6 +90,7 @@ def test_finding_models_detail_htmx_request(client: TestClient) -> None:
     mock_finding_model.oifm_id = None
     mock_index_entry = MagicMock()
     mock_service.get_model_by_slug.return_value = (mock_finding_model, mock_index_entry)
+    mock_service.get_comments_for_model.return_value = None  # No comments for test
 
     app.dependency_overrides[get_finding_model_service] = lambda: mock_service
     try:
@@ -157,6 +162,7 @@ def test_finding_models_service_detail_integration(client: TestClient) -> None:
     mock_finding_model.oifm_id = None
     mock_index_entry = MagicMock()
     mock_service.get_model_by_slug.return_value = (mock_finding_model, mock_index_entry)
+    mock_service.get_comments_for_model.return_value = None  # No comments for test
 
     app.dependency_overrides[get_finding_model_service] = lambda: mock_service
     try:
@@ -212,6 +218,7 @@ def test_finding_models_detail_dynamic_title(client: TestClient) -> None:
     mock_finding_model.oifm_id = None
     mock_index_entry = MagicMock()
     mock_service.get_model_by_slug.return_value = (mock_finding_model, mock_index_entry)
+    mock_service.get_comments_for_model.return_value = None  # No comments for test
 
     app.dependency_overrides[get_finding_model_service] = lambda: mock_service
     try:
@@ -284,5 +291,188 @@ def test_finding_models_url_parameters_coverage(client: TestClient) -> None:
         assert response.status_code == 200
         assert "page=3" in response.headers["HX-Push-Url"]
         assert "per_page=15" in response.headers["HX-Push-Url"]
+    finally:
+        app.dependency_overrides.clear()
+
+
+# ===== COMMENT REPORTING TESTS =====
+
+
+def test_report_comment_success(client: TestClient) -> None:
+    """Test successful comment reporting on finding model."""
+    # Mock the service
+    mock_service = AsyncMock()
+    mock_finding_model = MagicMock()
+    mock_finding_model.oifm_id = "oifm_test123"
+    mock_finding_model.name = "Test Model"
+    mock_service.get_model_by_slug = AsyncMock(return_value=(mock_finding_model, None))
+
+    # Mock comment repo
+    mock_comment_repo = AsyncMock()
+    mock_thread = MagicMock()
+    mock_thread.id = "thread123"
+    mock_comment_repo.get_thread = AsyncMock(return_value=mock_thread)
+    mock_comment_repo.report_comment = AsyncMock(return_value=True)
+
+    # Mock current user
+    now = datetime.now(UTC)
+    mock_user = User(
+        id=999999,
+        login="test_user",
+        name="Test User",
+        email="test@example.com",
+        avatar_url="https://example.com/avatar.jpg",
+        organizations=[],
+        created_at=now,
+        updated_at=now,
+    )
+
+    # Override dependencies
+    app.dependency_overrides[get_finding_model_service] = lambda: mock_service
+    app.dependency_overrides[get_comment_repo] = lambda: mock_comment_repo
+    app.dependency_overrides[get_current_user] = lambda: mock_user
+
+    try:
+        # Make request
+        response = client.post(
+            "/finding-models/test-slug/comments/comment123/report",
+            headers={"HX-Request": "true"},  # Include for HTMX context
+        )
+
+        # Assertions
+        assert response.status_code == 200
+        assert "Reported" in response.text
+
+        # Verify service calls
+        mock_service.get_model_by_slug.assert_called_once_with("test-slug")
+        mock_comment_repo.get_thread.assert_called_once_with("finding_model", "oifm_test123")
+        mock_comment_repo.report_comment.assert_called_once_with("thread123", "comment123", 999999)
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_report_comment_unauthenticated(client: TestClient) -> None:
+    """Test unauthenticated user gets 401."""
+
+    # Override get_current_user to return None (simulate unauthenticated)
+    def mock_get_current_user():
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    app.dependency_overrides[get_current_user] = mock_get_current_user
+
+    try:
+        response = client.post("/finding-models/test-slug/comments/comment123/report")
+        assert response.status_code == 401
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_report_comment_model_not_found(client: TestClient) -> None:
+    """Test invalid slug returns 404."""
+    # Mock the service to return (None, None)
+    mock_service = AsyncMock()
+    mock_service.get_model_by_slug = AsyncMock(return_value=(None, None))
+
+    # Mock current user
+    now = datetime.now(UTC)
+    mock_user = User(
+        id=999999,
+        login="test_user",
+        name="Test User",
+        email="test@example.com",
+        avatar_url="https://example.com/avatar.jpg",
+        organizations=[],
+        created_at=now,
+        updated_at=now,
+    )
+
+    app.dependency_overrides[get_finding_model_service] = lambda: mock_service
+    app.dependency_overrides[get_current_user] = lambda: mock_user
+
+    try:
+        response = client.post("/finding-models/invalid-slug/comments/comment123/report")
+        assert response.status_code == 404
+        assert "Model not found" in response.text
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_report_comment_thread_not_found(client: TestClient) -> None:
+    """Test no comment thread returns 404."""
+    # Mock the service with valid model
+    mock_service = AsyncMock()
+    mock_finding_model = MagicMock()
+    mock_finding_model.oifm_id = "oifm_test123"
+    mock_finding_model.name = "Test Model"
+    mock_service.get_model_by_slug = AsyncMock(return_value=(mock_finding_model, None))
+
+    # Mock comment repo to return None for thread
+    mock_comment_repo = AsyncMock()
+    mock_comment_repo.get_thread = AsyncMock(return_value=None)
+
+    # Mock current user
+    now = datetime.now(UTC)
+    mock_user = User(
+        id=999999,
+        login="test_user",
+        name="Test User",
+        email="test@example.com",
+        avatar_url="https://example.com/avatar.jpg",
+        organizations=[],
+        created_at=now,
+        updated_at=now,
+    )
+
+    app.dependency_overrides[get_finding_model_service] = lambda: mock_service
+    app.dependency_overrides[get_comment_repo] = lambda: mock_comment_repo
+    app.dependency_overrides[get_current_user] = lambda: mock_user
+
+    try:
+        response = client.post("/finding-models/test-slug/comments/comment123/report")
+        assert response.status_code == 404
+        assert "No comments found" in response.text
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_report_comment_already_reported(client: TestClient) -> None:
+    """Test already reported comment returns 400."""
+    # Mock the service
+    mock_service = AsyncMock()
+    mock_finding_model = MagicMock()
+    mock_finding_model.oifm_id = "oifm_test123"
+    mock_finding_model.name = "Test Model"
+    mock_service.get_model_by_slug = AsyncMock(return_value=(mock_finding_model, None))
+
+    # Mock comment repo - report_comment returns False (already reported)
+    mock_comment_repo = AsyncMock()
+    mock_thread = MagicMock()
+    mock_thread.id = "thread123"
+    mock_comment_repo.get_thread = AsyncMock(return_value=mock_thread)
+    mock_comment_repo.report_comment = AsyncMock(return_value=False)
+
+    # Mock current user
+    now = datetime.now(UTC)
+    mock_user = User(
+        id=999999,
+        login="test_user",
+        name="Test User",
+        email="test@example.com",
+        avatar_url="https://example.com/avatar.jpg",
+        organizations=[],
+        created_at=now,
+        updated_at=now,
+    )
+
+    app.dependency_overrides[get_finding_model_service] = lambda: mock_service
+    app.dependency_overrides[get_comment_repo] = lambda: mock_comment_repo
+    app.dependency_overrides[get_current_user] = lambda: mock_user
+
+    try:
+        response = client.post("/finding-models/test-slug/comments/comment123/report")
+        assert response.status_code == 400
+        assert "Already reported" in response.text
     finally:
         app.dependency_overrides.clear()

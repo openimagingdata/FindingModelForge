@@ -190,6 +190,81 @@ async def seed_drafts(
     return {"draft_id": str(draft_oid), "submitted_id": str(submitted_oid)}
 
 
+async def seed_comment(
+    *,
+    reference_type: str,
+    reference_id: str,
+    user_id: int,
+    user_name: str,
+    content: str,
+    parent_id: str | None = None,
+    user_avatar_url: str | None = None,
+) -> str:
+    """Create a test comment in the database.
+
+    Args:
+        reference_type: Type of reference ("finding_model" or "draft")
+        reference_id: ID of the referenced object (OIFM_ID for finding models, ObjectId for drafts)
+        user_id: User ID of comment author
+        user_name: Username of comment author
+        content: Comment content
+        parent_id: Optional parent comment ID for replies
+        user_avatar_url: Optional user avatar URL
+
+    Returns:
+        Comment ID as string
+    """
+    from uuid import uuid4
+
+    client: Any = AsyncIOMotorClient(settings.mongodb_uri)
+    db = client[settings.mongodb_db]
+    col = db["comment_threads"]
+
+    now = datetime.now(UTC)
+    comment_id = str(uuid4())
+
+    # Create the comment document
+    comment_doc = {
+        "id": comment_id,
+        "user_id": user_id,
+        "user_name": user_name,
+        "user_avatar_url": user_avatar_url or f"https://github.com/{user_name}.png?size=40",
+        "content": content,
+        "created_at": now,
+        "replies": [],
+    }
+
+    if parent_id:
+        # Add as a reply to existing comment
+        await col.update_one(
+            {"reference_type": reference_type, "reference_id": reference_id, "comments.id": parent_id},
+            {"$push": {"comments.$.replies": comment_doc}},
+        )
+    else:
+        # Use upsert to match backend logic - thread identified by reference_type/reference_id
+        await col.update_one(
+            {"reference_type": reference_type, "reference_id": reference_id},
+            {
+                "$push": {"comments": comment_doc},
+                "$inc": {"comment_count": 1},
+                "$set": {"updated_at": now},
+                "$setOnInsert": {
+                    "_id": ObjectId(),  # Auto-generate an ObjectId like backend does
+                    "reference_type": reference_type,
+                    "reference_id": reference_id,
+                    "created_at": now,
+                    "reported_count": 0,
+                },
+            },
+            upsert=True,
+        )
+
+    await db.command("ping")  # Ensure write is committed
+    client.close()
+
+    return comment_id
+
+
 async def cleanup_test_data(user_id: int, draft_name: str | None = None) -> None:
     """Clean up test data from the database.
 
@@ -336,16 +411,14 @@ async def navigate_to_profile_page(page: Page) -> None:
 
 
 async def wait_for_htmx_to_settle(page: Page, timeout: int = 5000) -> None:
-    """Wait for HTMX requests to complete.
+    """Wait for HTMX requests to complete and DOM to settle.
 
-    Note: This only waits for HTMX to finish, not for specific content.
-    Prefer wait_for_htmx_swap() which also waits for expected content.
-
-    Args:
-        page: Playwright page instance
-        timeout: Timeout in milliseconds
+    This replaces arbitrary wait_for_timeout() calls with proper HTMX detection.
     """
-    await page.wait_for_function("""() => !document.body.classList.contains('htmx-request')""", timeout=timeout)
+    # Wait for any active HTMX requests to complete
+    await page.wait_for_function("() => !document.body.classList.contains('htmx-request')", timeout=timeout)
+    # Additional small wait for DOM updates
+    await page.wait_for_timeout(100)
 
 
 async def wait_for_htmx_swap(page: Page, expected_selector: str, timeout: int = 10000) -> None:

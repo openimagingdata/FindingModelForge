@@ -27,6 +27,7 @@ The backend follows a layered architecture:
   - `Database` - Connection management
   - `UserRepo` - User CRUD operations
   - `DraftRepo` - Draft management (save, resume, submit)
+  - `CommentRepo` - Comment thread management with atomic operations
 - `cache.py` - Redis cache abstraction with health checks
 
 ### Authentication

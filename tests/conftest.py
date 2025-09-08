@@ -1,10 +1,12 @@
 """Test configuration and fixtures."""
 
+import json
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
+from findingmodel import FindingModelFull
 
 from app.database import CommentRepo, Database, DraftRepo, UserRepo
 from app.main import app
@@ -80,6 +82,28 @@ def client() -> TestClient:
     app.state.cache = mock_cache
 
     return TestClient(app)
+
+
+@pytest.fixture
+def mock_finding_model() -> FindingModelFull:
+    """Create a mock FindingModelFull with valid data from test data.
+
+    Returns:
+        A valid FindingModelFull instance based on abdominal_abscess.fm.json
+    """
+    # Load actual valid finding model data
+    with open("tests/data/abdominal_abscess.fm.json") as f:
+        data = json.load(f)
+
+    # Add required fields for FindingModelFull
+    data["slug"] = "test-slug"
+    data["created_at"] = datetime.now(UTC)
+    data["updated_at"] = datetime.now(UTC)
+    data["version"] = "1.0.0"
+    data["status"] = "published"
+    data["generated_json"] = {}
+
+    return FindingModelFull(**data)
 
 
 @pytest.fixture

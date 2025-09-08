@@ -9,6 +9,51 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
+#### Comment System Implementation (September 2025)
+
+- **Complete comment system** for finding models and drafts with single-level replies
+- **Data models and repository layer**: Comment, CommentThread, UserCommentEntry models with MongoDB operations
+- **Service layer integration**: Comment helpers and finding model/draft service methods
+- **HTMX-powered UI components**: Dynamic comment threads with Alpine.js form validation
+- **Rate limiting**: 3 comments per minute per user with 429 status enforcement
+- **Report functionality**: Users can report inappropriate comments with double-report prevention
+- **User comment index**: Track user comment history for profile features
+- **Authentication requirements**: Only authenticated users can comment
+- **Draft restrictions**: Comments only allowed on submitted drafts (not draft status)
+- **Testing coverage**: 17 UI tests + 8 rate limiting tests + 43 repository tests all passing
+
+#### Comment System Features
+
+- **Single-level threading**: Comments can have replies, but replies cannot have replies
+- **Character validation**: 1-2000 character limit with real-time counter
+- **Empty state handling**: Different messages for authenticated vs anonymous users
+- **Chronological ordering**: Oldest-first display for natural discussion flow
+- **User attribution**: GitHub avatars and usernames displayed with comments
+- **Timestamp display**: Raw UTC timestamps (humanization planned for future)
+- **Report system**: Flag inappropriate content for moderation
+- **Rate limiting enforcement**: Prevents spam with per-user limits
+
+#### Comment System Architecture
+
+- **Separate collection**: `comment_threads` collection for clean separation from content
+- **Polymorphic references**: `reference_type` and `reference_id` for models and drafts
+- **Atomic operations**: MongoDB atomic updates for thread creation and comment addition
+- **Lazy thread creation**: Threads created on first comment to avoid empty documents
+- **Indexed lookups**: Compound index on (reference_type, reference_id) for performance
+- **Moderation support**: `reported_count` index for finding flagged content
+
+### Changed
+
+#### Router Refactoring (September 2025)
+
+- **Enhanced routers with comment endpoints**:
+  - `finding_models_browse.py`: Added `/finding-models/{slug}/comments` and report endpoints
+  - `drafts.py`: Added `/drafts/{id}/comments` and report endpoints with draft validation
+- **Service layer updates**:
+  - `finding_model_service.py`: Integrated comment thread retrieval
+  - `draft_service.py`: Added draft ownership validation for comments
+  - `comment_helpers.py`: Created for rate limiting and blacklist checking
+
 #### Three-Level Index Code Display System
 
 - **Complete index code display functionality** implemented across model, attribute, and value levels (August 27, 2025)

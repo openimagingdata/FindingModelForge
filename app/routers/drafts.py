@@ -6,8 +6,8 @@ import asyncio
 import json
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Form, HTTPException, Request, status
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi import APIRouter, Form, HTTPException, Request, Response, status
+from fastapi.responses import HTMLResponse, RedirectResponse
 
 from bson import ObjectId
 
@@ -23,12 +23,15 @@ from app.config import logger
 from app.templates import templates
 from app.vite_manifest import get_vite_asset_path
 from app.dependencies import (
+    CommentRepoDep,
     CreationSessionDep,
     DatabaseDep,
     DraftServiceDep,
     SessionManagerDep,
+    UserRepoDep,
 )
-from app.models import FindingModelInputs
+from app.models import FindingModelInputs, UserCommentEntry
+from app.services.comment_helpers import check_rate_limit
 import humanize
 
 TEST_USER_ID = 999999
@@ -153,7 +156,7 @@ async def submit_draft(
     session_manager: SessionManagerDep,
     draft_service: DraftServiceDep,
     draft_id: str,
-) -> HTMLResponse:
+) -> Response:
     """Submit a draft (freeze edits)."""
     try:
         draft = await draft_service.submit_draft(draft_id=draft_id, user_id=current_user.id)
@@ -169,33 +172,16 @@ async def submit_draft(
             session.submitted_display_time = None
         await session_manager.update_session(session)
 
-        # Build finding model object for display
-        finding_model: FindingModelFull | None = None
-        if session.final_model:
-            try:
-                finding_model = FindingModelFull.model_validate(session.final_model)
-            except Exception:
-                finding_model = None
-        if finding_model is None and getattr(draft, "generated_json", None):
-            try:
-                finding_model = FindingModelFull.model_validate_json(draft.generated_json)
-            except Exception:
-                finding_model = None
+        # Check if this is an HTMX request
+        is_htmx = request.headers.get("HX-Request") == "true"
 
-        # Render submitted draft content for HTMX swap into #step-container
-        # Note: Use a custom template context since we need #step-container target, not #draft-content
-        template_content = templates.get_template("components/draft_preview_containerless.html").render(
-            request=request,
-            user=current_user,
-            draft=draft,
-            finding_model=finding_model,
-            show_ids=True,
-            show_json=True,
-        )
-
-        # Replace the HTMX target to work with creation workflow
-        html_content = template_content.replace('hx-target="#draft-content"', 'hx-target="#step-container"')
-        return HTMLResponse(content=html_content)
+        if is_htmx:
+            # For HTMX requests, send a redirect header to reload the page
+            # This ensures the comment thread and all elements are properly initialized
+            return HTMLResponse(content="", headers={"HX-Redirect": f"/drafts/{draft_id}?mode=view"})
+        else:
+            # For non-HTMX requests, do a standard redirect
+            return RedirectResponse(url=f"/drafts/{draft_id}?mode=view", status_code=303)
     except Exception as e:
         logger.error("Error submitting draft: {}", e, exc_info=True)
         error_html = templates.get_template("components/error_display.html").render(
@@ -337,6 +323,11 @@ async def unified_draft_page(
             except Exception:
                 finding_model = None
 
+        # Get comment thread only for SUBMITTED drafts
+        thread = None
+        if draft.status == "submitted":
+            thread = await draft_service.get_comments_for_draft(str(draft.id))
+
         # If trying to view a draft without generated JSON, redirect to edit mode
         if mode == "view" and not finding_model and draft.status == "draft":
             # Use HTMX redirect or browser redirect depending on request type
@@ -375,6 +366,10 @@ async def unified_draft_page(
                     user=current_user,
                     draft=draft,
                     finding_model=finding_model,
+                    thread=thread,
+                    reference_type="draft",
+                    reference_id=str(draft.id),
+                    current_user=current_user,
                     show_ids=bool(draft.status == "submitted"),
                     show_json=bool(draft.status == "submitted"),
                 )
@@ -424,6 +419,10 @@ async def unified_draft_page(
                     "title": page_title,
                     "draft": draft,
                     "finding_model": finding_model,
+                    "thread": thread,
+                    "reference_type": "draft",
+                    "reference_id": str(draft.id),
+                    "current_user": current_user,
                     "mode": mode,
                     "can_edit": draft.status == "draft",
                     "show_ids": draft.status == "submitted",
@@ -625,3 +624,137 @@ async def update_draft_and_redirect(
             request=request, error_message=f"Error updating draft: {str(e)}"
         )
         return HTMLResponse(content=error_html, status_code=500)
+
+
+@router.post("/{draft_id}/comments", response_model=None)
+async def add_draft_comment(
+    draft_id: str,
+    request: Request,
+    current_user: CurrentUserDep,
+    draft_service: DraftServiceDep,
+    user_repo: UserRepoDep,
+    content: str = Form(...),
+    parent_comment_id: str | None = Form(None),
+) -> HTMLResponse | RedirectResponse:
+    """Add a comment to a draft (submitted drafts only)."""
+    try:
+        # Check if user is logged in
+        if not current_user:
+            raise HTTPException(status_code=401, detail="Authentication required")
+
+        # Check rate limit
+        allowed, error_msg = check_rate_limit(current_user)
+        if not allowed:
+            if request.headers.get("HX-Request") == "true":
+                error_html = (
+                    f'<div class="p-4 text-red-600 bg-red-50 dark:bg-red-900 dark:text-red-200 rounded-lg">'
+                    f"{error_msg}</div>"
+                )
+                return HTMLResponse(content=error_html, status_code=429)
+            else:
+                raise HTTPException(status_code=429, detail=error_msg)
+
+        # Verify draft exists and is submitted (no user_id check - anyone can comment on submitted drafts)
+        draft = await draft_service.get_draft(draft_id=draft_id)
+        if draft is None:
+            raise HTTPException(status_code=404, detail="Draft not found")
+
+        if draft.status != "submitted":
+            raise HTTPException(status_code=400, detail="Comments can only be added to submitted drafts")
+
+        # Add the comment (service handles validation and threading)
+        if parent_comment_id:
+            comment = await draft_service.add_comment_to_draft(draft_id, current_user, content, parent_comment_id)
+        else:
+            comment = await draft_service.add_comment_to_draft(draft_id, current_user, content)
+
+        # Update user's comment index for rate limiting
+        await user_repo.add_comment_to_index(
+            user_id=current_user.id,
+            entry=UserCommentEntry(
+                reference_type="draft",
+                reference_id=draft_id,
+                finding_name=draft.name,
+                comment_id=comment.id,
+                created_at=datetime.now(UTC),
+            ),
+        )
+
+        # Get updated thread
+        thread = await draft_service.get_comments_for_draft(draft_id)
+
+        # Check if this is an HTMX request
+        is_htmx = request.headers.get("HX-Request") == "true"
+
+        if is_htmx:
+            # Return rendered comment thread for HTMX swap
+            return templates.TemplateResponse(
+                request=request,
+                name="components/comment_thread.html",
+                context={
+                    "thread": thread,
+                    "reference_type": "draft",
+                    "reference_id": draft_id,
+                    "current_user": current_user,
+                },
+            )
+        else:
+            # Non-HTMX: redirect back to the draft page
+            return RedirectResponse(url=f"/drafts/{draft_id}", status_code=303)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error adding comment to draft '{draft_id}': {e}")
+        if request.headers.get("HX-Request") == "true":
+            error_html = (
+                f'<div class="p-4 text-red-600 bg-red-50 dark:bg-red-900 dark:text-red-200 rounded-lg">'
+                f"Error adding comment: {str(e)}</div>"
+            )
+            return HTMLResponse(content=error_html, status_code=500)
+        else:
+            raise HTTPException(status_code=500, detail=f"Error adding comment: {str(e)}") from e
+
+
+@router.post("/{draft_id}/comments/{comment_id}/report", response_model=None)
+async def report_draft_comment(
+    draft_id: str,
+    comment_id: str,
+    request: Request,
+    current_user: CurrentUserDep,
+    draft_service: DraftServiceDep,
+    comment_repo: CommentRepoDep,
+) -> HTMLResponse:
+    """Report a comment on a draft."""
+    # Check if user is logged in
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    try:
+        # Verify draft exists and user can access it
+        draft = await draft_service.get_draft(draft_id, current_user.id)
+        if not draft:
+            return HTMLResponse('<div class="alert alert-danger">Draft not found</div>', status_code=404)
+
+        # Get the comment thread
+        thread = await comment_repo.get_thread("draft", draft_id)
+        if not thread:
+            return HTMLResponse('<div class="alert alert-danger">No comments found</div>', status_code=404)
+
+        # Report the comment
+        success = await comment_repo.report_comment(thread.id, comment_id, current_user.id)
+
+        if success:
+            # Return a success message that replaces the report button
+            success_html = '<span class="text-xs text-green-600 dark:text-green-400">Reported</span>'
+            return HTMLResponse(success_html)
+        else:
+            # Return error message that replaces the button
+            error_html = '<span class="text-xs text-red-600 dark:text-red-400">Already reported</span>'
+            return HTMLResponse(error_html, status_code=400)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error reporting comment on draft '{draft_id}': {e}")
+        error_html = '<span class="text-xs text-red-600 dark:text-red-400">Error</span>'
+        return HTMLResponse(error_html, status_code=500)

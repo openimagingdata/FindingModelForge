@@ -1,0 +1,274 @@
+{# Comment Thread Component - Professional Flowbite Design
+
+   Purpose: Display a complete comment thread for finding models or drafts
+   Variables:
+   - thread: CommentThread object with comments (may be None)
+   - reference_type: "finding_model" or "draft"
+   - reference_id: ID of the model or draft (slug for finding_model, ObjectId for draft)
+   - current_user: User object (may be None for anonymous users)
+
+   Features:
+   - Professional Flowbite-inspired layout with optimal vertical spacing
+   - Displays existing comments with replies (single-level nesting)
+   - Shows user avatars, names, timestamps, and content
+   - Add comment form for logged-in users with expandable textarea
+   - Reply functionality for each comment
+   - Empty state when no comments exist
+   - Character count for comment textarea
+   - HTMX integration for form submission
+#}
+
+{% from "macros/flowbite_components.html" import user_avatar, action_button, form_textarea %}
+
+{# Main comment thread container #}
+<div id="comment-thread-{{ reference_type }}-{{ reference_id }}" class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+
+    {# Comments Header #}
+    <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Comments</h3>
+        {% if thread and thread.comment_count > 0 %}
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+                {{ thread.comment_count }} {{ 'comment' if thread.comment_count == 1 else 'comments' }}
+            </span>
+        {% endif %}
+    </div>
+
+    {# Comments List - Professional layout with divide-y for consistent spacing #}
+    {% if thread and thread.comments %}
+        <div class="divide-y divide-gray-200 dark:divide-gray-700 mb-6">
+            {% for comment in thread.comments %}
+                <article class="py-3"
+                         {% if current_user %}x-data="{ showReplyForm: false, replyContent: '', get replyLength() { return this.replyContent.length; }, get canSubmit() { return this.replyContent.trim().length >= 1 && this.replyContent.length <= 2000; } }"{% endif %}>
+                    <div class="flex gap-3">
+                        {# Avatar #}
+                        {% if comment.user_avatar_url %}
+                            <img class="w-10 h-10 rounded-full object-cover flex-shrink-0" src="{{ comment.user_avatar_url }}" alt="{{ comment.user_name }}">
+                        {% else %}
+                            <div class="w-10 h-10 rounded-full bg-gray-400 dark:bg-gray-500 flex items-center justify-center flex-shrink-0">
+                                <span class="text-white text-sm font-medium">{{ comment.user_name[:1].upper() }}</span>
+                            </div>
+                        {% endif %}
+
+                        {# Content area #}
+                        <div class="flex-1">
+                            {# Header row #}
+                            <div class="flex items-start justify-between mb-1">
+                                <div>
+                                    <span class="font-medium text-sm text-gray-900 dark:text-white">{{ comment.user_name }}</span>
+                                    <span class="text-xs text-gray-500 dark:text-gray-400 ml-2">{{ comment.created_at.strftime('%b %d') }}</span>
+                                </div>
+                                {% if current_user %}
+                                    <div class="flex items-center space-x-2">
+                                        <button type="button"
+                                                @click="showReplyForm = !showReplyForm"
+                                                class="text-gray-400 hover:text-gray-200 dark:text-gray-500 dark:hover:text-gray-300 text-sm transition-colors">
+                                            Reply
+                                        </button>
+                                        {% if current_user.id != comment.user_id %}
+                                            <button
+                                                type="button"
+                                                {% if reference_type == "finding_model" %}
+                                                    hx-post="/finding-models/{{ reference_id }}/comments/{{ comment.id }}/report"
+                                                {% else %}
+                                                    hx-post="/drafts/{{ reference_id }}/comments/{{ comment.id }}/report"
+                                                {% endif %}
+                                                hx-swap="outerHTML"
+                                                hx-confirm="Are you sure you want to report this comment as inappropriate?"
+                                                class="text-gray-400 hover:text-red-600 dark:text-gray-500 dark:hover:text-red-500 transition-colors duration-200"
+                                                title="Report inappropriate content">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"></path>
+                                                </svg>
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            {# Comment text #}
+                            <p class="text-sm text-gray-700 dark:text-gray-300">
+                                {{ comment.content }}
+                            </p>
+
+                            {# Reply Form (Hidden by default) #}
+                            {% if current_user %}
+                            <div class="mt-3">
+                                <div x-show="showReplyForm"
+                                     x-transition:enter="transition ease-out duration-200"
+                                     x-transition:enter-start="opacity-0 -translate-y-2"
+                                     x-transition:enter-end="opacity-100 translate-y-0"
+                                     x-transition:leave="transition ease-in duration-150"
+                                     x-transition:leave-start="opacity-100 translate-y-0"
+                                     x-transition:leave-end="opacity-0 -translate-y-2"
+                                     class="bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 p-3">
+
+                                    <form {% if reference_type == "finding_model" %}hx-post="/finding-models/{{ reference_id }}/comments"{% else %}hx-post="/drafts/{{ reference_id }}/comments"{% endif %}
+                                          hx-target="#comment-thread-{{ reference_type }}-{{ reference_id }}"
+                                          hx-swap="outerHTML">
+
+                                        <input type="hidden" name="parent_comment_id" value="{{ comment.id }}">
+
+                                        <div class="mb-3">
+                                            {{ form_textarea(
+                                                name="content",
+                                                label="Reply to " ~ comment.user_name,
+                                                placeholder="Write your reply...",
+                                                rows=3,
+                                                required=true,
+                                                attributes='x-model="replyContent" id="reply-' ~ comment.id ~ '" maxlength="2000"'
+                                            ) }}
+                                            <div class="mt-1 flex justify-between items-center">
+                                                <p class="text-xs text-gray-500 dark:text-gray-400">
+                                                    <span x-text="replyLength"></span>/2000 characters
+                                                </p>
+                                                <p class="text-xs text-red-500" x-show="replyLength > 2000">
+                                                    Reply is too long
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex justify-end space-x-2">
+                                            {{ action_button(
+                                                text="Cancel",
+                                                type="secondary",
+                                                size="sm",
+                                                attributes='@click="showReplyForm = false; replyContent = \'\'"'
+                                            ) }}
+                                            <button type="submit"
+                                                    class="inline-flex items-center font-medium rounded-md text-center transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 px-3 py-2 text-sm text-white bg-primary-600 hover:bg-primary-700 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    :disabled="!canSubmit">
+                                                Post Reply
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            {# Replies Section #}
+                            {% if comment.replies %}
+                            <div class="mt-3 ml-6 space-y-2">
+                                {% for reply in comment.replies %}
+                                    <div class="flex gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-700">
+                                        {% if reply.user_avatar_url %}
+                                            <img class="w-8 h-8 rounded-full object-cover flex-shrink-0" src="{{ reply.user_avatar_url }}" alt="{{ reply.user_name }}">
+                                        {% else %}
+                                            <div class="w-8 h-8 rounded-full bg-gray-400 dark:bg-gray-500 flex items-center justify-center flex-shrink-0">
+                                                <span class="text-white text-xs font-medium">{{ reply.user_name[:1].upper() }}</span>
+                                            </div>
+                                        {% endif %}
+                                        <div class="flex-1">
+                                            <div class="mb-1 flex items-start justify-between">
+                                                <div>
+                                                    <span class="font-medium text-sm text-gray-900 dark:text-white">{{ reply.user_name }}</span>
+                                                    <span class="text-xs text-gray-500 dark:text-gray-400 ml-2">{{ reply.created_at.strftime('%b %d, %H:%M') }}</span>
+                                                </div>
+                                                {% if current_user and current_user.id != reply.user_id %}
+                                                    <button
+                                                        type="button"
+                                                        {% if reference_type == "finding_model" %}
+                                                            hx-post="/finding-models/{{ reference_id }}/comments/{{ reply.id }}/report"
+                                                        {% else %}
+                                                            hx-post="/drafts/{{ reference_id }}/comments/{{ reply.id }}/report"
+                                                        {% endif %}
+                                                        hx-swap="outerHTML"
+                                                        hx-confirm="Are you sure you want to report this reply as inappropriate?"
+                                                        class="text-gray-400 hover:text-red-600 dark:text-gray-500 dark:hover:text-red-500 transition-colors duration-200"
+                                                        title="Report inappropriate content">
+                                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"></path>
+                                                        </svg>
+                                                    </button>
+                                                {% endif %}
+                                            </div>
+                                            <p class="text-sm text-gray-700 dark:text-gray-300">
+                                                {{ reply.content }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        {# Empty State #}
+        <div class="text-center py-8 mb-6">
+            <svg class="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+            </svg>
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+                {% if current_user %}
+                    Be the first to share your thoughts!
+                {% else %}
+                    <a href="/login" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">Sign in</a> to share your thoughts.
+                {% endif %}
+            </p>
+        </div>
+    {% endif %}
+
+    {# Add Comment Form at Bottom - Expandable Design #}
+    {% if current_user %}
+        <div class="border-t border-gray-200 dark:border-gray-700 pt-4" x-data="{
+            expanded: false,
+            content: '',
+            get contentLength() { return this.content.length; },
+            get canSubmit() { return this.content.trim().length >= 1 && this.content.length <= 2000; },
+            focus() { this.expanded = true; }
+        }">
+            <form {% if reference_type == "finding_model" %}hx-post="/finding-models/{{ reference_id }}/comments"{% else %}hx-post="/drafts/{{ reference_id }}/comments"{% endif %}
+                  hx-target="#comment-thread-{{ reference_type }}-{{ reference_id }}"
+                  hx-swap="outerHTML">
+
+                <textarea
+                    name="content"
+                    x-model="content"
+                    @focus="focus()"
+                    @input="if(content.length > 0) expanded = true"
+                    :rows="expanded ? 4 : 1"
+                    placeholder="Add a comment..."
+                    maxlength="2000"
+                    class="w-full resize-none transition-all duration-200 p-3 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                ></textarea>
+
+                {# Character count and buttons - show only when expanded #}
+                <div x-show="expanded" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" class="mt-2">
+                    <div class="flex justify-between items-center">
+                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                            <span x-text="contentLength"></span>/2000 characters
+                        </p>
+                        <div class="flex space-x-2">
+                            <button @click="expanded = false; content = ''" type="button"
+                                    class="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100">
+                                Cancel
+                            </button>
+                            <button type="submit"
+                                    :disabled="!canSubmit"
+                                    class="px-4 py-1.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500">
+                                Post
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-red-500 mt-1" x-show="contentLength > 2000">
+                        Comment is too long
+                    </p>
+                </div>
+            </form>
+        </div>
+    {% else %}
+        {# Login prompt for anonymous users #}
+        <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
+            <div class="text-center py-3">
+                <p class="text-sm text-gray-600 dark:text-gray-400">
+                    <a href="/login" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium">
+                        Sign in with GitHub
+                    </a>
+                    to join the discussion
+                </p>
+            </div>
+        </div>
+    {% endif %}
+</div>

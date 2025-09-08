@@ -282,6 +282,75 @@ class TestSession:
 **CRITICAL**: Playwright tests require authentication to access protected pages. This project provides a test-auth
 system for this purpose.
 
+#### Generating Valid Draft Data for UI Tests
+
+**IMPORTANT**: When creating test drafts that need to display finding models (especially for comment functionality), you
+MUST use valid FindingModelFull JSON.
+
+##### The Problem with Invalid JSON
+
+Creating simple JSON objects will NOT work:
+
+```python
+# ❌ WRONG - This will NOT validate as FindingModelFull
+generated_json = json.dumps({
+    "name": "Test Draft",
+    "description": "Test description",
+    "attributes": {"test": "value"}
+})
+```
+
+When the backend validates this JSON:
+
+```python
+# In app/routers/drafts.py line 322
+finding_model = FindingModelFull.model_validate_json(draft.generated_json)
+```
+
+If validation fails:
+
+- `finding_model` becomes None
+- No model is displayed on the draft page
+- **Comment sections will NOT appear**
+- Tests that depend on comments will fail
+
+##### The Correct Approach
+
+Use the `generate_valid_generated_json()` helper function:
+
+```python
+# ✅ CORRECT - Creates valid FindingModelFull JSON
+from tests.ui.utils import generate_valid_generated_json
+
+# In async test function:
+generated_json = await generate_valid_generated_json("Test Draft Name")
+
+# Then use in seed_draft:
+draft_id = await seed_draft(
+    user_id=TEST_USER_ID,
+    name="Test Draft Name",
+    description="Test description",
+    status="submitted",
+    generated_json=generated_json  # Valid JSON that will pass validation
+)
+```
+
+The `generate_valid_generated_json()` function:
+
+- Creates a complete finding model structure
+- Adds proper IDs and codes
+- Ensures all required FindingModelFull fields are present
+- Returns JSON that will pass backend validation
+
+##### When This Matters
+
+This is critical for any UI test that:
+
+- Tests comment functionality on drafts
+- Needs to display the finding model on draft pages
+- Tests the edit/preview mode toggle (which requires generated_json)
+- Tests any feature that depends on a valid finding model being displayed
+
 #### Authentication Pattern for Playwright Tests
 
 ```python

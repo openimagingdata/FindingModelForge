@@ -216,3 +216,105 @@ Example:
 {# Include deletion confirmation modal #}
 {{ delete_draft_modal(draft.id, hx_target="#main-content", hx_swap="innerHTML") }}
 ```
+
+## Comment System Components (templates/components/comment_thread.html)
+
+### Comment Thread Component
+
+The comment thread component provides a complete discussion system for finding models and drafts:
+
+```jinja
+{% include 'components/comment_thread.html' %}
+```
+
+**Context Variables Required:**
+- `thread` - CommentThread object containing all comments
+- `reference_type` - Either "finding_model" or "draft"
+- `reference_id` - The oifm_id for models or draft ID
+- `slug_or_id` - URL identifier for HTMX endpoints
+- `current_user` - Current authenticated user (or None)
+
+**Features:**
+- **Authentication-aware UI** - Different messages for logged-in vs anonymous users
+- **Single-level replies** - Comments can have replies, but replies cannot
+- **Character counting** - Real-time validation with Alpine.js (1-2000 chars)
+- **Dynamic updates** - HTMX-powered comment submission without page reload
+- **Report functionality** - Flag inappropriate content with one-click reporting
+- **Rate limiting** - Enforced server-side with user-friendly error messages
+- **Chronological display** - Oldest-first ordering for natural discussion flow
+
+### Comment Display Structure
+
+Each comment includes:
+- User avatar (GitHub profile image)
+- Username and timestamp
+- Comment content (plain text, markdown support planned)
+- Reply button (hover to show)
+- Report button (if not already reported by user)
+- Indented replies below parent comment
+
+### Alpine.js Integration
+
+The comment forms use Alpine.js for:
+- Character counting: `x-text="contentLength + '/2000'"`
+- Submit button state: `:disabled="!content || content.length > 2000"`
+- Reply form toggling: `x-show="showReplyForm"`
+- Form reset on cancel: `@click="content = ''; showReplyForm = false"`
+
+### HTMX Patterns
+
+Comment submission uses HTMX for seamless updates:
+```html
+<form hx-post="/finding-models/{{ slug_or_id }}/comments"
+      hx-target="#comment-thread-{{ reference_type }}-{{ reference_id }}"
+      hx-swap="outerHTML">
+```
+
+Report buttons use self-replacing pattern:
+```html
+<button hx-post="/finding-models/{{ slug_or_id }}/comments/{{ comment.id }}/report"
+        hx-swap="outerHTML">
+```
+
+### Usage Examples
+
+**In Finding Model Detail Page:**
+```jinja
+{% include 'components/comment_thread.html' with
+    thread=comment_thread,
+    reference_type="finding_model",
+    reference_id=model.oifm_id,
+    slug_or_id=model.slug,
+    current_user=current_user
+%}
+```
+
+**In Draft View Page:**
+```jinja
+{% if draft.status != "draft" %}
+  {% include 'components/comment_thread.html' with
+      thread=comment_thread,
+      reference_type="draft",
+      reference_id=draft.id,
+      slug_or_id=draft.id,
+      current_user=current_user
+  %}
+{% endif %}
+```
+
+### Styling Classes
+
+The component uses Flowbite classes throughout:
+- Cards: `bg-white dark:bg-gray-800 rounded-lg p-4`
+- Avatars: `w-8 h-8 rounded-full`
+- Buttons: `text-blue-600 hover:text-blue-700`
+- Forms: `border-gray-300 dark:border-gray-600 rounded-lg`
+- Alerts: `bg-red-50 dark:bg-red-900 text-red-600`
+
+### Server Response Patterns
+
+The comment endpoints return:
+- **Success**: Updated comment thread HTML fragment
+- **Rate limit (429)**: Error alert HTML with message
+- **Validation error (400)**: Error alert HTML with details
+- **Authentication required (401)**: Redirect or error message

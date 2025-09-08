@@ -2,9 +2,13 @@
 
 import os
 from collections.abc import AsyncGenerator
+from typing import Any
 
 import pytest
+from motor.motor_asyncio import AsyncIOMotorClient
 from playwright.async_api import Browser, BrowserContext, Page, async_playwright
+
+from app.config import settings
 
 from .utils import TEST_USER_ID, authenticate_user, cleanup_test_data, collect_console_errors
 
@@ -84,6 +88,29 @@ async def cleanup_test_user_data() -> AsyncGenerator[None, None]:
 def test_user_id() -> int:
     """Provide the test user ID."""
     return TEST_USER_ID
+
+
+@pytest.fixture
+async def cleanup_test_comments() -> AsyncGenerator[None, None]:
+    """Clean up test comments after each test."""
+    yield
+    # After test, connect to MongoDB and remove test comments
+    # Look for comments with text containing "Test comment" + timestamp pattern
+    client: Any = AsyncIOMotorClient(settings.mongodb_uri)
+    db = client[settings.mongodb_db]
+    col = db["comment_threads"]
+
+    # Clean up test comments (comments with "Test comment" in content)
+    await col.update_many(
+        {"comments.content": {"$regex": r"Test comment \d+"}},
+        {"$pull": {"comments": {"content": {"$regex": r"Test comment \d+"}}}},
+    )
+
+    # Remove empty threads
+    await col.delete_many({"comments": {"$size": 0}})
+
+    await db.command("ping")  # Ensure write is committed
+    client.close()
 
 
 # @pytest.fixture(autouse=True) - REMOVED: Old mock fixture

@@ -3,36 +3,35 @@
 import re
 from datetime import UTC, datetime, timedelta
 from os import environ
-from typing import Any, Literal
+from typing import Literal
 
 from fastapi import HTTPException
 
 from app.database import UserRepo
-from app.models import Comment, CommentThread, UserCommentEntry
+from app.models import Comment, CommentThread, User, UserCommentEntry
 
 
-def check_rate_limit(user_doc: dict[str, Any]) -> bool:
-    """Check if user is under rate limit (3 comments per minute).
+def check_rate_limit(user: User) -> tuple[bool, str]:
+    """Check if user has exceeded rate limit (3 comments per minute).
 
-    Args:
-        user_doc: User document from database containing comment_index
+    This is a pure function that only needs the User object,
+    which already contains the comment_index with timestamps.
 
     Returns:
-        True if user can comment, False if rate limited.
+        Tuple of (allowed, error_message).
+        If allowed is True, error_message will be empty string.
+        If allowed is False, error_message contains the rate limit message.
     """
-    comment_index = user_doc.get("comment_index", [])
-    cutoff_time = datetime.now(UTC) - timedelta(seconds=60)
+    if not user.comment_index:
+        return True, ""  # No comments yet, allow
 
-    # Count recent comments
-    recent_count = 0
-    for entry in comment_index:
-        if not isinstance(entry, dict):
-            continue
-        entry_created_at = entry.get("created_at")
-        if entry_created_at and entry_created_at > cutoff_time:
-            recent_count += 1
+    # Count comments in last 60 seconds
+    cutoff = datetime.now(UTC) - timedelta(seconds=60)
+    recent_comments = [c for c in user.comment_index if c.created_at > cutoff]
 
-    return recent_count < 3
+    if len(recent_comments) >= 3:
+        return False, "Rate limit exceeded. Maximum 3 comments per minute."
+    return True, ""
 
 
 async def add_to_comment_index(
@@ -43,16 +42,7 @@ async def add_to_comment_index(
     reference_id: str,
     comment_id: str,
 ) -> None:
-    """Add comment entry to user's comment index for rate limiting.
-
-    Args:
-        user_repo: User repository instance
-        user_id: GitHub user ID
-        finding_name: Human-readable name for display
-        reference_type: Type of reference ("finding_model" or "draft")
-        reference_id: ID of the referenced object
-        comment_id: Unique comment ID
-    """
+    """Add comment entry to user's comment index for rate limiting."""
     entry = UserCommentEntry(
         reference_type=reference_type,
         reference_id=reference_id,
@@ -61,8 +51,8 @@ async def add_to_comment_index(
         created_at=datetime.now(UTC),
     )
 
-    # Add the new entry to comment_index using MongoDB $push operation
-    await user_repo.collection.update_one({"id": user_id}, {"$push": {"comment_index": entry.model_dump(mode="json")}})
+    # Use the new UserRepo method
+    await user_repo.add_comment_to_index(user_id, entry)
 
 
 def get_blacklist_user_ids() -> list[int]:
