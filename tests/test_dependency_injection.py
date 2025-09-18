@@ -65,15 +65,18 @@ class TestServiceDependencyInjection:
         mock_draft_repo = MagicMock(spec=DraftRepo)
         mock_comment_repo = MagicMock(spec=CommentRepo)
         mock_user_repo = MagicMock(spec=UserRepo)
+        mock_database = MagicMock(spec=Database)
+        mock_database.ensure_person_for_user = AsyncMock(return_value=None)
 
         # Call the dependency function
-        service = get_draft_service(mock_draft_repo, mock_comment_repo, mock_user_repo)
+        service = get_draft_service(mock_draft_repo, mock_comment_repo, mock_user_repo, mock_database)
 
         # Verify service is created correctly
         assert isinstance(service, DraftService)
         assert service.draft_repo is mock_draft_repo
         assert service.comment_repo is mock_comment_repo
         assert service.user_repo is mock_user_repo
+        assert service.database is mock_database
 
 
 class TestServiceDependenciesInRouters:
@@ -254,7 +257,7 @@ class TestCircularImportPrevention:
         # Should be able to create services directly
         finding_service = FindingModelService(mock_index, mock_cache, mock_comment_repo, mock_user_repo)
         creation_service = CreationService(mock_index, mock_database)
-        draft_service = DraftService(mock_draft_repo, mock_comment_repo, mock_user_repo)
+        draft_service = DraftService(mock_draft_repo, mock_comment_repo, mock_user_repo, mock_database)
 
         # Verify they're the correct types
         assert isinstance(finding_service, FindingModelService)

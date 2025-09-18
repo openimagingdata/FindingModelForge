@@ -211,3 +211,4 @@ async def get_optional_user(request: Request, user_repo: UserRepoDep, cache: Cac
 
 
 OptionalUserDep = Annotated[User | None, Depends(get_optional_user)]
+OptionalCurrentUserDep = OptionalUserDep  # Alias for consistency with naming conventions

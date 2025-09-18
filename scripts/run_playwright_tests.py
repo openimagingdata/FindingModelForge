@@ -86,8 +86,7 @@ class PlaywrightTestRunner:
             # override addopts to keep UI runs minimal and fast
             "--override-ini",
             "addopts=",
-            "tests/test_integration_htmx_playwright.py",
-            "tests/test_profile_playwright.py",
+            "tests/ui/",
             "-v",
             "--browser=chromium",
         ]

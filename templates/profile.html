@@ -305,6 +305,8 @@
                         <div class="flex-shrink-0">
                             {% if d.status == 'draft' %}
                                 {{ flowbite_badge('Draft', color='yellow', size='xs', pill=true) }}
+                            {% elif d.status == 'public' %}
+                                {{ flowbite_badge('Public', color='blue', size='xs', pill=true) }}
                             {% elif d.status == 'submitted' %}
                                 {{ flowbite_badge('Submitted', color='green', size='xs', pill=true) }}
                             {% endif %}
@@ -368,7 +370,7 @@
                     </div>
                 </div>
 
-                {% if d.status == 'draft' %}
+                {% if d.status in ['draft', 'public'] %}
                     {% from 'macros/delete_draft_modal.html' import delete_draft_modal %}
                     {{ delete_draft_modal(d.id, hx_target='#draft-card-' ~ d.id, hx_swap='delete', extra_attributes='data-action="delete-draft"') }}
                 {% endif %}

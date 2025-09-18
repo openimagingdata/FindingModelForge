@@ -32,6 +32,9 @@ def _client_with_state(session_json: str) -> TestClient:
     db.people = {}
     db.organizations = {}
 
+    # Add ensure_person_for_user method required by DraftService
+    db.ensure_person_for_user = AsyncMock(return_value=None)
+
     from app.main import app
 
     app.state.database = db
@@ -63,7 +66,7 @@ def _client_with_state(session_json: str) -> TestClient:
     from app.services.draft_service import DraftService
 
     def get_mock_draft_service() -> DraftService:
-        return DraftService(draft_repo=db.draft_repo, comment_repo=db.comment_repo, user_repo=db.user_repo)
+        return DraftService(draft_repo=db.draft_repo, comment_repo=db.comment_repo, user_repo=db.user_repo, database=db)
 
     app.dependency_overrides[get_current_user] = mock_user
     app.dependency_overrides[get_draft_service] = get_mock_draft_service
@@ -72,7 +75,7 @@ def _client_with_state(session_json: str) -> TestClient:
 
 
 def _draft(
-    status: Literal["draft", "submitted", "under-review", "added", "declined"] = "submitted",
+    status: Literal["draft", "public", "submitted", "under-review", "added", "declined"] = "submitted",
 ) -> FindingModelDraft:
     return FindingModelDraft(
         id="d1",
@@ -84,6 +87,8 @@ def _draft(
         generated_json=None,
         status=status,
         action_log=[],
+        author_name="Tester",
+        author_username="tester",
     )
 
 
@@ -135,21 +140,22 @@ def test_submit_rerenders_full_step5_and_shows_submitted():
     db: Database = app.state.database  # type: ignore[assignment]
 
     # Mock draft to exist before submission (required by new service logic)
-    draft_before_submit = _draft("draft")
-    db.draft_repo.get_draft = AsyncMock(return_value=draft_before_submit)  # type: ignore[attr-defined]
+    # Use the correct ID that matches the test request
+    draft_before_submit = _draft("public")
+    draft_before_submit.id = "oid123"  # Match the ID used in the test
 
     # Wire submit to return a submitted draft
     async def _submit(draft_id: str, user_id: int):  # type: ignore[no-untyped-def]
         submitted = _draft("submitted")
+        submitted.id = draft_id  # Keep the same ID
         submitted.generated_json = '{"name":"nodule","description":"d"}'  # Add JSON to make it displayable
         return submitted
 
     db.draft_repo.submit = AsyncMock(side_effect=_submit)  # type: ignore[attr-defined]
 
-    # Mock the get_draft to return the submitted draft for the view page
-    submitted_draft = _draft("submitted")
-    submitted_draft.generated_json = '{"name":"nodule","description":"d"}'
-    db.draft_repo.get_draft = AsyncMock(return_value=submitted_draft)  # type: ignore[attr-defined]
+    # Mock the get_draft to return the public draft before submission,
+    # then after submission we'll use different setup for the redirect
+    db.draft_repo.get_draft = AsyncMock(return_value=draft_before_submit)  # type: ignore[attr-defined]
 
     resp = client.post(
         "/drafts/oid123/submit",
@@ -159,6 +165,17 @@ def test_submit_rerenders_full_step5_and_shows_submitted():
     # The submit endpoint now redirects to the view page
     assert resp.status_code == 303
     assert resp.headers["location"] == "/drafts/oid123?mode=view"
+
+    # Now update the get_draft mock to return the submitted draft for the view page
+    submitted_draft = _draft("submitted")
+    submitted_draft.id = "oid123"
+    submitted_draft.generated_json = '{"name":"nodule","description":"d"}'
+    db.draft_repo.get_draft = AsyncMock(return_value=submitted_draft)  # type: ignore[attr-defined]
+
+    # Mock get_draft_with_author to return draft as dict without author_info aggregation
+    mock_draft_dict = submitted_draft.model_dump()
+    mock_draft_dict["id"] = submitted_draft.id  # Ensure id is string
+    db.draft_repo.get_draft_with_author = AsyncMock(return_value=mock_draft_dict)  # type: ignore[attr-defined]
 
     # Follow the redirect to get the actual page content
     resp = client.get(resp.headers["location"])

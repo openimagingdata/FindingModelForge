@@ -4,7 +4,8 @@
 
 ### What's New
 
-The FindingModelForge now has a complete comment system enabling collaborative feedback on finding models and drafts. This feature went live in September 2025 with comprehensive backend, frontend, and testing infrastructure.
+The FindingModelForge now has a complete comment system enabling collaborative feedback on finding models and drafts.
+This feature went live in September 2025 with comprehensive backend, frontend, and testing infrastructure.
 
 ### Key Features
 
@@ -29,18 +30,21 @@ The FindingModelForge now has a complete comment system enabling collaborative f
 ### Technical Implementation
 
 #### Architecture Decisions
+
 - **Separate MongoDB collection** (`comment_threads`) for clean separation from content
 - **Polymorphic references** using `reference_type` and `reference_id`
 - **Atomic operations** for thread creation and comment addition
 - **Lazy thread creation** (threads created on first comment)
 
 #### New Components
+
 - `CommentRepo` in `app/database.py` - All comment CRUD operations
 - `comment_helpers.py` - Rate limiting and validation logic
 - `comment_thread.html` - Reusable UI component
 - Comprehensive test coverage: 68 tests (17 UI + 8 rate limiting + 43 repository)
 
 #### Endpoints Added
+
 - `POST /finding-models/{slug}/comments` - Add comment to model
 - `POST /finding-models/{slug}/comments/{id}/report` - Report comment
 - `POST /drafts/{id}/comments` - Add comment to draft
@@ -60,6 +64,7 @@ No breaking changes. The comment system is additive and doesn't affect existing 
 ### Testing
 
 All tests passing:
+
 - ✅ 17 UI tests (Playwright)
 - ✅ 8 rate limiting tests
 - ✅ 43 repository tests
@@ -103,7 +108,8 @@ For developers integrating comments into new pages:
 
 ## Lessons Learned
 
-1. **Test Implementation, Not Just Mocks** - Initial tests passed with mocks but rate limiting wasn't actually implemented
+1. **Test Implementation, Not Just Mocks** - Initial tests passed with mocks but rate limiting wasn't actually
+   implemented
 2. **Use Shared Fixtures** - DRY principle for test data prevents duplication
 3. **Document First** - PRD before implementation saves time and prevents scope creep
 4. **Atomic Operations Critical** - MongoDB atomic updates prevent race conditions
@@ -124,4 +130,4 @@ For developers integrating comments into new pages:
 
 ---
 
-*Last Updated: September 7, 2025*
+_Last Updated: September 7, 2025_

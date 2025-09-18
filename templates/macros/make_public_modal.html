@@ -1,0 +1,18 @@
+{# Make Public Modal Macro - Uses base confirmation modal #}
+
+{% from 'macros/confirmation_modal.html' import confirmation_modal %}
+
+{% macro make_public_modal(draft_id, hx_target="#main-content", hx_swap="innerHTML") %}
+{{ confirmation_modal(
+    modal_id="make-public-modal-" ~ draft_id,
+    title="Make Public for Review",
+    message="Make this draft public for review? Other users will be able to view and comment on it.",
+    confirm_text="Make Public",
+    cancel_text="Cancel",
+    confirm_color="blue",
+    icon_type="info",
+    hx_post="/drafts/" ~ draft_id ~ "/make-public",
+    hx_target=hx_target,
+    hx_swap=hx_swap
+) }}
+{% endmacro %}

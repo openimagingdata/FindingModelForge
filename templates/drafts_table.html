@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Public Drafts for Review{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div id="main-content" class="container mx-auto px-4 py-8 pb-16 max-w-5xl">
+    <!-- Page Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Public Drafts for Review</h1>
+        <p class="mt-2 text-gray-600 dark:text-gray-400">
+            Review and provide feedback on finding model drafts before they are submitted to the repository.
+        </p>
+    </div>
+
+    <!-- Drafts Table -->
+    <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
+        <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+            <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                <tr>
+                    <th scope="col" class="px-6 py-3">Title</th>
+                    <th scope="col" class="px-6 py-3">Author</th>
+                    <th scope="col" class="px-6 py-3">Created</th>
+                    <th scope="col" class="px-6 py-3">Comments</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for draft in drafts %}
+                <tr onclick="window.location.href='/drafts/{{ draft.id }}?from=public'"
+                    class="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer">
+                    <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                        {{ draft.name }}
+                    </td>
+                    <td class="px-6 py-4">
+                        {{ draft.author_name|default('Unknown') }}
+                    </td>
+                    <td class="px-6 py-4">
+                        {{ draft.created_at_display|default('N/A') }}
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+                            {{ draft.comment_count|default(0) }}
+                        </span>
+                    </td>
+                </tr>
+                {% else %}
+                <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                    <td colspan="4" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                        No public drafts available for review at this time.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

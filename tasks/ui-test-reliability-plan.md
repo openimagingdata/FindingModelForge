@@ -3,6 +3,7 @@
 ## Problem Statement
 
 Our UI tests (Playwright) are currently unreliable due to:
+
 1. **State pollution**: Tests leave behind comments, drafts, and user data that interfere with subsequent runs
 2. **Hardcoded IDs**: Tests use hardcoded OIFM IDs that could change
 3. **Incomplete cleanup**: The `cleanup_test_data()` function doesn't clean all collections
@@ -24,11 +25,13 @@ Our UI tests (Playwright) are currently unreliable due to:
 #### 1.1 Update `cleanup_test_data()` function in `/tests/ui/utils.py`
 
 **Current Issues:**
+
 - Doesn't clean `comment_threads` collection
 - Doesn't reset user's `comment_index` array
 - Incomplete draft cleanup
 
 **Changes Needed:**
+
 ```python
 async def cleanup_test_data(user_id: int):
     """Clean all test data for a user."""
@@ -55,6 +58,7 @@ async def cleanup_test_data(user_id: int):
 **Purpose:** Ensure test user always exists with clean state
 
 **Implementation:**
+
 ```python
 async def ensure_test_user_exists():
     """Ensure test user 999999 exists with clean state."""
@@ -91,6 +95,7 @@ async def ensure_test_user_exists():
 **Purpose:** Get actual OIFM IDs instead of hardcoding
 
 **Implementation:**
+
 ```python
 async def get_test_finding_models() -> dict[str, str]:
     """Get actual OIFM IDs for test finding models.
@@ -142,6 +147,7 @@ async def get_test_finding_models() -> dict[str, str]:
 **Purpose:** Cache OIFM IDs for entire test session
 
 **Implementation:**
+
 ```python
 @pytest.fixture(scope="session")
 async def test_finding_models():
@@ -177,11 +183,13 @@ async def setup_test_environment(test_finding_models):
 #### 3.1 Update `/tests/ui/test_comments.py`
 
 **Changes:**
+
 - Replace hardcoded `"OIFM_GMTS_004244"` with fixture value
 - Use `test_finding_models` fixture in all tests
 - Ensure proper cleanup between tests
 
 **Example:**
+
 ```python
 async def test_report_comment(authenticated_page, test_finding_models):
     """Test reporting a comment."""
@@ -204,6 +212,7 @@ async def test_report_comment(authenticated_page, test_finding_models):
 #### 3.2 Update `/tests/ui/test_draft_comments.py`
 
 **Changes:**
+
 - Ensure drafts have valid `generated_json` for comments to appear
 - Use `generate_valid_generated_json()` helper
 - Use dynamic OIFM IDs
@@ -213,25 +222,29 @@ async def test_report_comment(authenticated_page, test_finding_models):
 #### 4.1 Add test setup documentation
 
 Create `/tests/ui/README.md`:
-```markdown
+
+````markdown
 # UI Test Setup
 
 ## Prerequisites
+
 - MongoDB running locally
 - Redis running (optional but recommended)
 - FastAPI dev server running on port 8000
 
 ## Test User
-All UI tests use user ID 999999 (playwright-test-user).
-This user is created automatically by test fixtures.
+
+All UI tests use user ID 999999 (playwright-test-user). This user is created automatically by test fixtures.
 
 ## Finding Models
-Tests use real finding models from GitHub. The actual OIFM IDs
-are resolved dynamically at test runtime. Default models:
+
+Tests use real finding models from GitHub. The actual OIFM IDs are resolved dynamically at test runtime. Default models:
+
 - abdominal-abscess
 - liver-lesion
 
 ## Running Tests
+
 ```bash
 # Run all UI tests
 task test-ui
@@ -242,7 +255,9 @@ uv run pytest tests/ui/test_comments.py -v
 # Run with visible browser (debugging)
 PLAYWRIGHT_HEADLESS=false uv run pytest tests/ui/test_comments.py -v
 ```
-```
+````
+
+````
 
 #### 4.2 Add cleanup verification tests
 
@@ -270,7 +285,7 @@ async def test_cleanup_removes_all_test_data():
     assert drafts is None
 
     client.close()
-```
+````
 
 ## Implementation Order
 
@@ -314,6 +329,7 @@ async def test_cleanup_removes_all_test_data():
 ## Testing the Fix
 
 After implementation:
+
 1. Drop test database completely
 2. Run `task test-ui` - should pass
 3. Run `task test-ui` again - should still pass

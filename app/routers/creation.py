@@ -262,7 +262,7 @@ async def process_step_2(
             attributes_markdown=session.attributes_markdown,
         )
         draft = await draft_service.save_draft(
-            user_id=current_user.id, name=session.name, inputs=inputs, draft_id=session.draft_id
+            user_id=current_user.id, name=session.name, inputs=inputs, draft_id=session.draft_id, user=current_user
         )
 
         # Update session and redirect to draft editor
@@ -305,7 +305,7 @@ async def process_step_3(
                 attributes_markdown=session.attributes_markdown,
             )
             draft = await draft_service.save_draft(
-                user_id=current_user.id, name=session.name, inputs=inputs, draft_id=session.draft_id
+                user_id=current_user.id, name=session.name, inputs=inputs, draft_id=session.draft_id, user=current_user
             )
 
             # Clear session as we're moving to draft workflow

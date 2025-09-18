@@ -75,13 +75,18 @@ async def authenticated_page_with_console(
 @pytest.fixture(autouse=True)
 async def cleanup_test_user_data() -> AsyncGenerator[None, None]:
     """Automatically clean up test user data before and after each test."""
+    # Define both test user IDs
+    test_user_ids = [TEST_USER_ID, 888888]  # 999999 and 888888
+
     # Cleanup before test
-    await cleanup_test_data(TEST_USER_ID)
+    for user_id in test_user_ids:
+        await cleanup_test_data(user_id)
 
     yield
 
     # Cleanup after test
-    await cleanup_test_data(TEST_USER_ID)
+    for user_id in test_user_ids:
+        await cleanup_test_data(user_id)
 
 
 @pytest.fixture

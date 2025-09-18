@@ -3,6 +3,7 @@
 # ruff: noqa: B008, I001
 
 import asyncio
+import contextlib
 import json
 from datetime import UTC, datetime
 
@@ -18,11 +19,12 @@ from findingmodel.tools import (
     create_model_from_markdown,
 )
 
-from app.auth import CurrentUserDep
+from app.auth import CurrentUserDep, OptionalCurrentUserDep, OptionalUserDep
 from app.config import logger
 from app.templates import templates
 from app.vite_manifest import get_vite_asset_path
 from app.dependencies import (
+    CacheDep,
     CommentRepoDep,
     CreationSessionDep,
     DatabaseDep,
@@ -30,7 +32,7 @@ from app.dependencies import (
     SessionManagerDep,
     UserRepoDep,
 )
-from app.models import FindingModelInputs, UserCommentEntry
+from app.models import DraftStatus, FindingModelDraft, FindingModelInputs, UserCommentEntry
 from app.services.comment_helpers import check_rate_limit
 import humanize
 
@@ -116,6 +118,7 @@ async def save_draft(
             name=session.name or "",
             inputs=inputs,
             draft_id=draft_id,
+            user=current_user,
         )
 
         # Track draft in session
@@ -155,11 +158,25 @@ async def submit_draft(
     session: CreationSessionDep,
     session_manager: SessionManagerDep,
     draft_service: DraftServiceDep,
+    cache: CacheDep,
     draft_id: str,
 ) -> Response:
     """Submit a draft (freeze edits)."""
     try:
+        # First check if draft exists and is in correct status
+        draft_to_check = await draft_service.get_draft(draft_id=draft_id, user_id=current_user.id)
+        if not draft_to_check:
+            raise HTTPException(status_code=404, detail="Draft not found")
+
+        # Validate that draft is PUBLIC before submission
+        if draft_to_check.status != DraftStatus.PUBLIC:
+            raise HTTPException(status_code=400, detail="Draft must be public before submission")
+
         draft = await draft_service.submit_draft(draft_id=draft_id, user_id=current_user.id)
+
+        # Invalidate the public drafts cache since this draft is no longer public
+        with contextlib.suppress(Exception):
+            await cache.delete("public_drafts_list")
         session.draft_id = draft.id
         session.draft_status = draft.status
         # Human-friendly submitted time (UTC)
@@ -199,7 +216,7 @@ async def delete_draft(
     draft_service: DraftServiceDep,
     draft_id: str,
 ) -> HTMLResponse:
-    """Delete a draft if it's still in draft status."""
+    """Delete a draft if it's in draft or public status."""
     try:
         # First check if the draft exists and its status
         draft = await draft_service.get_draft(draft_id=draft_id, user_id=current_user.id)
@@ -209,7 +226,7 @@ async def delete_draft(
             )
             return HTMLResponse(content=error_html, status_code=404)
 
-        if draft.status != "draft":
+        if draft.status not in ["draft", "public"]:
             error_html = templates.get_template("components/error_display.html").render(
                 request=request, error_message="Cannot delete submitted drafts"
             )
@@ -255,6 +272,7 @@ async def edit_draft(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Draft not found")
 
         # Only allow editing of drafts in 'draft' status
+        # Public drafts are NOT editable (they can only be submitted or deleted)
         if draft.status != "draft":
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Draft is not editable")
 
@@ -295,24 +313,44 @@ async def edit_draft(
 @router.get("/{draft_id}", response_model=None)
 async def unified_draft_page(
     request: Request,
-    current_user: CurrentUserDep,
+    current_user: OptionalCurrentUserDep,
     draft_service: DraftServiceDep,
     draft_id: str,
     mode: str = "view",  # Default to view mode
 ) -> Response:
     """Unified draft page that handles both view and edit modes."""
     try:
-        draft = await draft_service.get_draft(draft_id=draft_id, user_id=current_user.id)
-        if draft is None:
+        # Handle optional user for draft access
+        user_id = current_user.id if current_user else None
+
+        # Get the draft with author information (single aggregation call)
+        draft_dict = await draft_service.get_draft_with_author(draft_id=draft_id, user_id=user_id)
+        if draft_dict is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Draft not found")
+
+        # Extract author name from the draft
+        author_name = draft_dict.get("author_name") or draft_dict.get("author_username", "Unknown")
+
+        # Validate the draft from the dict
+        draft = FindingModelDraft.model_validate(draft_dict)
+
+        # For private drafts, ensure user is authenticated and owns the draft
+        if draft.status == "draft" and (not current_user or draft.user_id != current_user.id):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Draft not found")
 
         # Validate mode parameter
         if mode not in ["view", "edit"]:
             mode = "view"
 
-        # For edit mode, only allow if draft is editable
-        if mode == "edit" and draft.status != "draft":
-            # Redirect to view mode for submitted drafts
+        # For edit mode, only allow if user is authenticated, draft is editable, and user owns it
+        # Authors can edit their own drafts in 'draft' or 'public' status (but not submitted)
+        can_edit = current_user is not None and draft.status in ["draft", "public"] and draft.user_id == current_user.id
+        # Authors can delete their drafts in 'draft' or 'public' status (but not submitted)
+        can_delete = (
+            current_user is not None and draft.status in ["draft", "public"] and draft.user_id == current_user.id
+        )
+        if mode == "edit" and not can_edit:
+            # Redirect to view mode for non-editable drafts, non-owners, or unauthenticated users
             mode = "view"
 
         # Parse finding model if available
@@ -323,13 +361,13 @@ async def unified_draft_page(
             except Exception:
                 finding_model = None
 
-        # Get comment thread only for SUBMITTED drafts
+        # Get comment thread for PUBLIC and SUBMITTED drafts (only if user is authenticated)
         thread = None
-        if draft.status == "submitted":
+        if current_user and draft.status in ["public", "submitted"]:
             thread = await draft_service.get_comments_for_draft(str(draft.id))
 
-        # If trying to view a draft without generated JSON, redirect to edit mode
-        if mode == "view" and not finding_model and draft.status == "draft":
+        # If trying to view a draft without generated JSON, redirect to edit mode (only if user can edit)
+        if mode == "view" and not finding_model and draft.status == "draft" and can_edit:
             # Use HTMX redirect or browser redirect depending on request type
             hx_request = request.headers.get("HX-Request")
             if hx_request:
@@ -353,6 +391,9 @@ async def unified_draft_page(
         # Check if this is an HTMX request (for mode switching)
         hx_request = request.headers.get("HX-Request")
         if hx_request:
+            # Check if this request comes from the public drafts table
+            from_public = request.query_params.get("from") == "public"
+
             # Return containerless content for HTMX swaps (prevents nested boxes)
             if mode == "edit":
                 main_content = templates.get_template("components/draft_edit_form_content.html").render(
@@ -361,7 +402,7 @@ async def unified_draft_page(
                     draft=draft,
                 )
             else:  # view mode
-                main_content = templates.get_template("components/draft_preview_containerless.html").render(
+                main_content = templates.get_template("components/draft_preview_content.html").render(
                     request=request,
                     user=current_user,
                     draft=draft,
@@ -372,11 +413,14 @@ async def unified_draft_page(
                     current_user=current_user,
                     show_ids=bool(draft.status == "submitted"),
                     show_json=bool(draft.status == "submitted"),
+                    author_name=author_name,
+                    can_edit=can_edit,
+                    can_delete=can_delete,
                 )
 
-            # Only include mode toggle header OOB swap if the draft has generated JSON
+            # Only include OOB swaps if NOT coming from public drafts table and draft has generated JSON
             # (means there's something to preview - buttons are useful)
-            if draft.generated_json:
+            if not from_public and draft.generated_json:
                 # Use unified container across all workflows
                 target_container = "#main-content"
 
@@ -386,7 +430,7 @@ async def unified_draft_page(
                     user=current_user,
                     draft=draft,
                     mode=mode,  # Pass the current mode
-                    can_edit=draft.status == "draft",
+                    can_edit=can_edit,
                     target_container=target_container,
                 )
 
@@ -405,7 +449,7 @@ async def unified_draft_page(
 
                 return HTMLResponse(content=combined_content)
             else:
-                # Regular unified draft page - no mode toggle buttons needed
+                # Regular unified draft page - no OOB swaps for public drafts table navigation
                 return HTMLResponse(content=main_content)
         else:
             # Return full page for direct navigation
@@ -424,9 +468,11 @@ async def unified_draft_page(
                     "reference_id": str(draft.id),
                     "current_user": current_user,
                     "mode": mode,
-                    "can_edit": draft.status == "draft",
+                    "can_edit": can_edit,
+                    "can_delete": can_delete,
                     "show_ids": draft.status == "submitted",
                     "show_json": draft.status == "submitted",
+                    "author_name": author_name,
                 },
             )
     except HTTPException:
@@ -453,12 +499,21 @@ async def update_draft_and_redirect(
     """Update draft and redirect to unified draft page - used when coming from creation workflow."""
     try:
         # Call the same update logic as the regular update endpoint
-        draft = await draft_service.get_draft(draft_id=draft_id, user_id=current_user.id)
-        if draft is None:
+        # Get draft with author information
+        draft_dict = await draft_service.get_draft_with_author(draft_id=draft_id, user_id=current_user.id)
+        if draft_dict is None:
             logger.error(f"Draft not found: draft_id={draft_id}, user_id={current_user.id}")
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Draft not found")
 
-        if draft.status != "draft":
+        # Extract author name from the draft
+        author_name = draft_dict.get("author_name") or draft_dict.get("author_username", "Unknown")
+
+        # Validate the draft from the dict
+        draft = FindingModelDraft.model_validate(draft_dict)
+
+        # This route can be called for draft and public statuses (owned by user)
+        # Submitted drafts are locked and cannot be edited
+        if draft.status not in ["draft", "public"]:
             logger.error(f"Draft not editable: draft_id={draft_id}, status={draft.status}, user_id={current_user.id}")
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Draft is not editable")
 
@@ -551,6 +606,7 @@ async def update_draft_and_redirect(
             inputs=new_inputs,
             draft_id=draft_id,
             generated_json=generated_json,
+            user=current_user,
         )
 
         # Check if this is an HTMX request
@@ -572,14 +628,21 @@ async def update_draft_and_redirect(
             }
 
             # Render the main draft preview content
-            draft_content = templates.get_template("components/draft_preview_containerless.html").render(
+            draft_content = templates.get_template("components/draft_preview_content.html").render(
                 request=request,
                 user=current_user,
                 draft=updated_draft,
                 finding_model=finding_model,
+                thread=None,  # No comment thread in update context
+                reference_type="draft",
+                reference_id=str(updated_draft.id),
+                current_user=current_user,
                 show_ids=False,  # Always False for drafts in this endpoint
                 show_json=False,  # Always False for drafts in this endpoint
                 show_success_message=True,  # Show success message for HTMX transitions
+                can_edit=updated_draft.status in ["draft", "public"],
+                can_delete=updated_draft.status in ["draft", "public"] and updated_draft.user_id == current_user.id,
+                author_name=author_name,  # Use the actual draft author, not current user
             )
 
             # Include mode toggle header OOB swap if the draft now has generated JSON
@@ -593,7 +656,7 @@ async def update_draft_and_redirect(
                     user=current_user,
                     draft=updated_draft,
                     mode="view",  # We're transitioning to view mode
-                    can_edit=updated_draft.status == "draft",
+                    can_edit=updated_draft.status in ["draft", "public"],
                     target_container=target_container,
                 )
 
@@ -633,6 +696,7 @@ async def add_draft_comment(
     current_user: CurrentUserDep,
     draft_service: DraftServiceDep,
     user_repo: UserRepoDep,
+    cache: CacheDep,
     content: str = Form(...),
     parent_comment_id: str | None = Form(None),
 ) -> HTMLResponse | RedirectResponse:
@@ -659,8 +723,8 @@ async def add_draft_comment(
         if draft is None:
             raise HTTPException(status_code=404, detail="Draft not found")
 
-        if draft.status != "submitted":
-            raise HTTPException(status_code=400, detail="Comments can only be added to submitted drafts")
+        if draft.status not in ["public", "submitted"]:
+            raise HTTPException(status_code=400, detail="Comments can only be added to public and submitted drafts")
 
         # Add the comment (service handles validation and threading)
         if parent_comment_id:
@@ -682,6 +746,11 @@ async def add_draft_comment(
 
         # Get updated thread
         thread = await draft_service.get_comments_for_draft(draft_id)
+
+        # Invalidate the public drafts cache since comment count changed
+        if draft.status == "public":
+            with contextlib.suppress(Exception):
+                await cache.delete("public_drafts_list")
 
         # Check if this is an HTMX request
         is_htmx = request.headers.get("HX-Request") == "true"
@@ -758,3 +827,73 @@ async def report_draft_comment(
         logger.error(f"Error reporting comment on draft '{draft_id}': {e}")
         error_html = '<span class="text-xs text-red-600 dark:text-red-400">Error</span>'
         return HTMLResponse(error_html, status_code=500)
+
+
+@router.post("/{draft_id}/make-public")
+async def make_draft_public(
+    draft_id: str,
+    current_user: CurrentUserDep,
+    draft_service: DraftServiceDep,
+    cache: CacheDep,
+) -> Response:
+    """Make a draft public for review."""
+    try:
+        # Check ownership and make public
+        await draft_service.make_public_draft(draft_id, current_user.id)
+
+        # Invalidate the public drafts cache
+        with contextlib.suppress(Exception):
+            await cache.delete("public_drafts_list")
+
+        # Redirect to the draft page
+        return RedirectResponse(url=f"/drafts/{draft_id}", status_code=303)
+    except Exception as e:
+        logger.error(f"Error making draft public {draft_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error making draft public: {str(e)}") from e
+
+
+@router.get("/", name="drafts_table")
+async def list_public_drafts(
+    request: Request,
+    current_user: OptionalUserDep,
+    draft_service: DraftServiceDep,
+    cache: CacheDep,
+) -> HTMLResponse:
+    """List all public drafts."""
+    try:
+        # Try to get from cache first
+        public_drafts = None
+        try:
+            cached_data = await cache.get("public_drafts_list")
+            if cached_data:
+                public_drafts = json.loads(str(cached_data))
+        except Exception:
+            # Cache errors are not critical
+            pass
+
+        # If not in cache, fetch from service and cache it
+        if public_drafts is None:
+            public_drafts = await draft_service.get_public_drafts()
+            try:
+                from datetime import timedelta
+
+                await cache.set("public_drafts_list", json.dumps(public_drafts), expires_in=timedelta(minutes=5))
+            except Exception:
+                # Cache errors are not critical
+                pass
+
+        return templates.TemplateResponse(
+            request=request,
+            name="drafts_table.html",
+            context={
+                "drafts": public_drafts,
+                "title": "Public Drafts",
+                "user": current_user,
+            },
+        )
+    except Exception as e:
+        logger.error(f"Error listing public drafts: {e}")
+        error_html = templates.get_template("components/error_display.html").render(
+            request=request, error_message=f"Error loading public drafts: {str(e)}"
+        )
+        return HTMLResponse(content=error_html, status_code=500)

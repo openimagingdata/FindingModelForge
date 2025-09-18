@@ -22,6 +22,7 @@ from .utils import (
     verify_no_console_errors,
     wait_for_ai_completion_and_swap,
     wait_for_htmx_swap,
+    wait_for_htmx_to_settle,
 )
 
 pytestmark = [pytest.mark.integration, pytest.mark.slow, pytest.mark.playwright]
@@ -33,13 +34,13 @@ class TestBasicCreationFlow:
     async def test_complete_creation_workflow(
         self, authenticated_page_with_console: tuple[Page, list[str], list[str]]
     ) -> None:
-        """Test the complete creation workflow from step 1 to draft submission.
+        """Test the complete creation workflow from step 1 to public draft.
 
         New streamlined workflow:
         1. Step 1: Enter name, generate description
         2. Step 2: Check similar -> REDIRECT to draft edit page
-        3. Draft Edit: Update & Preview -> Switch to view mode
-        4. Draft View: Submit Draft -> Final submitted state
+        3. Draft Edit: Update & Preview -> Switch to view mode (draft status)
+        4. Draft View: Make Public -> Switch to public status with Submit Draft button
         """
         page, errors, warnings = authenticated_page_with_console
 
@@ -104,22 +105,44 @@ class TestBasicCreationFlow:
         if await mode_toggle_buttons.count() > 0:
             print("DEBUG: Mode toggle buttons appeared after model generation")
 
-        # Look for Submit Draft button (should be visible in view mode)
-        submit_btn = page.locator("#main-content button:has-text('Submit Draft')")
-        if await submit_btn.count() == 0:
-            # Try looking in the mode toggle area - might be there
-            submit_btn = page.locator("button:has-text('Submit Draft')")
-
-        await expect(submit_btn).to_be_visible(timeout=5000)
-        print("DEBUG: Found 'Submit Draft' button")
+        # First, verify we have the draft in preview mode with "Make Public" button
+        # Use more specific selector to target the trigger button (not the modal confirmation button)
+        make_public_btn = page.locator("button:has-text('Make Public')").first
+        await expect(make_public_btn).to_be_visible(timeout=5000)
+        print("DEBUG: Found 'Make Public' button - draft created successfully")
 
         # Verify the draft model display elements (should be in preview mode now)
         await expect(page.locator("h2")).to_contain_text(finding_name)
         await expect(page.locator("h3:has-text('Attributes')")).to_be_visible()
-        await expect(page.locator("button:has-text('Submit Draft')")).to_be_visible()
+        await expect(page.locator("text=Status: Draft")).to_be_visible()
+
+        # Test the "Make Public" workflow
+        await make_public_btn.click()
+        print("DEBUG: Clicking 'Make Public' button")
+
+        # Wait for confirmation modal to appear (it appears as a div element at runtime)
+        await wait_for_htmx_to_settle(page)  # Wait for modal to fully render
+        modal = page.locator("[id^='make-public-modal-']")
+        await expect(modal).to_be_visible(timeout=5000)
+        print("DEBUG: Modal appeared")
+
+        # Find and click the confirmation button inside the modal
+        modal_make_public_btn = modal.locator("button:has-text('Make Public')")
+        await expect(modal_make_public_btn).to_be_visible(timeout=5000)
+        await modal_make_public_btn.click()
+        print("DEBUG: Confirmed making draft public")
+
+        # Wait for HTMX swap and verify "Submit Draft" button now appears
+        await wait_for_htmx_swap(page, "button:has-text('Submit Draft')")
+        submit_btn = page.locator("button:has-text('Submit Draft')")
+        await expect(submit_btn).to_be_visible(timeout=5000)
+        print("DEBUG: Found 'Submit Draft' button after making public")
+
+        # Verify status has changed (should no longer show "Status: Draft")
+        await expect(page.locator("text=Status: Draft")).to_have_count(0)
 
         # Note: We're not testing the actual submission since it had HTMX errors in manual testing
-        # The workflow successfully creates the draft and shows it in preview mode
+        # The workflow successfully creates the draft, makes it public, and shows it ready for submission
 
         await verify_no_console_errors(errors, warnings)
 
@@ -131,7 +154,6 @@ class TestBasicCreationFlow:
 
         # Navigate to create page without authentication
         await page.goto("http://localhost:8000/create-finding-model")
-        await page.wait_for_load_state("networkidle")
 
         # Should show login required
         title = await page.title()
@@ -272,9 +294,9 @@ class TestCreateToEditWorkflow:
         # Should now have draft edit form content in #main-content
         await expect(page.locator("#main-content textarea[name='attributes_markdown']")).to_be_visible()
 
-        # Generate model (HTMX swap to preview mode)
+        # Generate model (HTMX swap to preview mode with Make Public button)
         await page.locator("#main-content button:has-text('Update & Preview')").click()
-        await wait_for_ai_completion_and_swap(page, "Updat", "button:has-text('Submit Draft')")
+        await wait_for_ai_completion_and_swap(page, "Updat", "button:has-text('Make Public')")
 
         # Should now have draft preview content in #main-content with mode toggle buttons
         edit_mode_btn = page.locator("button#edit-mode-btn")
@@ -294,10 +316,10 @@ class TestCreateToEditWorkflow:
 
             # Generate again (HTMX swap back to preview)
             await page.locator("#main-content button:has-text('Update & Preview')").click()
-            await wait_for_ai_completion_and_swap(page, "Updat", "button:has-text('Submit Draft')")
+            await wait_for_ai_completion_and_swap(page, "Updat", "button:has-text('Make Public')")
 
-            # Verify we're back in view/preview mode (Submit Draft button should be visible)
-            await expect(page.locator("#main-content button:has-text('Submit Draft')")).to_be_visible()
+            # Verify we're back in view/preview mode (Make Public button should be visible)
+            await expect(page.locator("#main-content button:has-text('Make Public')").first).to_be_visible()
 
         await verify_no_console_errors(errors, warnings)
 
@@ -326,7 +348,6 @@ class TestMultipleEditCycles:
 
         # Navigate to draft page in preview mode (has generated model)
         await page.goto(f"http://localhost:8000/drafts/{draft_id}?mode=view")
-        await page.wait_for_load_state("networkidle")
 
         # Verify we're in preview mode with generated model
         await expect(page.locator("h2")).to_contain_text(finding_name)

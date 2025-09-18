@@ -7,9 +7,7 @@ development cycles.
 
 ### 1. Humanize Filter for Date Display
 
-**Priority**: Medium
-**Effort**: Small (2-3 hours)
-**Date Added**: February 1, 2025
+**Priority**: Medium **Effort**: Small (2-3 hours) **Date Added**: February 1, 2025
 
 **Issue**: Frontend templates use `| humanize` filter that doesn't exist in our codebase yet. This filter should convert
 timestamps to human-readable format like "2 hours ago" or "3 days ago".
@@ -35,9 +33,7 @@ timestamps to human-readable format like "2 hours ago" or "3 days ago".
 
 ### 2. Comment Report Functionality
 
-**Priority**: Low
-**Effort**: Medium (4-6 hours)
-**Date Added**: February 1, 2025
+**Priority**: Low **Effort**: Medium (4-6 hours) **Date Added**: February 1, 2025
 
 **Issue**: Report functionality for inappropriate comments was deferred to focus on core comment functionality.
 
@@ -60,9 +56,7 @@ timestamps to human-readable format like "2 hours ago" or "3 days ago".
 
 ### 3. Duplicate Comment Implementation in Frontend
 
-**Priority**: High
-**Effort**: Small (1-2 hours)
-**Date Added**: February 1, 2025
+**Priority**: High **Effort**: Small (1-2 hours) **Date Added**: February 1, 2025
 
 **Issue**: Two different comment display implementations exist:
 
@@ -81,9 +75,7 @@ timestamps to human-readable format like "2 hours ago" or "3 days ago".
 
 ### 4. Duplicate Comment Logic in Services
 
-**Priority**: Medium
-**Effort**: Medium (3-4 hours)
-**Date Added**: February 1, 2025
+**Priority**: Medium **Effort**: Medium (3-4 hours) **Date Added**: February 1, 2025
 
 **Issue**: `FindingModelService` and `DraftService` have duplicated comment validation and creation logic.
 
@@ -109,9 +101,7 @@ timestamps to human-readable format like "2 hours ago" or "3 days ago".
 
 ### 5. Repository Pattern Violation
 
-**Priority**: Low
-**Effort**: Small (1 hour)
-**Date Added**: January 31, 2025
+**Priority**: Low **Effort**: Small (1 hour) **Date Added**: January 31, 2025
 
 **Issue**: `add_to_comment_index()` directly accesses `user_repo.collection.update_one()` instead of using a repository
 method.
@@ -129,8 +119,7 @@ method.
 
 ### 6. Comment System Features
 
-**Priority**: Low
-**Effort**: Large
+**Priority**: Low **Effort**: Large
 
 **Potential Features**:
 

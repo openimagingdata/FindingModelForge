@@ -18,11 +18,19 @@
             </svg>
         {% endset %}
 
-        {{ breadcrumb([
-            {"text": "Home", "href": url_for('index'), "icon": home_icon},
-            {"text": (user.name or user.login) ~ "'s Drafts", "href": url_for('profile'), "icon": folder_icon},
-            {"text": draft.name }
-        ]) }}
+        {% if request.query_params.get('from') == 'public' %}
+            {{ breadcrumb([
+                {"text": "Home", "href": url_for('index'), "icon": home_icon},
+                {"text": "Public Drafts", "href": url_for('drafts_table'), "icon": folder_icon},
+                {"text": draft.name }
+            ]) }}
+        {% else %}
+            {{ breadcrumb([
+                {"text": "Home", "href": url_for('index'), "icon": home_icon},
+                {"text": (user.name or user.login) ~ "'s Drafts", "href": url_for('profile'), "icon": folder_icon},
+                {"text": draft.name }
+            ]) }}
+        {% endif %}
 
         {% if request.query_params.get('created') == 'true' %}
         <!-- Success Message -->

@@ -9,6 +9,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
+#### Public Draft Review Feature (September 17, 2025)
+
+- **New draft status**: Added `DraftStatus.PUBLIC` enum value for community review stage
+- **Public drafts table**: New `/drafts` endpoint displaying all public drafts for review
+- **Make public functionality**: POST `/drafts/{id}/make-public` endpoint with owner validation
+- **Enhanced permissions**: Public and submitted drafts viewable by all, editable by owner
+- **Redis caching**: 5-minute TTL cache for public drafts list with proper invalidation
+- **Denormalized author fields**: Added `author_username` and `author_name` to drafts
+- **UI test improvements**: Fixed seed_draft() to generate valid JSON for public/submitted drafts
+- **Bug fixes**: Fixed database query to allow editing both "draft" and "public" statuses
+- **Test coverage**: Added comprehensive tests for public draft editing permissions
+
 #### Comment System Implementation (September 2025)
 
 - **Complete comment system** for finding models and drafts with single-level replies
@@ -547,6 +559,23 @@ If upgrading from a previous version:
 - **Automatic draft recovery** - sessions can recover from drafts seamlessly
 - **Enhanced testing** - comprehensive test coverage for all router functionality
 - **Better error handling** - more specific error messages and validation
+
+## [0.5.0] - 2025-08-30
+
+### Added
+
+- **URL Simplification**: Clean, user-friendly URLs replacing API prefixes
+- **Router Refactoring**: Modular, focused routers with single responsibilities
+- **Service Layer**: Complete separation of business logic from HTTP concerns
+- **Three-Level Index Code Display**: Enhanced code navigation with hover popovers
+- **Comprehensive Testing**: Playwright tests for UI workflows
+
+### Changed
+
+- **Router organization**: Split monolithic routers into focused modules
+- **URL structure**: Removed `/api/finding-models/` prefix for cleaner URLs
+- **Draft workflow**: Unified draft management with session adoption
+- **Testing infrastructure**: Enhanced with priority-based test organization
 
 ---
 

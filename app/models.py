@@ -1,4 +1,5 @@
 from datetime import datetime
+from enum import Enum
 from typing import Any, Literal
 from uuid import uuid4
 
@@ -170,6 +171,17 @@ class FindingModelCreationStep(BaseModel):
 # ===== Draft workflow models =====
 
 
+class DraftStatus(str, Enum):
+    """Status values for finding model drafts."""
+
+    DRAFT = "draft"
+    PUBLIC = "public"
+    SUBMITTED = "submitted"
+    UNDER_REVIEW = "under-review"
+    ADDED = "added"
+    DECLINED = "declined"
+
+
 class FindingModelInputs(BaseModel):
     """User-provided inputs for a finding model draft (excluding name)."""
 
@@ -192,12 +204,14 @@ class FindingModelDraft(BaseModel):
 
     id: str
     user_id: int
+    author_username: str | None = None
+    author_name: str | None = None
     name: str
     created_at: datetime
     updated_at: datetime
     inputs: FindingModelInputs
     generated_json: str | None = None
-    status: Literal["draft", "submitted", "under-review", "added", "declined"] = "draft"
+    status: DraftStatus = DraftStatus.DRAFT
     action_log: list[LogEntry] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}

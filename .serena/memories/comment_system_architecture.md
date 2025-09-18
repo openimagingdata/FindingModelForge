@@ -1,15 +1,18 @@
 # Comment System Architecture Decisions
 
 ## Implementation Date
+
 September 2025
 
 ## Core Design Decisions
 
 ### 1. Separate Collection Architecture
 
-**Decision**: Store comments in a separate `comment_threads` collection rather than embedding in finding models or drafts.
+**Decision**: Store comments in a separate `comment_threads` collection rather than embedding in finding models or
+drafts.
 
 **Rationale**:
+
 - Clean separation of concerns between content and discussions
 - Prevents document size bloat as comments accumulate
 - Enables independent caching strategies
@@ -17,6 +20,7 @@ September 2025
 - Allows for future scaling without affecting core data
 
 **Implementation**:
+
 - One document per finding model or draft (created lazily on first comment)
 - Polymorphic references using `reference_type` and `reference_id`
 - Compound index on (reference_type, reference_id) for fast lookups
@@ -26,6 +30,7 @@ September 2025
 **Decision**: Allow replies to comments, but not replies to replies.
 
 **Rationale**:
+
 - Keeps discussions focused and readable
 - Avoids deep nesting complexity in UI
 - Simplifies data model and queries
@@ -33,6 +38,7 @@ September 2025
 - Easier moderation and management
 
 **Implementation**:
+
 - Comments array at thread level
 - Each comment has a replies array
 - Validation prevents adding replies to replies
@@ -43,6 +49,7 @@ September 2025
 **Decision**: 3 comments per minute per user, tracked via user document.
 
 **Rationale**:
+
 - Prevents spam without being restrictive
 - User document already loaded for auth
 - Simple sliding window algorithm
@@ -50,6 +57,7 @@ September 2025
 - Clear user feedback with 429 status
 
 **Implementation**:
+
 - `user.comment_index` tracks recent comments
 - Check last 60 seconds on each submission
 - Populate index after successful comment
@@ -60,6 +68,7 @@ September 2025
 **Decision**: Only authenticated users can comment.
 
 **Rationale**:
+
 - Accountability for content
 - Prevents anonymous spam
 - Enables user attribution and avatars
@@ -67,6 +76,7 @@ September 2025
 - Aligns with GitHub OAuth integration
 
 **Implementation**:
+
 - Check `current_user` dependency in endpoints
 - Different UI for anonymous vs authenticated
 - "Sign in with GitHub" prompts for anonymous
@@ -76,12 +86,14 @@ September 2025
 **Decision**: Comments only allowed on submitted drafts, not draft status.
 
 **Rationale**:
+
 - Draft status indicates work in progress
 - Submitted drafts are ready for feedback
 - Prevents confusion about incomplete work
 - Maintains clear workflow stages
 
 **Implementation**:
+
 - Check `draft.status != "draft"` before showing comments
 - Endpoints validate status before accepting comments
 - UI conditionally renders comment section
@@ -91,6 +103,7 @@ September 2025
 ### MongoDB Atomic Operations
 
 All comment operations use atomic updates:
+
 ```python
 # Thread creation with upsert
 await collection.update_one(
@@ -107,6 +120,7 @@ await collection.update_one(
 ### HTMX Response Pattern
 
 Comments return HTML fragments for seamless updates:
+
 - Success: Complete thread HTML with `hx-swap="outerHTML"`
 - Error: Alert HTML with appropriate styling
 - Rate limit: 429 status with user-friendly message
@@ -114,6 +128,7 @@ Comments return HTML fragments for seamless updates:
 ### Repository Layer Abstraction
 
 `CommentRepo` encapsulates all operations:
+
 - `get_thread()` - Simple retrieval
 - `add_comment()` - Atomic addition with thread creation
 - `add_reply()` - Validated reply addition
@@ -122,12 +137,14 @@ Comments return HTML fragments for seamless updates:
 ## Testing Strategy
 
 ### Comprehensive Coverage
+
 - 43 repository unit tests
 - 17 UI Playwright tests
 - 8 rate limiting tests
 - Mock user ID 999999 for testing
 
 ### Test Patterns
+
 - Shared fixtures in conftest.py
 - Realistic MongoDB ObjectIds
 - Proper async mocking
@@ -136,14 +153,17 @@ Comments return HTML fragments for seamless updates:
 ## Future Enhancements (Not Yet Implemented)
 
 ### High Priority
+
 1. **Blacklist enforcement** - Helper exists, needs router integration
 2. **Markdown rendering** - Sanitized HTML conversion
 
 ### Medium Priority
+
 3. **Time humanization** - "2 hours ago" format
 4. **Moderation CLI** - Admin tools for reported comments
 
 ### Low Priority
+
 5. **Sort order toggle** - Newest first option
 6. **Comment permalinks** - Direct links to comments
 7. **Pagination** - For threads > 100 comments

@@ -44,11 +44,27 @@ class TestDraftService:
         return repo
 
     @pytest.fixture
+    def mock_database(self) -> MagicMock:
+        """Mock database for DraftService."""
+        from app.database import Database
+
+        db = MagicMock(spec=Database)
+        db.ensure_person_for_user = AsyncMock(return_value=None)
+        db.people = {}
+        return db
+
+    @pytest.fixture
     def service(
-        self, mock_draft_repo: MagicMock, mock_comment_repo: MagicMock, mock_user_repo: MagicMock
+        self,
+        mock_draft_repo: MagicMock,
+        mock_comment_repo: MagicMock,
+        mock_user_repo: MagicMock,
+        mock_database: MagicMock,
     ) -> DraftService:
         """DraftService instance with mocked dependencies."""
-        return DraftService(draft_repo=mock_draft_repo, comment_repo=mock_comment_repo, user_repo=mock_user_repo)
+        return DraftService(
+            draft_repo=mock_draft_repo, comment_repo=mock_comment_repo, user_repo=mock_user_repo, database=mock_database
+        )
 
     @pytest.fixture
     def sample_draft(self) -> FindingModelDraft:

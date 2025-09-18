@@ -99,6 +99,10 @@ async def seed_draft(
     synonyms = synonyms or ["test"]
     attributes_markdown = attributes_markdown or "### presence\\n- absent: a\\n- present: b\\n- indeterminate: c\\n"
 
+    # For public/submitted drafts, ensure we have generated_json
+    if status in ["public", "submitted"] and generated_json is None:
+        generated_json = await generate_valid_generated_json(name)
+
     draft_doc = {
         "_id": draft_oid,
         "user_id": user_id,
@@ -113,11 +117,28 @@ async def seed_draft(
         "generated_json": generated_json,
         "status": status,
         "action_log": [],
+        # Add denormalized author fields for public drafts display
+        "author_username": "playwright-test-user" if user_id == 999999 else f"user-{user_id}",
+        "author_name": "Playwright Test User" if user_id == 999999 else f"User {user_id}",
     }
 
     await col.insert_one(draft_doc)
     await db.command("ping")  # Ensure write is committed
     client.close()
+
+    # Always invalidate the public drafts cache when creating a public draft
+    # This ensures the draft appears immediately in the /drafts table during tests
+    if status == "public":
+        try:
+            import redis.asyncio as redis
+
+            # Connect directly to Redis to ensure cache invalidation works
+            r = redis.Redis(host="localhost", port=6379, decode_responses=True)
+            await r.delete("public_drafts_list")
+            await r.aclose()  # Use aclose() to avoid deprecation warning
+        except Exception as e:
+            # Log but don't fail the test if Redis isn't available
+            print(f"Warning: Could not invalidate cache after creating public draft: {e}")
 
     return str(draft_oid)
 

@@ -20,6 +20,7 @@ components updated for the new simplified URL structure introduced in v1.3.0.
 {% from "macros/confirmation_modal.html" import confirmation_modal %}
 {% from "macros/delete_draft_modal.html" import delete_draft_modal %}
 {% from "macros/submit_draft_modal.html" import submit_draft_modal %}
+{% from "macros/make_public_modal.html" import make_public_modal %}
 {% from "macros/unified_form_data.html" import unified_form_data %}
 ```
 
@@ -178,6 +179,12 @@ Example:
   - HTMX integration for seamless deletion workflow
   - Customizable targeting and swap behavior
 
+- make_public_modal(draft_id, hx_target="#main-content", hx_swap="innerHTML")
+  - Flowbite confirmation modal for making drafts public
+  - Uses base confirmation_modal with info icon and blue styling
+  - Posts to `/drafts/{id}/make-public` endpoint
+  - Added September 2025 for public draft review feature
+
 - submit_draft_modal(draft_id, hx_target="#main-content", hx_swap="innerHTML")
   - Flowbite confirmation modal for draft submission
   - Uses base confirmation_modal with info icon and green styling
@@ -228,6 +235,7 @@ The comment thread component provides a complete discussion system for finding m
 ```
 
 **Context Variables Required:**
+
 - `thread` - CommentThread object containing all comments
 - `reference_type` - Either "finding_model" or "draft"
 - `reference_id` - The oifm_id for models or draft ID
@@ -235,6 +243,7 @@ The comment thread component provides a complete discussion system for finding m
 - `current_user` - Current authenticated user (or None)
 
 **Features:**
+
 - **Authentication-aware UI** - Different messages for logged-in vs anonymous users
 - **Single-level replies** - Comments can have replies, but replies cannot
 - **Character counting** - Real-time validation with Alpine.js (1-2000 chars)
@@ -246,6 +255,7 @@ The comment thread component provides a complete discussion system for finding m
 ### Comment Display Structure
 
 Each comment includes:
+
 - User avatar (GitHub profile image)
 - Username and timestamp
 - Comment content (plain text, markdown support planned)
@@ -256,6 +266,7 @@ Each comment includes:
 ### Alpine.js Integration
 
 The comment forms use Alpine.js for:
+
 - Character counting: `x-text="contentLength + '/2000'"`
 - Submit button state: `:disabled="!content || content.length > 2000"`
 - Reply form toggling: `x-show="showReplyForm"`
@@ -264,21 +275,25 @@ The comment forms use Alpine.js for:
 ### HTMX Patterns
 
 Comment submission uses HTMX for seamless updates:
+
 ```html
-<form hx-post="/finding-models/{{ slug_or_id }}/comments"
-      hx-target="#comment-thread-{{ reference_type }}-{{ reference_id }}"
-      hx-swap="outerHTML">
+<form
+  hx-post="/finding-models/{{ slug_or_id }}/comments"
+  hx-target="#comment-thread-{{ reference_type }}-{{ reference_id }}"
+  hx-swap="outerHTML"
+></form>
 ```
 
 Report buttons use self-replacing pattern:
+
 ```html
-<button hx-post="/finding-models/{{ slug_or_id }}/comments/{{ comment.id }}/report"
-        hx-swap="outerHTML">
+<button hx-post="/finding-models/{{ slug_or_id }}/comments/{{ comment.id }}/report" hx-swap="outerHTML"></button>
 ```
 
 ### Usage Examples
 
 **In Finding Model Detail Page:**
+
 ```jinja
 {% include 'components/comment_thread.html' with
     thread=comment_thread,
@@ -290,6 +305,7 @@ Report buttons use self-replacing pattern:
 ```
 
 **In Draft View Page:**
+
 ```jinja
 {% if draft.status != "draft" %}
   {% include 'components/comment_thread.html' with
@@ -305,6 +321,7 @@ Report buttons use self-replacing pattern:
 ### Styling Classes
 
 The component uses Flowbite classes throughout:
+
 - Cards: `bg-white dark:bg-gray-800 rounded-lg p-4`
 - Avatars: `w-8 h-8 rounded-full`
 - Buttons: `text-blue-600 hover:text-blue-700`
@@ -314,6 +331,7 @@ The component uses Flowbite classes throughout:
 ### Server Response Patterns
 
 The comment endpoints return:
+
 - **Success**: Updated comment thread HTML fragment
 - **Rate limit (429)**: Error alert HTML with message
 - **Validation error (400)**: Error alert HTML with details
