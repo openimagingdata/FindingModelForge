@@ -1,6 +1,5 @@
 # ruff: noqa: B008
 # mypy: disable-error-code="prop-decorator"
-from datetime import UTC, datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Form, Header, HTTPException, Query, Request
@@ -8,10 +7,8 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 
 from app.auth import CurrentUserDep, OptionalUserDep
 from app.config import logger
-from app.dependencies import CommentRepoDep, FindingModelServiceDep, UserRepoDep
-from app.models import UserCommentEntry
+from app.dependencies import FindingModelServiceDep
 from app.services import NotFoundError
-from app.services.comment_helpers import check_rate_limit
 from app.templates import templates
 from app.vite_manifest import get_vite_asset_path
 
@@ -252,7 +249,6 @@ async def add_finding_model_comment(
     request: Request,
     current_user: CurrentUserDep,
     finding_model_service: FindingModelServiceDep,
-    user_repo: UserRepoDep,
     content: str = Form(...),
     parent_comment_id: str | None = Form(None),
 ) -> HTMLResponse | RedirectResponse:
@@ -262,42 +258,18 @@ async def add_finding_model_comment(
         if not current_user:
             raise HTTPException(status_code=401, detail="Authentication required")
 
-        # Check rate limit
-        allowed, error_msg = check_rate_limit(current_user)
-        if not allowed:
-            if request.headers.get("HX-Request") == "true":
-                error_html = (
-                    f'<div class="p-4 text-red-600 bg-red-50 dark:bg-red-900 dark:text-red-200 rounded-lg">'
-                    f"{error_msg}</div>"
-                )
-                return HTMLResponse(content=error_html, status_code=429)
-            else:
-                raise HTTPException(status_code=429, detail=error_msg)
-
         # Get the finding model to get its oifm_id
         finding_model, _ = await finding_model_service.get_model_by_slug(slug)
         if not finding_model:
             raise HTTPException(status_code=404, detail=f"Finding model '{slug}' not found")
 
-        # Add the comment (service handles validation and threading)
+        # Add the comment (service handles rate limiting, validation, and threading)
         if parent_comment_id:
-            comment = await finding_model_service.add_comment_to_model(
+            await finding_model_service.add_comment_to_model(
                 finding_model.oifm_id, current_user, content, parent_comment_id
             )
         else:
-            comment = await finding_model_service.add_comment_to_model(finding_model.oifm_id, current_user, content)
-
-        # Update user's comment index for rate limiting
-        await user_repo.add_comment_to_index(
-            user_id=current_user.id,
-            entry=UserCommentEntry(
-                reference_type="finding_model",
-                reference_id=finding_model.oifm_id,
-                finding_name=finding_model.name,
-                comment_id=comment.id,
-                created_at=datetime.now(UTC),
-            ),
-        )
+            await finding_model_service.add_comment_to_model(finding_model.oifm_id, current_user, content)
 
         # Get updated thread
         thread = await finding_model_service.get_comments_for_model(finding_model.oifm_id)
@@ -342,7 +314,6 @@ async def report_model_comment(
     request: Request,
     current_user: CurrentUserDep,
     finding_model_service: FindingModelServiceDep,
-    comment_repo: CommentRepoDep,
 ) -> HTMLResponse:
     """Report a comment on a finding model."""
     # Check if user is logged in
@@ -355,22 +326,12 @@ async def report_model_comment(
         if not finding_model:
             return HTMLResponse('<div class="alert alert-danger">Model not found</div>', status_code=404)
 
-        # Get the comment thread
-        thread = await comment_repo.get_thread("finding_model", finding_model.oifm_id)
-        if not thread:
-            return HTMLResponse('<div class="alert alert-danger">No comments found</div>', status_code=404)
+        # Report the comment (service handles validation)
+        await finding_model_service.report_model_comment(finding_model.oifm_id, comment_id, current_user.id)
 
-        # Report the comment
-        success = await comment_repo.report_comment(thread.id, comment_id, current_user.id)
-
-        if success:
-            # Return a success message that replaces the report button
-            success_html = '<span class="text-xs text-green-600 dark:text-green-400">Reported</span>'
-            return HTMLResponse(success_html)
-        else:
-            # Return error message that replaces the button
-            error_html = '<span class="text-xs text-red-600 dark:text-red-400">Already reported</span>'
-            return HTMLResponse(error_html, status_code=400)
+        # Return a success message that replaces the report button
+        success_html = '<span class="text-xs text-green-600 dark:text-green-400">Reported</span>'
+        return HTMLResponse(success_html)
     except HTTPException:
         raise
     except Exception as e:

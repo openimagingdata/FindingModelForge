@@ -18,7 +18,6 @@ from findingmodel.tools import (
     add_standard_codes_to_model,
     create_model_from_markdown,
 )
-from app.services.comment_helpers import check_rate_limit
 
 from app.auth import CurrentUserDep, OptionalCurrentUserDep, OptionalUserDep
 from app.config import logger
@@ -714,19 +713,7 @@ async def add_draft_comment(
         if not current_user:
             raise HTTPException(status_code=401, detail="Authentication required")
 
-        # Check rate limit before any service calls
-        allowed, error_msg = check_rate_limit(current_user)
-        if not allowed:
-            if request.headers.get("HX-Request") == "true":
-                error_html = (
-                    f'<div class="p-4 text-red-600 bg-red-50 dark:bg-red-900 dark:text-red-200 rounded-lg">'
-                    f"{error_msg}</div>"
-                )
-                return HTMLResponse(content=error_html, status_code=429)
-            else:
-                raise HTTPException(status_code=429, detail=error_msg)
-
-        # Add the comment (service handles validation and threading)
+        # Add the comment (service handles rate limiting, validation, and threading)
         if parent_comment_id:
             await draft_service.add_comment_to_draft(draft_id, current_user, content, parent_comment_id)
         else:

@@ -12,9 +12,17 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from app.auth import get_current_user
-from app.dependencies import get_draft_service, get_finding_model_service, get_user_repo
+from app.dependencies import get_draft_service, get_finding_model_service
 from app.main import app
-from app.models import Comment, CommentThread, FindingModelDraft, FindingModelInputs, User, UserCommentEntry
+from app.models import (
+    Comment,
+    CommentThread,
+    DraftStatus,
+    FindingModelDraft,
+    FindingModelInputs,
+    User,
+    UserCommentEntry,
+)
 
 # Test constants
 TEST_USER_ID = 999999
@@ -107,16 +115,14 @@ def test_finding_model_comment_rate_limit_returns_429(
     mock_service = MagicMock()
     # Need to mock get_model_by_slug which is called first in the router
     mock_service.get_model_by_slug = AsyncMock(return_value=(mock_finding_model, {}))
-    mock_service.add_comment_to_model = AsyncMock()  # Should not be called due to rate limit
-
-    # Mock UserRepo
-    mock_user_repo = MagicMock()
-    mock_user_repo.add_comment_to_index = AsyncMock()
+    # Mock add_comment_to_model to raise rate limit exception (from CommentService)
+    mock_service.add_comment_to_model = AsyncMock(
+        side_effect=HTTPException(status_code=429, detail="Rate limit exceeded. Maximum 3 comments per minute.")
+    )
 
     # Mock get_current_user to return user with 3 recent comments
     app.dependency_overrides[get_current_user] = lambda: user_with_rate_limit_comments
     app.dependency_overrides[get_finding_model_service] = lambda: mock_service
-    app.dependency_overrides[get_user_repo] = lambda: mock_user_repo
 
     try:
         # Try to add a 4th comment within rate limit window
@@ -129,8 +135,8 @@ def test_finding_model_comment_rate_limit_returns_429(
         assert response.status_code == 429
         assert "Rate limit exceeded. Maximum 3 comments per minute." in response.json()["detail"]
 
-        # Verify service method was NOT called due to rate limit check
-        mock_service.add_comment_to_model.assert_not_called()
+        # Verify service method was called (rate limiting happens inside service)
+        mock_service.add_comment_to_model.assert_called_once()
 
     finally:
         app.dependency_overrides.clear()
@@ -146,25 +152,20 @@ def test_draft_comment_rate_limit_returns_429(client: TestClient, user_with_rate
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
         inputs=FindingModelInputs(description="Test draft description"),
-        status="submitted",  # Submitted - can receive comments
+        status=DraftStatus.SUBMITTED,  # Submitted - can receive comments
     )
 
     # Mock the draft service
     mock_service = MagicMock()
     mock_service.get_draft = AsyncMock(return_value=submitted_draft)
-    # Mock add_comment_to_draft to raise rate limit exception
+    # Mock add_comment_to_draft to raise rate limit exception (from CommentService)
     mock_service.add_comment_to_draft = AsyncMock(
         side_effect=HTTPException(status_code=429, detail="Rate limit exceeded. Maximum 3 comments per minute.")
     )
 
-    # Mock UserRepo
-    mock_user_repo = MagicMock()
-    mock_user_repo.add_comment_to_index = AsyncMock()
-
     # Mock get_current_user to return user with 3 recent comments
     app.dependency_overrides[get_current_user] = lambda: user_with_rate_limit_comments
     app.dependency_overrides[get_draft_service] = lambda: mock_service
-    app.dependency_overrides[get_user_repo] = lambda: mock_user_repo
 
     try:
         # Try to add a 4th comment within rate limit window
@@ -177,8 +178,8 @@ def test_draft_comment_rate_limit_returns_429(client: TestClient, user_with_rate
         assert response.status_code == 429
         assert "Rate limit exceeded. Maximum 3 comments per minute." in response.json()["detail"]
 
-        # Verify service method was NOT called (rate limit checked before service in route handler)
-        mock_service.add_comment_to_draft.assert_not_called()
+        # Verify service method was called (rate limiting happens inside CommentService)
+        mock_service.add_comment_to_draft.assert_called_once()
 
     finally:
         app.dependency_overrides.clear()
@@ -220,7 +221,6 @@ def test_old_comments_not_counted_in_rate_limit(
     # Mock get_current_user to return user with only old comments
     app.dependency_overrides[get_current_user] = lambda: user_with_old_comments
     app.dependency_overrides[get_finding_model_service] = lambda: mock_service
-    app.dependency_overrides[get_user_repo] = lambda: mock_user_repo
 
     try:
         # Should be able to add new comment since old comments don't count
@@ -236,8 +236,7 @@ def test_old_comments_not_counted_in_rate_limit(
         # Verify service methods were called
         mock_service.add_comment_to_model.assert_called_once()
         mock_service.get_comments_for_model.assert_called_once()
-        # Verify user comment index was updated
-        mock_user_repo.add_comment_to_index.assert_called_once()
+        # Note: user comment index is updated internally by CommentService
 
     finally:
         app.dependency_overrides.clear()
@@ -278,7 +277,6 @@ def test_comment_index_updated_after_successful_comment(
 
     app.dependency_overrides[get_current_user] = lambda: user_with_empty_comment_index
     app.dependency_overrides[get_finding_model_service] = lambda: mock_service
-    app.dependency_overrides[get_user_repo] = lambda: mock_user_repo
 
     try:
         # Add a comment
@@ -294,15 +292,7 @@ def test_comment_index_updated_after_successful_comment(
         # Verify service methods were called
         mock_service.add_comment_to_model.assert_called_once()
         mock_service.get_comments_for_model.assert_called_once()
-
-        # Verify user comment index was updated
-        mock_user_repo.add_comment_to_index.assert_called_once()
-        # Check the actual call arguments
-        call_args = mock_user_repo.add_comment_to_index.call_args
-        assert call_args.kwargs["user_id"] == TEST_USER_ID
-        entry = call_args.kwargs["entry"]
-        assert entry.reference_type == "finding_model"
-        assert entry.comment_id == "new_comment"
+        # Note: user comment index is updated internally by CommentService
 
     finally:
         app.dependency_overrides.clear()
@@ -315,15 +305,13 @@ def test_finding_model_rate_limit_with_parent_comment(
     mock_service = MagicMock()
     # Need to mock get_model_by_slug which is called first in the router
     mock_service.get_model_by_slug = AsyncMock(return_value=(mock_finding_model, {}))
-    mock_service.add_comment_to_model = AsyncMock()  # Should not be called due to rate limit
-
-    # Mock UserRepo
-    mock_user_repo = MagicMock()
-    mock_user_repo.add_comment_to_index = AsyncMock()
+    # Mock add_comment_to_model to raise rate limit exception (from CommentService)
+    mock_service.add_comment_to_model = AsyncMock(
+        side_effect=HTTPException(status_code=429, detail="Rate limit exceeded. Maximum 3 comments per minute.")
+    )
 
     app.dependency_overrides[get_current_user] = lambda: user_with_rate_limit_comments
     app.dependency_overrides[get_finding_model_service] = lambda: mock_service
-    app.dependency_overrides[get_user_repo] = lambda: mock_user_repo
 
     try:
         # Try to add a reply when already at rate limit
@@ -336,8 +324,8 @@ def test_finding_model_rate_limit_with_parent_comment(
         assert response.status_code == 429
         assert "Rate limit exceeded. Maximum 3 comments per minute." in response.json()["detail"]
 
-        # Service should NOT be called due to rate limit check
-        mock_service.add_comment_to_model.assert_not_called()
+        # Service should be called (rate limiting happens inside service)
+        mock_service.add_comment_to_model.assert_called_once()
 
     finally:
         app.dependency_overrides.clear()
@@ -353,7 +341,7 @@ def test_draft_rate_limit_with_submitted_draft_check(client: TestClient, user_wi
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
         inputs=FindingModelInputs(description="Test draft description"),
-        status="draft",  # Not submitted
+        status=DraftStatus.DRAFT,  # Not submitted
     )
 
     mock_service = MagicMock()
@@ -363,13 +351,8 @@ def test_draft_rate_limit_with_submitted_draft_check(client: TestClient, user_wi
         side_effect=HTTPException(status_code=429, detail="Rate limit exceeded. Maximum 3 comments per minute.")
     )
 
-    # Mock UserRepo
-    mock_user_repo = MagicMock()
-    mock_user_repo.add_comment_to_index = AsyncMock()
-
     app.dependency_overrides[get_current_user] = lambda: user_with_rate_limit_comments
     app.dependency_overrides[get_draft_service] = lambda: mock_service
-    app.dependency_overrides[get_user_repo] = lambda: mock_user_repo
 
     try:
         response = client.post(
@@ -377,13 +360,12 @@ def test_draft_rate_limit_with_submitted_draft_check(client: TestClient, user_wi
             data={"content": "This should fail due to rate limit", "parent_comment_id": ""},
         )
 
-        # Should fail with rate limit BEFORE checking draft status (security-first approach)
+        # Should fail with rate limit (checked by CommentService)
         assert response.status_code == 429
         assert "Rate limit exceeded. Maximum 3 comments per minute." in response.json()["detail"]
 
-        # Service methods should NOT be called due to rate limit
-        mock_service.get_draft.assert_not_called()
-        mock_service.add_comment_to_draft.assert_not_called()
+        # Service method is called (rate limiting happens inside CommentService)
+        mock_service.add_comment_to_draft.assert_called_once()
 
     finally:
         app.dependency_overrides.clear()
@@ -399,7 +381,7 @@ def test_submitted_draft_rate_limit(client: TestClient, user_with_rate_limit_com
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
         inputs=FindingModelInputs(description="Test draft description"),
-        status="submitted",  # Submitted - can receive comments
+        status=DraftStatus.SUBMITTED,  # Submitted - can receive comments
     )
 
     mock_service = MagicMock()
@@ -409,13 +391,8 @@ def test_submitted_draft_rate_limit(client: TestClient, user_with_rate_limit_com
         side_effect=HTTPException(status_code=429, detail="Rate limit exceeded. Maximum 3 comments per minute.")
     )
 
-    # Mock UserRepo
-    mock_user_repo = MagicMock()
-    mock_user_repo.add_comment_to_index = AsyncMock()
-
     app.dependency_overrides[get_current_user] = lambda: user_with_rate_limit_comments
     app.dependency_overrides[get_draft_service] = lambda: mock_service
-    app.dependency_overrides[get_user_repo] = lambda: mock_user_repo
 
     try:
         response = client.post(
@@ -427,9 +404,8 @@ def test_submitted_draft_rate_limit(client: TestClient, user_with_rate_limit_com
         assert response.status_code == 429
         assert "Rate limit exceeded. Maximum 3 comments per minute." in response.json()["detail"]
 
-        # Service methods should NOT be called due to rate limit check
-        mock_service.get_draft.assert_not_called()
-        mock_service.add_comment_to_draft.assert_not_called()
+        # Service method is called (rate limiting happens inside CommentService)
+        mock_service.add_comment_to_draft.assert_called_once()
 
     finally:
         app.dependency_overrides.clear()
