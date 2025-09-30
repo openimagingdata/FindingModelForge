@@ -18,6 +18,7 @@ from findingmodel.tools import (
     add_standard_codes_to_model,
     create_model_from_markdown,
 )
+from app.services.comment_helpers import check_rate_limit
 
 from app.auth import CurrentUserDep, OptionalCurrentUserDep, OptionalUserDep
 from app.config import logger
@@ -25,15 +26,12 @@ from app.templates import templates
 from app.vite_manifest import get_vite_asset_path
 from app.dependencies import (
     CacheDep,
-    CommentRepoDep,
     CreationSessionDep,
     DatabaseDep,
     DraftServiceDep,
     SessionManagerDep,
-    UserRepoDep,
 )
-from app.models import DraftStatus, FindingModelDraft, FindingModelInputs, UserCommentEntry
-from app.services.comment_helpers import check_rate_limit
+from app.models import DraftStatus, FindingModelDraft, FindingModelInputs
 import humanize
 
 TEST_USER_ID = 999999
@@ -300,7 +298,13 @@ async def edit_draft(
                     "mode": "edit",
                 },
             )
-    except HTTPException:
+    except HTTPException as exc:
+        if request.headers.get("HX-Request") == "true" and exc.detail:
+            error_html = (
+                f'<div class="p-4 text-red-600 bg-red-50 dark:bg-red-900 dark:text-red-200 rounded-lg">'
+                f"{exc.detail}</div>"
+            )
+            return HTMLResponse(content=error_html, status_code=exc.status_code)
         raise
     except Exception as e:
         logger.error(f"Error loading draft editor: {e}", exc_info=True)
@@ -391,8 +395,10 @@ async def unified_draft_page(
         # Check if this is an HTMX request (for mode switching)
         hx_request = request.headers.get("HX-Request")
         if hx_request:
-            # Check if this request comes from the public drafts table
+            # Check if this request comes from the public drafts table or creation workflow
             from_public = request.query_params.get("from") == "public"
+            current_url = request.headers.get("HX-Current-URL", "")
+            from_creation = "create-finding-model" in current_url
 
             # Return containerless content for HTMX swaps (prevents nested boxes)
             if mode == "edit":
@@ -420,7 +426,7 @@ async def unified_draft_page(
 
             # Only include OOB swaps if NOT coming from public drafts table and draft has generated JSON
             # (means there's something to preview - buttons are useful)
-            if not from_public and draft.generated_json:
+            if not from_public and not from_creation and draft.generated_json:
                 # Use unified container across all workflows
                 target_container = "#main-content"
 
@@ -475,7 +481,10 @@ async def unified_draft_page(
                     "author_name": author_name,
                 },
             )
-    except HTTPException:
+    except HTTPException as exc:
+        if request.headers.get("HX-Request") == "true" and exc.detail:
+            error_html = f'<span class="text-xs text-red-600 dark:text-red-400">{exc.detail}</span>'
+            return HTMLResponse(error_html, status_code=exc.status_code)
         raise
     except Exception as e:
         logger.error(f"Error loading unified draft page: {e}", exc_info=True)
@@ -695,7 +704,6 @@ async def add_draft_comment(
     request: Request,
     current_user: CurrentUserDep,
     draft_service: DraftServiceDep,
-    user_repo: UserRepoDep,
     cache: CacheDep,
     content: str = Form(...),
     parent_comment_id: str | None = Form(None),
@@ -706,7 +714,7 @@ async def add_draft_comment(
         if not current_user:
             raise HTTPException(status_code=401, detail="Authentication required")
 
-        # Check rate limit
+        # Check rate limit before any service calls
         allowed, error_msg = check_rate_limit(current_user)
         if not allowed:
             if request.headers.get("HX-Request") == "true":
@@ -718,31 +726,16 @@ async def add_draft_comment(
             else:
                 raise HTTPException(status_code=429, detail=error_msg)
 
-        # Verify draft exists and is submitted (no user_id check - anyone can comment on submitted drafts)
-        draft = await draft_service.get_draft(draft_id=draft_id)
-        if draft is None:
-            raise HTTPException(status_code=404, detail="Draft not found")
-
-        if draft.status not in ["public", "submitted"]:
-            raise HTTPException(status_code=400, detail="Comments can only be added to public and submitted drafts")
-
         # Add the comment (service handles validation and threading)
         if parent_comment_id:
-            comment = await draft_service.add_comment_to_draft(draft_id, current_user, content, parent_comment_id)
+            await draft_service.add_comment_to_draft(draft_id, current_user, content, parent_comment_id)
         else:
-            comment = await draft_service.add_comment_to_draft(draft_id, current_user, content)
+            await draft_service.add_comment_to_draft(draft_id, current_user, content)
 
-        # Update user's comment index for rate limiting
-        await user_repo.add_comment_to_index(
-            user_id=current_user.id,
-            entry=UserCommentEntry(
-                reference_type="draft",
-                reference_id=draft_id,
-                finding_name=draft.name,
-                comment_id=comment.id,
-                created_at=datetime.now(UTC),
-            ),
-        )
+        # Fetch updated draft for status/cache handling
+        draft = await draft_service.get_draft(draft_id)
+        if draft is None:
+            raise HTTPException(status_code=404, detail="Draft not found")
 
         # Get updated thread
         thread = await draft_service.get_comments_for_draft(draft_id)
@@ -792,7 +785,6 @@ async def report_draft_comment(
     request: Request,
     current_user: CurrentUserDep,
     draft_service: DraftServiceDep,
-    comment_repo: CommentRepoDep,
 ) -> HTMLResponse:
     """Report a comment on a draft."""
     # Check if user is logged in
@@ -805,22 +797,10 @@ async def report_draft_comment(
         if not draft:
             return HTMLResponse('<div class="alert alert-danger">Draft not found</div>', status_code=404)
 
-        # Get the comment thread
-        thread = await comment_repo.get_thread("draft", draft_id)
-        if not thread:
-            return HTMLResponse('<div class="alert alert-danger">No comments found</div>', status_code=404)
+        await draft_service.report_draft_comment(draft_id, comment_id, current_user.id)
 
-        # Report the comment
-        success = await comment_repo.report_comment(thread.id, comment_id, current_user.id)
-
-        if success:
-            # Return a success message that replaces the report button
-            success_html = '<span class="text-xs text-green-600 dark:text-green-400">Reported</span>'
-            return HTMLResponse(success_html)
-        else:
-            # Return error message that replaces the button
-            error_html = '<span class="text-xs text-red-600 dark:text-red-400">Already reported</span>'
-            return HTMLResponse(error_html, status_code=400)
+        success_html = '<span class="text-xs text-green-600 dark:text-green-400">Reported</span>'
+        return HTMLResponse(success_html)
     except HTTPException:
         raise
     except Exception as e:

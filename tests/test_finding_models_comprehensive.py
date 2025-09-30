@@ -171,6 +171,7 @@ def authenticated_client(
 ) -> Generator[TestClient, None, None]:
     """Create an authenticated test client with mocked dependencies."""
     from app.dependencies import SessionManager, get_creation_service, get_draft_service, get_session_manager
+    from app.services.comment_service import CommentService
     from app.services.creation_service import CreationService
     from app.services.draft_service import DraftService
 
@@ -186,11 +187,16 @@ def authenticated_client(
 
     # Override draft service dependency to use our mocked database
     def get_mock_draft_service() -> DraftService:
-        return DraftService(
-            draft_repo=mock_database.draft_repo,
+        comment_service = CommentService(
             comment_repo=mock_database.comment_repo,
             user_repo=mock_database.user_repo,
+            draft_repo=mock_database.draft_repo,
+        )
+        return DraftService(
+            draft_repo=mock_database.draft_repo,
+            user_repo=mock_database.user_repo,
             database=mock_database,
+            comment_service=comment_service,
         )
 
     app.dependency_overrides[get_draft_service] = get_mock_draft_service

@@ -2,18 +2,17 @@
 
 import os
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
+from unittest.mock import patch
 
 import pytest
+from fastapi import HTTPException
 
-from app.database import UserRepo
-from app.models import Comment, User, UserCommentEntry
+from app.models import Comment, CommentThread, User, UserCommentEntry
 from app.services.comment_helpers import (
-    add_to_comment_index,
     check_rate_limit,
     get_blacklist_user_ids,
-    is_reply_allowed,
+    validate_comment_content,
+    validate_parent_comment,
 )
 
 
@@ -304,81 +303,6 @@ class TestCheckRateLimit:
         assert error_msg == ""
 
 
-class TestAddToCommentIndex:
-    """Test add_to_comment_index function."""
-
-    @pytest.fixture
-    def mock_user_repo(self) -> MagicMock:
-        """Mock user repository."""
-        repo = MagicMock(spec=UserRepo)
-        repo.add_comment_to_index = AsyncMock()
-        return repo
-
-    @pytest.mark.asyncio
-    async def test_add_to_comment_index_success(self, mock_user_repo):
-        """Test successful addition of comment entry to user index."""
-        user_id = 12345
-        finding_name = "Test Finding"
-        reference_type = "finding_model"
-        reference_id = "oifm_123"
-        comment_id = str(uuid4())
-
-        with patch("app.services.comment_helpers.datetime") as mock_datetime:
-            mock_now = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
-            mock_datetime.now.return_value = mock_now
-            mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
-
-            await add_to_comment_index(mock_user_repo, user_id, finding_name, reference_type, reference_id, comment_id)
-
-            # Verify add_comment_to_index was called with correct parameters
-            mock_user_repo.add_comment_to_index.assert_called_once()
-            call_args = mock_user_repo.add_comment_to_index.call_args
-
-            # Check user_id parameter
-            assert call_args[0][0] == user_id
-
-            # Check UserCommentEntry parameter
-            entry = call_args[0][1]
-            assert isinstance(entry, UserCommentEntry)
-            assert entry.reference_type == reference_type
-            assert entry.reference_id == reference_id
-            assert entry.finding_name == finding_name
-            assert entry.comment_id == comment_id
-            assert entry.created_at == mock_now
-
-    @pytest.mark.asyncio
-    async def test_add_to_comment_index_draft_reference(self, mock_user_repo):
-        """Test adding comment entry with draft reference type."""
-        user_id = 67890
-        finding_name = "Draft Finding"
-        reference_type = "draft"
-        reference_id = "507f1f77bcf86cd799439012"
-        comment_id = str(uuid4())
-
-        with patch("app.services.comment_helpers.datetime") as mock_datetime:
-            mock_now = datetime(2024, 1, 1, 13, 0, 0, tzinfo=UTC)
-            mock_datetime.now.return_value = mock_now
-            mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
-
-            await add_to_comment_index(mock_user_repo, user_id, finding_name, reference_type, reference_id, comment_id)
-
-            # Verify add_comment_to_index was called with correct parameters
-            mock_user_repo.add_comment_to_index.assert_called_once()
-            call_args = mock_user_repo.add_comment_to_index.call_args
-
-            # Check user_id parameter
-            assert call_args[0][0] == user_id
-
-            # Check UserCommentEntry parameter
-            entry = call_args[0][1]
-            assert isinstance(entry, UserCommentEntry)
-            assert entry.reference_type == "draft"
-            assert entry.reference_id == reference_id
-            assert entry.finding_name == finding_name
-            assert entry.comment_id == comment_id
-            assert entry.created_at == mock_now
-
-
 class TestGetBlacklistUserIds:
     """Test get_blacklist_user_ids function."""
 
@@ -437,56 +361,91 @@ class TestGetBlacklistUserIds:
             assert result == []
 
 
-class TestIsReplyAllowed:
-    """Test is_reply_allowed function."""
+class TestValidateCommentContent:
+    """Tests for validate_comment_content."""
 
-    @pytest.fixture
-    def sample_comment(self) -> Comment:
-        """Sample comment for testing."""
-        return Comment(
-            id=str(uuid4()),
-            user_id=12345,
-            user_name="testuser",
-            content="Test comment content",
+    def test_valid_content_returned(self):
+        content = " Valid comment "
+        assert validate_comment_content(content) == "Valid comment"
+
+    def test_empty_content_raises(self):
+        with pytest.raises(ValueError, match="cannot be empty"):
+            validate_comment_content("   ")
+
+    def test_content_too_long_raises(self):
+        with pytest.raises(ValueError, match="cannot exceed"):
+            validate_comment_content("x" * 2001)
+
+    def test_script_tags_removed(self):
+        dirty = "<script>alert(1)</script>Safe"
+        cleaned = validate_comment_content(dirty)
+        assert "script" not in cleaned.lower()
+        assert cleaned == "Safe"
+
+    def test_event_handlers_removed(self):
+        dirty = '<p onclick="do()">Hello</p>'
+        cleaned = validate_comment_content(dirty)
+        assert "onclick" not in cleaned.lower()
+
+
+class TestValidateParentComment:
+    """Tests for validate_parent_comment."""
+
+    def _thread(self) -> CommentThread:
+        parent = Comment(
+            id="parent",
+            user_id=1,
+            user_name="parent",
+            content="Parent",
             created_at=datetime.now(UTC),
         )
+        return CommentThread(
+            id="thread",
+            reference_type="draft",
+            reference_id="d1",
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            comments=[parent],
+        )
 
-    def test_accepts_comment_object(self, sample_comment):
-        """Test that function accepts a Comment object."""
-        # Should not raise any errors
-        result = is_reply_allowed(sample_comment)
-        assert isinstance(result, bool)
+    def test_parent_exists_returns_true(self):
+        thread = self._thread()
+        assert validate_parent_comment(thread, "parent") is True
 
-    def test_returns_true_placeholder(self, sample_comment):
-        """Test that function returns True (placeholder implementation)."""
-        result = is_reply_allowed(sample_comment)
-        assert result is True
+    def test_missing_parent_raises_not_found(self):
+        thread = self._thread()
 
-    def test_comment_with_replies(self, sample_comment):
-        """Test comment that already has replies."""
-        sample_comment.replies = [
-            Comment(
-                id=str(uuid4()),
-                user_id=67890,
-                user_name="replier",
-                content="Reply content",
-                created_at=datetime.now(UTC),
-            )
-        ]
-        result = is_reply_allowed(sample_comment)
-        assert result is True  # Still True in placeholder implementation
+        with pytest.raises(HTTPException) as exc:
+            validate_parent_comment(thread, "missing")
 
-    def test_comment_without_replies(self, sample_comment):
-        """Test comment without any replies."""
-        assert len(sample_comment.replies) == 0
-        result = is_reply_allowed(sample_comment)
-        assert result is True
+        assert exc.value.status_code == 404
 
-    def test_reported_comment(self, sample_comment):
-        """Test that reported comments are still allowed replies (placeholder)."""
-        sample_comment.reported = True
-        sample_comment.reported_by = 99999
-        sample_comment.reported_at = datetime.now(UTC)
+    def test_reply_parent_raises_bad_request(self):
+        reply = Comment(
+            id="reply",
+            user_id=2,
+            user_name="reply",
+            content="Reply",
+            created_at=datetime.now(UTC),
+        )
+        parent = Comment(
+            id="parent",
+            user_id=1,
+            user_name="parent",
+            content="Parent",
+            created_at=datetime.now(UTC),
+            replies=[reply],
+        )
+        thread = CommentThread(
+            id="thread",
+            reference_type="draft",
+            reference_id="d1",
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            comments=[parent],
+        )
 
-        result = is_reply_allowed(sample_comment)
-        assert result is True  # Placeholder returns True regardless
+        with pytest.raises(HTTPException) as exc:
+            validate_parent_comment(thread, "reply")
+
+        assert exc.value.status_code == 400

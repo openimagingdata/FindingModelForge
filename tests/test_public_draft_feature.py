@@ -19,10 +19,11 @@ from fastapi.testclient import TestClient
 
 from app.auth import get_current_user
 from app.cache import RedisCache
-from app.database import CommentRepo, DraftRepo
+from app.database import DraftRepo
 from app.dependencies import get_cache, get_draft_service
 from app.main import app
 from app.models import DraftStatus, FindingModelDraft, FindingModelInputs, User
+from app.services.comment_service import CommentService
 from app.services.draft_service import DraftService
 
 
@@ -70,18 +71,20 @@ class TestPublicDraftFeature:
         return repo
 
     @pytest.fixture
-    def mock_comment_repo(self) -> MagicMock:
-        """Create a mock CommentRepo."""
-        repo = MagicMock(spec=CommentRepo)
-        repo.get_thread = AsyncMock()
-        return repo
-
-    @pytest.fixture
     def mock_user_repo(self) -> MagicMock:
         """Create a mock UserRepo."""
         repo = MagicMock()
         repo.add_comment_to_index = AsyncMock()
         return repo
+
+    @pytest.fixture
+    def mock_comment_service(self) -> MagicMock:
+        """Create a mock CommentService."""
+        service = MagicMock(spec=CommentService)
+        service.get_thread = AsyncMock()
+        service.add_comment = AsyncMock()
+        service.report_comment = AsyncMock()
+        return service
 
     @pytest.fixture
     def mock_database(self) -> MagicMock:
@@ -103,9 +106,7 @@ class TestPublicDraftFeature:
         return cache
 
     @pytest.fixture
-    def mock_draft_service(
-        self, mock_draft_repo: MagicMock, mock_comment_repo: MagicMock, mock_user_repo: MagicMock
-    ) -> MagicMock:
+    def mock_draft_service(self, mock_draft_repo: MagicMock, mock_user_repo: MagicMock) -> MagicMock:
         """Create a mock DraftService."""
         service = AsyncMock(spec=DraftService)
         service.make_public_draft = AsyncMock()
@@ -233,9 +234,9 @@ class TestPublicDraftFeature:
     async def test_make_public_draft_success(
         self,
         mock_draft_repo: MagicMock,
-        mock_comment_repo: MagicMock,
         mock_user_repo: MagicMock,
         mock_database: MagicMock,
+        mock_comment_service: MagicMock,
         sample_draft: FindingModelDraft,
         public_draft: FindingModelDraft,
     ) -> None:
@@ -244,7 +245,12 @@ class TestPublicDraftFeature:
         mock_draft_repo.get_draft.return_value = sample_draft
         mock_draft_repo.make_public.return_value = public_draft
 
-        service = DraftService(mock_draft_repo, mock_comment_repo, mock_user_repo, mock_database)
+        service = DraftService(
+            mock_draft_repo,
+            mock_user_repo,
+            mock_database,
+            mock_comment_service,
+        )
 
         result = await service.make_public_draft("507f1f77bcf86cd799439011", 999999)
 
@@ -260,15 +266,20 @@ class TestPublicDraftFeature:
     async def test_make_public_draft_validates_ownership(
         self,
         mock_draft_repo: MagicMock,
-        mock_comment_repo: MagicMock,
         mock_user_repo: MagicMock,
         mock_database: MagicMock,
+        mock_comment_service: MagicMock,
     ) -> None:
         """Test make_public_draft validates ownership."""
         # Mock draft not found (ownership check fails)
         mock_draft_repo.get_draft.return_value = None
 
-        service = DraftService(mock_draft_repo, mock_comment_repo, mock_user_repo, mock_database)
+        service = DraftService(
+            mock_draft_repo,
+            mock_user_repo,
+            mock_database,
+            mock_comment_service,
+        )
 
         from app.services import NotFoundError
 
@@ -279,91 +290,27 @@ class TestPublicDraftFeature:
     async def test_get_public_drafts_returns_only_public(
         self,
         mock_draft_repo: MagicMock,
-        mock_comment_repo: MagicMock,
         mock_user_repo: MagicMock,
         mock_database: MagicMock,
+        mock_comment_service: MagicMock,
         public_draft: FindingModelDraft,
     ) -> None:
         """Test get_public_drafts returns only PUBLIC status drafts."""
         mock_drafts = [public_draft]
         mock_draft_repo.get_public_drafts.return_value = mock_drafts
 
-        service = DraftService(mock_draft_repo, mock_comment_repo, mock_user_repo, mock_database)
+        service = DraftService(
+            mock_draft_repo,
+            mock_user_repo,
+            mock_database,
+            mock_comment_service,
+        )
 
         result = await service.get_public_drafts()
 
         mock_draft_repo.get_public_drafts.assert_called_once()
         assert len(result) == 1
         assert result[0]["status"] == DraftStatus.PUBLIC
-
-    @pytest.mark.asyncio
-    async def test_comment_permissions_public_allowed(
-        self,
-        mock_draft_repo: MagicMock,
-        mock_comment_repo: MagicMock,
-        mock_user_repo: MagicMock,
-        mock_database: MagicMock,
-        mock_user: User,
-        public_draft: FindingModelDraft,
-    ) -> None:
-        """Test can comment on PUBLIC drafts."""
-        mock_draft_repo.get_draft.return_value = public_draft
-
-        service = DraftService(mock_draft_repo, mock_comment_repo, mock_user_repo, mock_database)
-
-        # This should not raise an exception for public drafts
-        # We're testing the draft status check part
-        try:
-            # Mock the comment thread operations
-            mock_comment_repo.add_comment.return_value = AsyncMock()
-            await service.add_comment_to_draft("507f1f77bcf86cd799439011", mock_user, "Test comment")
-        except HTTPException as e:
-            # Should not get a 403 for draft status
-            assert e.status_code != 403 or "only allowed on public and submitted drafts" not in e.detail
-
-    @pytest.mark.asyncio
-    async def test_comment_permissions_submitted_allowed(
-        self,
-        mock_draft_repo: MagicMock,
-        mock_comment_repo: MagicMock,
-        mock_user_repo: MagicMock,
-        mock_database: MagicMock,
-        mock_user: User,
-        submitted_draft: FindingModelDraft,
-    ) -> None:
-        """Test can comment on SUBMITTED drafts."""
-        mock_draft_repo.get_draft.return_value = submitted_draft
-
-        service = DraftService(mock_draft_repo, mock_comment_repo, mock_user_repo, mock_database)
-
-        # This should not raise an exception for submitted drafts
-        try:
-            mock_comment_repo.add_comment.return_value = AsyncMock()
-            await service.add_comment_to_draft("507f1f77bcf86cd799439011", mock_user, "Test comment")
-        except HTTPException as e:
-            # Should not get a 403 for draft status
-            assert e.status_code != 403 or "only allowed on public and submitted drafts" not in e.detail
-
-    @pytest.mark.asyncio
-    async def test_comment_permissions_draft_denied(
-        self,
-        mock_draft_repo: MagicMock,
-        mock_comment_repo: MagicMock,
-        mock_user_repo: MagicMock,
-        mock_database: MagicMock,
-        mock_user: User,
-        sample_draft: FindingModelDraft,
-    ) -> None:
-        """Test cannot comment on DRAFT status drafts."""
-        mock_draft_repo.get_draft.return_value = sample_draft
-
-        service = DraftService(mock_draft_repo, mock_comment_repo, mock_user_repo, mock_database)
-
-        with pytest.raises(HTTPException) as exc_info:
-            await service.add_comment_to_draft("507f1f77bcf86cd799439011", mock_user, "Test comment")
-
-        assert exc_info.value.status_code == 403
-        assert "Comments are only allowed on public and submitted drafts" in exc_info.value.detail
 
     # ===== ROUTER ENDPOINT TESTS =====
 

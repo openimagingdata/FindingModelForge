@@ -4,45 +4,42 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 import humanize
-from fastapi import HTTPException
 from findingmodel import FindingModelFull
 
 from app.config import logger
-from app.database import CommentRepo, DraftRepo, UserRepo
-from app.models import Comment, CommentThread, DraftStatus, User
+from app.database import DraftRepo, UserRepo
+from app.models import Comment, CommentThread, User
+from app.services.comment_service import CommentService
 from app.utils.slug import slugify
 
 if TYPE_CHECKING:
     from app.database import Database
 
 from . import AuthorizationError, NotFoundError
-from .comment_helpers import (
-    add_to_comment_index,
-    check_rate_limit,
-    get_blacklist_user_ids,
-    validate_comment_content,
-    validate_parent_comment,
-)
 
 
 class DraftService:
     """Service for draft operations and display formatting."""
 
     def __init__(
-        self, draft_repo: DraftRepo, comment_repo: CommentRepo, user_repo: UserRepo, database: "Database"
+        self,
+        draft_repo: DraftRepo,
+        user_repo: UserRepo,
+        database: "Database",
+        comment_service: CommentService,
     ) -> None:
         """Initialize with required dependencies.
 
         Args:
             draft_repo: Repository for draft data access
-            comment_repo: Repository for comment operations
             user_repo: Repository for user operations
             database: Database instance for Person management
+            comment_service: Shared comment orchestration service
         """
         self.draft_repo = draft_repo
-        self.comment_repo = comment_repo
         self.user_repo = user_repo
         self.database = database
+        self.comment_service = comment_service
 
     async def get_drafts_for_user(self, user_id: int) -> list[dict[str, Any]]:
         """Get formatted drafts list for a user.
@@ -200,14 +197,11 @@ class DraftService:
                 # Get comment count for each draft
                 comment_count = 0
                 try:
-                    # Handle both dict and model objects for draft id
                     draft_id = draft.get("id") if isinstance(draft, dict) else str(draft.id)
                     if draft_id:
-                        thread = await self.comment_repo.get_thread("draft", draft_id)
-                    else:
-                        thread = None
-                    if thread and thread.comments:
-                        comment_count = len(thread.comments)
+                        thread = await self.comment_service.get_thread("draft", draft_id)
+                        if thread and thread.comments:
+                            comment_count = len(thread.comments)
                 except Exception:
                     # If we can't get comment count, default to 0
                     comment_count = 0
@@ -479,7 +473,7 @@ class DraftService:
         Returns:
             CommentThread if exists, None otherwise
         """
-        return await self.comment_repo.get_thread("draft", draft_id)
+        return await self.comment_service.get_thread("draft", draft_id)
 
     async def add_comment_to_draft(
         self, draft_id: str, user: User, content: str, parent_id: str | None = None
@@ -500,55 +494,13 @@ class DraftService:
         Raises:
             HTTPException: If draft is not submitted, rate limited, etc.
         """
-        # 1. CRITICAL: Check draft status (no ownership check for comments)
-        draft = await self.get_draft(draft_id)  # No user_id - anyone can comment on submitted drafts
-        if not draft:
-            raise HTTPException(404, "Draft not found")
-        if draft.status not in [DraftStatus.PUBLIC, DraftStatus.SUBMITTED]:
-            raise HTTPException(403, "Comments are only allowed on public and submitted drafts")
-
-        # 2. Check if user is blacklisted
-        blacklist = get_blacklist_user_ids()
-        if user.id in blacklist:
-            raise HTTPException(403, "User is not allowed to comment")
-
-        # 3. Validate content
-        content = validate_comment_content(content)
-
-        # 4. Check rate limit
-        allowed, error_msg = check_rate_limit(user)
-        if not allowed:
-            raise HTTPException(429, error_msg)
-
-        # 5. If parent_id provided, validate it's a top-level comment
-        if parent_id:
-            thread = await self.comment_repo.get_thread("draft", draft_id)
-            if thread:
-                validate_parent_comment(thread, parent_id)
-
-        # 6. Create comment
-        comment = Comment(
-            user_id=user.id,
-            user_name=user.login,
-            user_avatar_url=user.avatar_url,
-            content=content,
-            created_at=datetime.now(UTC),
+        return await self.comment_service.add_comment(
+            "draft",
+            draft_id,
+            user,
+            content,
+            parent_id=parent_id,
         )
-
-        # 7. Add to thread
-        if parent_id:
-            # thread is guaranteed to exist because validate_parent_comment would have raised if not
-            thread = await self.comment_repo.get_thread("draft", draft_id)
-            if thread:
-                await self.comment_repo.add_reply(thread.id, parent_id, comment)
-        else:
-            await self.comment_repo.add_comment("draft", draft_id, comment)
-
-        # 8. Track in user's comment index
-        finding_name = draft.name if draft else draft_id
-        await add_to_comment_index(self.user_repo, user.id, finding_name, "draft", draft_id, comment.id)
-
-        return comment
 
     async def report_draft_comment(self, draft_id: str, comment_id: str, user_id: int) -> None:
         """Report a comment on a draft.
@@ -561,18 +513,4 @@ class DraftService:
         Raises:
             HTTPException: If comment not found or already reported by user
         """
-        thread = await self.comment_repo.get_thread("draft", draft_id)
-        if not thread:
-            raise HTTPException(404, "Comment thread not found")
-
-        # Check if already reported by this user
-        for comment in thread.comments:
-            if comment.id == comment_id and comment.reported_by == user_id:
-                raise HTTPException(400, "You have already reported this comment")
-            for reply in comment.replies:
-                if reply.id == comment_id and reply.reported_by == user_id:
-                    raise HTTPException(400, "You have already reported this comment")
-
-        success = await self.comment_repo.report_comment(thread.id, comment_id, user_id)
-        if not success:
-            raise HTTPException(404, "Comment not found")
+        await self.comment_service.report_comment("draft", draft_id, comment_id, user_id)

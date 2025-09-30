@@ -107,15 +107,27 @@ class UITestDatabase:
         # Import here to avoid circular dependencies
         from app.cache import RedisCache
         from app.database import Database
+        from app.services.comment_service import CommentService
         from app.services.finding_model_service import FindingModelService
 
         try:
             db = Database()
             cache = RedisCache()
-            await cache.initialize()
+            await db.connect()
+            await cache.connect()
+
+            comment_service = CommentService(
+                comment_repo=db.comment_repo,
+                user_repo=db.user_repo,
+                draft_repo=db.draft_repo,
+            )
 
             service = FindingModelService(
-                database=db, cache=cache, comment_repo=db.comment_repo, user_repo=db.user_repo
+                index=db.finding_index,
+                cache=cache,
+                comment_repo=db.comment_repo,
+                user_repo=db.user_repo,
+                comment_service=comment_service,
             )
 
             model, _ = await service.get_model_by_slug(slug)

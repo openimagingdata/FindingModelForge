@@ -1,5 +1,6 @@
 """Test the FindingModelService class."""
 
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -8,7 +9,9 @@ from findingmodel import FindingModelFull
 
 from app.cache import RedisCache
 from app.database import CommentRepo, UserRepo
+from app.models import Comment, CommentThread, User
 from app.services import NotFoundError
+from app.services.comment_service import CommentService
 from app.services.finding_model_service import FindingModelService
 
 
@@ -53,12 +56,22 @@ class TestFindingModelService:
         return repo
 
     @pytest.fixture
+    def mock_comment_service(self) -> MagicMock:
+        """Mock comment service."""
+        service = MagicMock(spec=CommentService)
+        service.get_thread = AsyncMock()
+        service.add_comment = AsyncMock()
+        service.report_comment = AsyncMock()
+        return service
+
+    @pytest.fixture
     def service(
         self,
         mock_index: MagicMock,
         mock_cache: MagicMock,
         mock_comment_repo: MagicMock,
         mock_user_repo: MagicMock,
+        mock_comment_service: MagicMock,
     ) -> FindingModelService:
         """FindingModelService instance with mocked dependencies."""
         return FindingModelService(
@@ -66,6 +79,7 @@ class TestFindingModelService:
             cache=mock_cache,
             comment_repo=mock_comment_repo,
             user_repo=mock_user_repo,
+            comment_service=mock_comment_service,
         )
 
     @pytest.fixture
@@ -86,6 +100,22 @@ class TestFindingModelService:
         mock_model.synonyms = ["abdominal infection", "intra-abdominal abscess"]
         mock_model.oifm_id = "OIFM_OIDM_000001"
         return mock_model
+
+    @pytest.fixture
+    def sample_user(self) -> User:
+        now = datetime.now(UTC)
+        return User(
+            id=777,
+            login="finder",
+            name="Finder",
+            email="finder@example.com",
+            avatar_url="https://example.com/avatar.png",
+            html_url=None,
+            organizations=[],
+            created_at=now,
+            updated_at=now,
+            comment_index=[],
+        )
 
     async def test_list_models_cached(
         self, service: FindingModelService, mock_cache: MagicMock, sample_finding_models: list[dict[str, str]]
@@ -350,3 +380,78 @@ class TestFindingModelService:
             # Test
             with pytest.raises(NotFoundError, match="Finding model file not found on GitHub"):
                 await service._get_finding_model_with_cache(slug)
+
+    @pytest.mark.asyncio
+    async def test_get_comments_for_model_delegates(
+        self, service: FindingModelService, mock_comment_service: MagicMock
+    ) -> None:
+        thread = CommentThread(
+            id="thread",
+            reference_type="finding_model",
+            reference_id="fm-1",
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            comments=[],
+        )
+        mock_comment_service.get_thread.return_value = thread
+
+        result = await service.get_comments_for_model("fm-1")
+
+        mock_comment_service.get_thread.assert_awaited_once_with("finding_model", "fm-1")
+        assert result is thread
+
+    @pytest.mark.asyncio
+    async def test_add_comment_to_model_delegates(
+        self,
+        service: FindingModelService,
+        mock_comment_service: MagicMock,
+        sample_user: User,
+    ) -> None:
+        comment = Comment(
+            user_id=sample_user.id,
+            user_name=sample_user.login,
+            content="Comment",
+            created_at=datetime.now(UTC),
+        )
+        mock_comment_service.add_comment.return_value = comment
+        service.get_by_oifm_id = AsyncMock(return_value={"name": "Model"})  # type: ignore[attr-defined]
+
+        result = await service.add_comment_to_model("fm-1", sample_user, "body", parent_id="parent")
+
+        mock_comment_service.add_comment.assert_awaited_once_with(
+            "finding_model",
+            "fm-1",
+            sample_user,
+            "body",
+            parent_id="parent",
+            reference_name="Model",
+        )
+        assert result is comment
+
+    @pytest.mark.asyncio
+    async def test_add_comment_to_model_without_name_falls_back(
+        self,
+        service: FindingModelService,
+        mock_comment_service: MagicMock,
+        sample_user: User,
+    ) -> None:
+        mock_comment_service.add_comment.return_value = Comment(
+            user_id=sample_user.id,
+            user_name=sample_user.login,
+            content="Comment",
+            created_at=datetime.now(UTC),
+        )
+        service.get_by_oifm_id = AsyncMock(return_value={})  # type: ignore[attr-defined]
+
+        await service.add_comment_to_model("fm-1", sample_user, "body")
+
+        kwargs = mock_comment_service.add_comment.await_args.kwargs
+        assert kwargs["reference_name"] is None
+
+    @pytest.mark.asyncio
+    async def test_report_model_comment_delegates(
+        self, service: FindingModelService, mock_comment_service: MagicMock
+    ) -> None:
+        await service.report_model_comment("fm-1", "comment", 123)
+
+        mock_comment_service.report_comment.assert_awaited_once_with("finding_model", "fm-1", "comment", 123)

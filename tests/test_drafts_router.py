@@ -7,10 +7,11 @@ comment reporting endpoints added as part of the comments feature.
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from app.auth import get_current_user
-from app.dependencies import get_comment_repo, get_draft_service
+from app.dependencies import get_draft_service
 from app.main import app
 from app.models import User
 
@@ -25,13 +26,7 @@ def test_report_draft_comment_success(client: TestClient) -> None:
     mock_draft.id = "507f1f77bcf86cd799439011"
     mock_draft.status = "submitted"
     mock_draft_service.get_draft = AsyncMock(return_value=mock_draft)
-
-    # Mock comment repo
-    mock_comment_repo = AsyncMock()
-    mock_thread = MagicMock()
-    mock_thread.id = "thread123"
-    mock_comment_repo.get_thread = AsyncMock(return_value=mock_thread)
-    mock_comment_repo.report_comment = AsyncMock(return_value=True)
+    mock_draft_service.report_draft_comment = AsyncMock()
 
     # Mock current user
     now = datetime.now(UTC)
@@ -48,7 +43,6 @@ def test_report_draft_comment_success(client: TestClient) -> None:
 
     # Override dependencies
     app.dependency_overrides[get_draft_service] = lambda: mock_draft_service
-    app.dependency_overrides[get_comment_repo] = lambda: mock_comment_repo
     app.dependency_overrides[get_current_user] = lambda: mock_user
 
     try:
@@ -64,8 +58,9 @@ def test_report_draft_comment_success(client: TestClient) -> None:
 
         # Verify service calls
         mock_draft_service.get_draft.assert_called_once_with("507f1f77bcf86cd799439011", 999999)
-        mock_comment_repo.get_thread.assert_called_once_with("draft", "507f1f77bcf86cd799439011")
-        mock_comment_repo.report_comment.assert_called_once_with("thread123", "comment123", 999999)
+        mock_draft_service.report_draft_comment.assert_called_once_with(
+            "507f1f77bcf86cd799439011", "comment123", 999999
+        )
     finally:
         app.dependency_overrides.clear()
 
@@ -145,10 +140,10 @@ def test_report_draft_comment_no_thread(client: TestClient) -> None:
     )
 
     app.dependency_overrides[get_draft_service] = lambda: mock_draft_service
-    app.dependency_overrides[get_comment_repo] = lambda: mock_comment_repo
     app.dependency_overrides[get_current_user] = lambda: mock_user
 
     try:
+        mock_draft_service.report_draft_comment.side_effect = HTTPException(404, "No comments found")
         response = client.post("/drafts/507f1f77bcf86cd799439011/comments/comment123/report")
         assert response.status_code == 404
         assert "No comments found" in response.text
@@ -186,10 +181,10 @@ def test_report_draft_comment_already_reported(client: TestClient) -> None:
     )
 
     app.dependency_overrides[get_draft_service] = lambda: mock_draft_service
-    app.dependency_overrides[get_comment_repo] = lambda: mock_comment_repo
     app.dependency_overrides[get_current_user] = lambda: mock_user
 
     try:
+        mock_draft_service.report_draft_comment.side_effect = HTTPException(400, "Already reported")
         response = client.post("/drafts/507f1f77bcf86cd799439011/comments/comment123/report")
         assert response.status_code == 400
         assert "Already reported" in response.text

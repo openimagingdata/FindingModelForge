@@ -152,7 +152,10 @@ def test_draft_comment_rate_limit_returns_429(client: TestClient, user_with_rate
     # Mock the draft service
     mock_service = MagicMock()
     mock_service.get_draft = AsyncMock(return_value=submitted_draft)
-    mock_service.add_comment_to_draft = AsyncMock()  # Should not be called due to rate limit
+    # Mock add_comment_to_draft to raise rate limit exception
+    mock_service.add_comment_to_draft = AsyncMock(
+        side_effect=HTTPException(status_code=429, detail="Rate limit exceeded. Maximum 3 comments per minute.")
+    )
 
     # Mock UserRepo
     mock_user_repo = MagicMock()
@@ -174,8 +177,7 @@ def test_draft_comment_rate_limit_returns_429(client: TestClient, user_with_rate
         assert response.status_code == 429
         assert "Rate limit exceeded. Maximum 3 comments per minute." in response.json()["detail"]
 
-        # Verify service methods were NOT called due to rate limit check
-        mock_service.get_draft.assert_not_called()  # Rate limit checked before fetching draft
+        # Verify service method was NOT called (rate limit checked before service in route handler)
         mock_service.add_comment_to_draft.assert_not_called()
 
     finally:
@@ -356,8 +358,10 @@ def test_draft_rate_limit_with_submitted_draft_check(client: TestClient, user_wi
 
     mock_service = MagicMock()
     mock_service.get_draft = AsyncMock(return_value=draft_not_submitted)
-    # This should not be called because of rate limit
-    mock_service.add_comment_to_draft = AsyncMock()
+    # Mock add_comment_to_draft to raise rate limit exception (checked before draft status)
+    mock_service.add_comment_to_draft = AsyncMock(
+        side_effect=HTTPException(status_code=429, detail="Rate limit exceeded. Maximum 3 comments per minute.")
+    )
 
     # Mock UserRepo
     mock_user_repo = MagicMock()
@@ -400,7 +404,10 @@ def test_submitted_draft_rate_limit(client: TestClient, user_with_rate_limit_com
 
     mock_service = MagicMock()
     mock_service.get_draft = AsyncMock(return_value=submitted_draft)
-    mock_service.add_comment_to_draft = AsyncMock()  # Should not be called due to rate limit
+    # Mock add_comment_to_draft to raise rate limit exception
+    mock_service.add_comment_to_draft = AsyncMock(
+        side_effect=HTTPException(status_code=429, detail="Rate limit exceeded. Maximum 3 comments per minute.")
+    )
 
     # Mock UserRepo
     mock_user_repo = MagicMock()

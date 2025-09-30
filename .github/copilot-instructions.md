@@ -13,16 +13,16 @@ models define semantic labels and structured attributes for medical imaging find
 **Frontend**: Jinja2, Tailwind CSS v4, Alpine.js, Flowbite components, HTMX
 **Tools**: uv (package manager), Task (automation), Ruff (linting), MyPy (type checking), Pytest
 
-For detailed technology information, see **[CLAUDE.md](../CLAUDE.md)**.
+For detailed technology information, see **CLAUDE.md**.
 
 ## Core Development Principles
 
 ⚠️ **CRITICAL**: Always reference the detailed guides before coding:
 
-- **[CLAUDE.md](../CLAUDE.md)** - Project architecture, principles, and workflows
-- **[app/CLAUDE.md](../app/CLAUDE.md)** - Backend patterns (FastAPI, async, repositories, testing)
-- **[templates/CLAUDE.md](../templates/CLAUDE.md)** - Frontend rules (Flowbite components, Alpine.js)
-- **[tests/CLAUDE.md](../tests/CLAUDE.md)** - Testing strategies and patterns
+- **CLAUDE.md** - Project architecture, principles, and workflows
+- **app/CLAUDE.md** - Backend patterns (FastAPI, async, repositories, testing)
+- **templates/CLAUDE.md** - Frontend rules (Flowbite components, Alpine.js)
+- **tests/CLAUDE.md** - Testing strategies and patterns
 
 ### Key Rules Summary
 
@@ -38,11 +38,11 @@ For detailed technology information, see **[CLAUDE.md](../CLAUDE.md)**.
 **Quality**: `task lint` (fix issues) → `task test` (run tests) → `task check` (CI checks)
 **Frontend**: `task build-frontend` (build assets) → `task dev-watch` (CSS watching)
 
-For detailed workflow information, see **[CLAUDE.md](../CLAUDE.md)**.
+For detailed workflow information, see **CLAUDE.md**.
 
 ### 🚨 CRITICAL UI Rules
 
-**MANDATORY**: Read **[templates/CLAUDE.md](../templates/CLAUDE.md)** before ANY UI work.
+**MANDATORY**: Read **templates/CLAUDE.md** before ANY UI work.
 
 **Golden Rules:**
 - ✅ ALWAYS use Flowbite components from https://flowbite.com/docs/
@@ -123,11 +123,11 @@ See `CLAUDE.md` for complete environment variable reference.
 
 **CRITICAL**: Always check the domain-specific CLAUDE.md files for detailed development guidance:
 
-- **[CLAUDE.md](../CLAUDE.md)** - Main project guide with architecture and core principles
-- **[app/CLAUDE.md](../app/CLAUDE.md)** - Backend development patterns, FastAPI, async patterns, repositories
-- **[templates/CLAUDE.md](../templates/CLAUDE.md)** - Frontend/UI development, Flowbite components, Alpine.js (MANDATORY rules)
-- **[tests/CLAUDE.md](../tests/CLAUDE.md)** - Testing patterns, fixtures, Playwright browser testing
-- **[docs/DOCUMENTATION_INDEX.md](../docs/DOCUMENTATION_INDEX.md)** - Complete documentation index
+- **CLAUDE.md** - Main project guide with architecture and core principles
+- **app/CLAUDE.md** - Backend development patterns, FastAPI, async patterns, repositories
+- **templates/CLAUDE.md** - Frontend/UI development, Flowbite components, Alpine.js (MANDATORY rules)
+- **tests/CLAUDE.md** - Testing patterns, fixtures, Playwright browser testing
+- **docs/DOCUMENTATION_INDEX.md** - Complete documentation index
 
 ### Key Documentation by Task Type
 

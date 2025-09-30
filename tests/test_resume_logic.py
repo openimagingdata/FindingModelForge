@@ -63,10 +63,21 @@ def _client_with_state(session_json: str) -> TestClient:
 
     # Set up service dependencies
     from app.dependencies import get_draft_service
+    from app.services.comment_service import CommentService
     from app.services.draft_service import DraftService
 
     def get_mock_draft_service() -> DraftService:
-        return DraftService(draft_repo=db.draft_repo, comment_repo=db.comment_repo, user_repo=db.user_repo, database=db)
+        comment_service = CommentService(
+            comment_repo=db.comment_repo,
+            user_repo=db.user_repo,
+            draft_repo=db.draft_repo,
+        )
+        return DraftService(
+            draft_repo=db.draft_repo,
+            user_repo=db.user_repo,
+            database=db,
+            comment_service=comment_service,
+        )
 
     app.dependency_overrides[get_current_user] = mock_user
     app.dependency_overrides[get_draft_service] = get_mock_draft_service

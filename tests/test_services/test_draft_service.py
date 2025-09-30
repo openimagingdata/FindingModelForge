@@ -5,9 +5,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.database import CommentRepo, DraftRepo, UserRepo
-from app.models import FindingModelDraft, FindingModelInputs
+from app.database import DraftRepo, UserRepo
+from app.models import Comment, FindingModelDraft, FindingModelInputs, User
 from app.services import NotFoundError
+from app.services.comment_service import CommentService
 from app.services.draft_service import DraftService
 
 
@@ -22,16 +23,6 @@ class TestDraftService:
         repo.get_draft = AsyncMock()
         repo.delete_draft = AsyncMock()
         repo.submit = AsyncMock()
-        return repo
-
-    @pytest.fixture
-    def mock_comment_repo(self) -> MagicMock:
-        """Mock comment repository."""
-        repo = MagicMock(spec=CommentRepo)
-        repo.get_thread = AsyncMock()
-        repo.add_comment = AsyncMock()
-        repo.add_reply = AsyncMock()
-        repo.report_comment = AsyncMock()
         return repo
 
     @pytest.fixture
@@ -54,16 +45,44 @@ class TestDraftService:
         return db
 
     @pytest.fixture
+    def mock_comment_service(self) -> MagicMock:
+        """Mock comment service."""
+        service = MagicMock(spec=CommentService)
+        service.get_thread = AsyncMock()
+        service.add_comment = AsyncMock()
+        service.report_comment = AsyncMock()
+        return service
+
+    @pytest.fixture
     def service(
         self,
         mock_draft_repo: MagicMock,
-        mock_comment_repo: MagicMock,
         mock_user_repo: MagicMock,
         mock_database: MagicMock,
+        mock_comment_service: MagicMock,
     ) -> DraftService:
         """DraftService instance with mocked dependencies."""
         return DraftService(
-            draft_repo=mock_draft_repo, comment_repo=mock_comment_repo, user_repo=mock_user_repo, database=mock_database
+            draft_repo=mock_draft_repo,
+            user_repo=mock_user_repo,
+            database=mock_database,
+            comment_service=mock_comment_service,
+        )
+
+    @pytest.fixture
+    def sample_user(self) -> User:
+        now = datetime.now(UTC)
+        return User(
+            id=111,
+            login="tester",
+            name="Tester",
+            email="tester@example.com",
+            avatar_url="https://example.com/avatar.png",
+            html_url=None,
+            organizations=[],
+            created_at=now,
+            updated_at=now,
+            comment_index=[],
         )
 
     @pytest.fixture
@@ -330,6 +349,46 @@ class TestDraftService:
 
         # Assertions
         assert result == []
+
+    @pytest.mark.asyncio
+    async def test_get_comments_for_draft_delegates(
+        self, service: DraftService, mock_comment_service: MagicMock
+    ) -> None:
+        thread = MagicMock()
+        mock_comment_service.get_thread.return_value = thread
+
+        result = await service.get_comments_for_draft("draft-1")
+
+        mock_comment_service.get_thread.assert_awaited_once_with("draft", "draft-1")
+        assert result is thread
+
+    @pytest.mark.asyncio
+    async def test_add_comment_to_draft_delegates(
+        self,
+        service: DraftService,
+        mock_comment_service: MagicMock,
+        sample_user: User,
+    ) -> None:
+        comment = Comment(
+            user_id=sample_user.id,
+            user_name=sample_user.login,
+            content="test",
+            created_at=datetime.now(UTC),
+        )
+        mock_comment_service.add_comment.return_value = comment
+
+        result = await service.add_comment_to_draft("draft-1", sample_user, "hello", parent_id="parent")
+
+        mock_comment_service.add_comment.assert_awaited_once_with(
+            "draft", "draft-1", sample_user, "hello", parent_id="parent"
+        )
+        assert result is comment
+
+    @pytest.mark.asyncio
+    async def test_report_draft_comment_delegates(self, service: DraftService, mock_comment_service: MagicMock) -> None:
+        await service.report_draft_comment("draft-1", "comment-1", 123)
+
+        mock_comment_service.report_comment.assert_awaited_once_with("draft", "draft-1", "comment-1", 123)
 
     def test_extract_attribute_names_from_generated_json_valid(self, service: DraftService):
         """Test extracting attribute names from valid JSON."""

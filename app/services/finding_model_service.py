@@ -1,34 +1,33 @@
 """Finding Model service with browsing, caching, and slug operations."""
 
 import re
-from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
 
 import httpx
-from fastapi import HTTPException
 from findingmodel import FindingModelFull
 
 from app.cache import RedisCache
 from app.config import logger, settings
 from app.database import CommentRepo, UserRepo
 from app.models import Comment, CommentThread, User
+from app.services.comment_service import CommentService
 from app.utils.slug import generate_slug_variants, normalize_for_cache, slugify
 
 from . import NotFoundError
-from .comment_helpers import (
-    add_to_comment_index,
-    check_rate_limit,
-    get_blacklist_user_ids,
-    validate_comment_content,
-    validate_parent_comment,
-)
 
 
 class FindingModelService:
     """Service for finding model operations including browsing and caching."""
 
-    def __init__(self, index: Any, cache: RedisCache, comment_repo: CommentRepo, user_repo: UserRepo) -> None:
+    def __init__(
+        self,
+        index: Any,
+        cache: RedisCache,
+        comment_repo: CommentRepo,
+        user_repo: UserRepo,
+        comment_service: CommentService,
+    ) -> None:
         """Initialize with required dependencies.
 
         Args:
@@ -41,6 +40,7 @@ class FindingModelService:
         self.cache = cache
         self.comment_repo = comment_repo
         self.user_repo = user_repo
+        self.comment_service = comment_service
 
     async def list_models(
         self, search: str | None = None, page: int = 1, per_page: int = 20
@@ -284,7 +284,7 @@ class FindingModelService:
         Returns:
             CommentThread if exists, None otherwise
         """
-        return await self.comment_repo.get_thread("finding_model", oifm_id)
+        return await self.comment_service.get_thread("finding_model", oifm_id)
 
     async def add_comment_to_model(
         self, oifm_id: str, user: User, content: str, parent_id: str | None = None
@@ -307,55 +307,17 @@ class FindingModelService:
         # Log user details for debugging
         logger.info(f"Adding comment for user: id={user.id}, login={user.login}")
 
-        # 1. Check if user is blacklisted
-        blacklist = get_blacklist_user_ids()
-        if user.id in blacklist:
-            raise HTTPException(403, "User is not allowed to comment")
+        model_doc = await self.get_by_oifm_id(oifm_id)
+        finding_name = model_doc.get("name") if model_doc else None
 
-        # 2. Validate content
-        content = validate_comment_content(content)
-
-        # 3. Check rate limit
-        allowed, error_msg = check_rate_limit(user)
-        if not allowed:
-            raise HTTPException(429, error_msg)
-
-        # 4. If parent_id provided, validate it's a top-level comment
-        if parent_id:
-            thread = await self.comment_repo.get_thread("finding_model", oifm_id)
-            if thread:
-                validate_parent_comment(thread, parent_id)
-
-        # 5. Create comment
-        comment = Comment(
-            user_id=user.id,
-            user_name=user.login,
-            user_avatar_url=user.avatar_url,
-            content=content,
-            created_at=datetime.now(UTC),
+        return await self.comment_service.add_comment(
+            "finding_model",
+            oifm_id,
+            user,
+            content,
+            parent_id=parent_id,
+            reference_name=finding_name,
         )
-
-        # Log comment details before saving
-        logger.info(f"Created comment object: id={comment.id}, user_id={comment.user_id}, parent_id={parent_id}")
-
-        # 6. Add to thread
-        if parent_id:
-            # thread is guaranteed to exist because validate_parent_comment would have raised if not
-            thread = await self.comment_repo.get_thread("finding_model", oifm_id)
-            if thread:
-                logger.info(f"Adding reply to thread: thread_id={thread.id}, parent_id={parent_id}")
-                await self.comment_repo.add_reply(thread.id, parent_id, comment)
-        else:
-            logger.info(f"Adding top-level comment for model: {oifm_id}")
-            await self.comment_repo.add_comment("finding_model", oifm_id, comment)
-
-        # 7. Track in user's comment index
-        # Get finding model name for display
-        model = await self.get_by_oifm_id(oifm_id)
-        finding_name = model.get("name") if model else oifm_id
-        await add_to_comment_index(self.user_repo, user.id, finding_name, "finding_model", oifm_id, comment.id)
-
-        return comment
 
     async def report_model_comment(self, oifm_id: str, comment_id: str, user_id: int) -> None:
         """Report a comment on a finding model.
@@ -368,18 +330,4 @@ class FindingModelService:
         Raises:
             HTTPException: If comment not found or already reported by user
         """
-        thread = await self.comment_repo.get_thread("finding_model", oifm_id)
-        if not thread:
-            raise HTTPException(404, "Comment thread not found")
-
-        # Check if already reported by this user
-        for comment in thread.comments:
-            if comment.id == comment_id and comment.reported_by == user_id:
-                raise HTTPException(400, "You have already reported this comment")
-            for reply in comment.replies:
-                if reply.id == comment_id and reply.reported_by == user_id:
-                    raise HTTPException(400, "You have already reported this comment")
-
-        success = await self.comment_repo.report_comment(thread.id, comment_id, user_id)
-        if not success:
-            raise HTTPException(404, "Comment not found")
+        await self.comment_service.report_comment("finding_model", oifm_id, comment_id, user_id)

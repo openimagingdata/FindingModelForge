@@ -33,43 +33,45 @@
 ## Plan
 
 ### Phase 1 – Service Skeleton
-- [ ] Create `CommentService` class in `app/services/comment_service.py` with constructor accepting `CommentRepo`, `UserRepo` (and optional `DraftRepo` if needed for status checks).
-- [ ] Define public methods mirroring current use cases:
-  - `get_thread(reference_type, reference_id)`
-  - `add_comment(reference_type, reference_id, user, content, *, parent_id=None)`
-  - `report_comment(reference_type, reference_id, comment_id, user_id)`
-- [ ] Centralise validation/rate-limit/blacklist logic inside the service by reusing `comment_helpers`; if additional helpers are required, move them alongside or keep them imported.
+- [x] **Task 1:** Draft `app/services/comment_service.py` module with `CommentService` class, dependency fields (`CommentRepo`, `UserRepo`, optional `DraftRepo`) and method stubs.
+    - Implementation note (cycle 1): initial stub introduced an unused `extra_context` parameter; removed in the second pass leaving clean stubs.
+- [x] **Task 2:** Implement `get_thread(reference_type, reference_id)` ensuring it delegates to `CommentRepo` and returns `CommentThread | None` consistently.
+- [x] **Task 3:** Implement `add_comment(...)` orchestration:
+    - Pull in validation helpers (`check_rate_limit`, `get_blacklist_user_ids`, `validate_comment_content`, `validate_parent_comment`).
+    - Support both draft and finding-model flows, including draft-status guard via `DraftRepo` when needed.
+    - Persist via `CommentRepo`, update `UserRepo.add_comment_to_index`, and return created `Comment`.
+- [x] **Task 4:** Implement `report_comment(...)` orchestration covering thread lookup, duplicate-report detection, and delegation to `CommentRepo`.
+- [x] **Task 5:** Add any shared internal helpers/constants required by Tasks 2–4 while keeping logic lean (no router changes yet).
+    - Current implementation only required `_ALLOWED_REFERENCE_TYPES`; no additional helpers needed.
 
 ### Phase 2 – Dependency Wiring
-- [ ] Add FastAPI dependency provider in `app/dependencies.py` (e.g., `get_comment_service`).
-- [ ] Expose `CommentServiceDep = Annotated[CommentService, Depends(get_comment_service)]` for router/service consumption.
-- [ ] Update `app/services/__init__.py` to export the new service or errors if necessary.
+- [x] **Task 6:** Add FastAPI dependency provider in `app/dependencies.py` (e.g., `get_comment_service`).
+- [x] **Task 7:** Expose `CommentServiceDep = Annotated[CommentService, Depends(get_comment_service)]` for router/service consumption.
+- [x] **Task 8:** Update `app/services/__init__.py` to export the new service class for downstream imports.
 
 ### Phase 3 – Integrate with Existing Services
-- [ ] Refactor `DraftService` methods (`get_comments_for_draft`, `add_comment_to_draft`, `report_draft_comment`) to delegate to `CommentService`.
-- [ ] Refactor `FindingModelService` comment-related methods to delegate similarly.
-- [ ] Remove now-redundant helper functions or imports from both services.
+- [x] **Task 9:** Refactor `DraftService` comment methods (`get_comments_for_draft`, `add_comment_to_draft`, `report_draft_comment`) to delegate to `CommentService`.
+- [x] **Task 10:** Refactor `FindingModelService` comment-related methods to delegate similarly.
+- [x] **Task 11:** Remove now-redundant helper functions or imports from both services.
 
 ### Phase 4 – Clean Up Helpers
-- [ ] Determine whether remaining functions in `app/services/comment_helpers.py` belong inside the service; migrate or keep as lightweight utility module.
-- [ ] Ensure there are no unused functions after the migration; delete or mark for removal.
+- [x] **Task 12:** Audit `app/services/comment_helpers.py` usage and relocate logic that now fits better inside `CommentService`.
+- [x] **Task 13:** Remove or flag any unused helper functions/imports left over after the refactor.
+- [x] **Task 4a:** Remove redundant `CommentRepo` dependency from `DraftService` (constructor, DI wiring, tests) now that comment flows use `CommentService`.
 
 ### Phase 5 – Testing & Verification
-- [ ] Add a dedicated `tests/test_services/test_comment_service.py` suite that exercises:
-  - Successful top-level and reply creation for both drafts and finding models (ensuring repo + user index interactions)
-  - Status enforcement for drafts (public/submitted only)
-  - Rate limit and blacklist failures propagating as `HTTPException`
-  - Reporting workflows delegating to `CommentRepo`
-  - Parent validation and sanitisation paths (including malformed content)
-- [ ] Expand `tests/test_comment_helpers.py` (or a new helper-focused module) with explicit cases for
-  `validate_comment_content` and `validate_parent_comment`, since these behaviours are currently untested.
-- [ ] Adjust `tests/test_services/test_draft_service.py` and `tests/test_services/test_finding_model_service.py`
-  to expect delegation into `CommentService` (mock the new dependency and assert it is called with the
-  correct reference identifiers/name lookups).
-- [ ] Migrate the draft comment permission assertions from `tests/test_public_draft_feature.py` into the
-  new comment service suite (or update them to target `CommentService`) so they continue to verify the
-  same business rules after the refactor.
-- [ ] Run targeted manual/automated regression checks (HTMX comment flows) to confirm no behaviour changes.
+- [x] **Task 14:** Create `tests/test_services/test_comment_service.py` validating
+    - top-level and reply creation (draft + finding model paths)
+    - draft status enforcement
+    - rate limit and blacklist failures
+    - reporting workflows via `CommentRepo`
+    - malformed content / parent validation behaviour.
+- [x] **Task 15:** Expand helper tests to cover `validate_comment_content` and `validate_parent_comment` edge cases.
+- [x] **Task 16:** Update `tests/test_services/test_draft_service.py` and `tests/test_services/test_finding_model_service.py`
+    to assert delegation into `CommentService` with appropriate reference identifiers.
+- [x] **Task 17:** Move draft comment permission checks from `tests/test_public_draft_feature.py` into the new
+    comment service suite (or equivalent tests targeting `CommentService`).
+- [x] **Task 18:** Run targeted regression tests (HTMX comment flows / related suites) to confirm behaviour unchanged.
 
 ### Phase 6 – Documentation & Rollout
 - [ ] Update relevant documentation (e.g., `app/CLAUDE.md` if service architecture changes).

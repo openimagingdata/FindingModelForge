@@ -4,6 +4,8 @@ Services are pure Python classes with no FastAPI dependencies.
 They handle business logic and delegate to repositories for data access.
 """
 
+from .comment_service import CommentService  # noqa: F401
+
 
 class ServiceError(Exception):
     """Base exception for service layer errors."""

@@ -3,12 +3,10 @@
 import re
 from datetime import UTC, datetime, timedelta
 from os import environ
-from typing import Literal
 
 from fastapi import HTTPException
 
-from app.database import UserRepo
-from app.models import Comment, CommentThread, User, UserCommentEntry
+from app.models import CommentThread, User
 
 
 def check_rate_limit(user: User) -> tuple[bool, str]:
@@ -34,27 +32,6 @@ def check_rate_limit(user: User) -> tuple[bool, str]:
     return True, ""
 
 
-async def add_to_comment_index(
-    user_repo: UserRepo,
-    user_id: int,
-    finding_name: str,
-    reference_type: Literal["finding_model", "draft"],
-    reference_id: str,
-    comment_id: str,
-) -> None:
-    """Add comment entry to user's comment index for rate limiting."""
-    entry = UserCommentEntry(
-        reference_type=reference_type,
-        reference_id=reference_id,
-        finding_name=finding_name,
-        comment_id=comment_id,
-        created_at=datetime.now(UTC),
-    )
-
-    # Use the new UserRepo method
-    await user_repo.add_comment_to_index(user_id, entry)
-
-
 def get_blacklist_user_ids() -> list[int]:
     """Get list of blacklisted user IDs from environment.
 
@@ -73,24 +50,6 @@ def get_blacklist_user_ids() -> list[int]:
     except ValueError:
         # Log warning about invalid format - for now just return empty list
         return []
-
-
-def is_reply_allowed(comment: Comment) -> bool:
-    """Check if a comment can accept replies.
-
-    For single-level threading, only top-level comments can have replies.
-    This is a simplified check - actual enforcement will be at UI level.
-
-    Args:
-        comment: Comment to check
-
-    Returns:
-        True if the comment can accept replies, False otherwise.
-    """
-    # Simplified for now - will be enforced at UI level
-    # In the future, we'll need to know if this comment is already nested
-    # within another comment's replies array
-    return True
 
 
 def validate_comment_content(content: str) -> str:

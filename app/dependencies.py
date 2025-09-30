@@ -8,6 +8,7 @@ import uuid
 from typing import TYPE_CHECKING, Annotated, Any
 
 if TYPE_CHECKING:
+    from .services.comment_service import CommentService
     from .services.creation_service import CreationService
     from .services.draft_service import DraftService
     from .services.finding_model_service import FindingModelService
@@ -19,6 +20,7 @@ from pydantic import BaseModel
 
 from .cache import RedisCache
 from .database import CommentRepo, Database, DraftRepo, UserRepo
+from .services.comment_service import CommentService
 
 
 def get_database(request: Request) -> Database:
@@ -57,6 +59,18 @@ def get_comment_repo(database: DatabaseDep) -> CommentRepo:
 
 
 CommentRepoDep = Annotated[CommentRepo, Depends(get_comment_repo)]
+
+
+def get_comment_service(
+    comment_repo: CommentRepoDep,
+    user_repo: UserRepoDep,
+    draft_repo: DraftRepoDep,
+) -> CommentService:
+    """Provide CommentService with required repositories."""
+    return CommentService(comment_repo=comment_repo, user_repo=user_repo, draft_repo=draft_repo)
+
+
+CommentServiceDep = Annotated[CommentService, Depends(get_comment_service)]
 
 
 def get_finding_index(database: DatabaseDep) -> Index:
@@ -240,12 +254,16 @@ CreationSessionDep = Annotated[FindingModelCreationSession, Depends(get_creation
 
 
 def get_finding_model_service(
-    index: FindingIndexDep, cache: CacheDep, comment_repo: CommentRepoDep, user_repo: UserRepoDep
+    index: FindingIndexDep,
+    cache: CacheDep,
+    comment_repo: CommentRepoDep,
+    user_repo: UserRepoDep,
+    comment_service: CommentServiceDep,
 ) -> FindingModelService:
     """Get FindingModelService instance."""
     from .services.finding_model_service import FindingModelService
 
-    return FindingModelService(index, cache, comment_repo, user_repo)
+    return FindingModelService(index, cache, comment_repo, user_repo, comment_service)
 
 
 FindingModelServiceDep = Annotated["FindingModelService", Depends(get_finding_model_service)]
@@ -262,12 +280,15 @@ CreationServiceDep = Annotated["CreationService", Depends(get_creation_service)]
 
 
 def get_draft_service(
-    draft_repo: DraftRepoDep, comment_repo: CommentRepoDep, user_repo: UserRepoDep, database: DatabaseDep
+    draft_repo: DraftRepoDep,
+    user_repo: UserRepoDep,
+    database: DatabaseDep,
+    comment_service: CommentServiceDep,
 ) -> DraftService:
     """Get DraftService instance."""
     from .services.draft_service import DraftService
 
-    return DraftService(draft_repo, comment_repo, user_repo, database)
+    return DraftService(draft_repo, user_repo, database, comment_service)
 
 
 DraftServiceDep = Annotated["DraftService", Depends(get_draft_service)]
