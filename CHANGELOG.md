@@ -7,6 +7,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Changed
+
+#### Comment System Refactor - Centralized Service Layer (September 30, 2025)
+
+- **Created CommentService**: Centralized all comment logic (validation, rate limiting, persistence) into shared service
+- **Eliminated code duplication**: Removed duplicate rate limiting checks from routers
+- **Service layer delegation**: DraftService and FindingModelService now delegate to CommentService
+- **Architecture cleanup**: Routers are thin HTTP handlers, business logic in services
+- **Single source of truth**: Rate limiting now only in CommentService, not duplicated in routers
+- **Maintained test coverage**: All 491 tests passing with 79.50% coverage
+
 ### Added
 
 #### Public Draft Review Feature (September 17, 2025)

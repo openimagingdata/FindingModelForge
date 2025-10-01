@@ -30,6 +30,15 @@ The backend follows a layered architecture:
   - `CommentRepo` - Comment thread management with atomic operations
 - `cache.py` - Redis cache abstraction with health checks
 
+### Service Layer
+
+- `services/comment_service.py` - Centralized comment business logic (rate limiting, validation, persistence)
+- `services/draft_service.py` - Draft operations (formatting, comment delegation)
+- `services/finding_model_service.py` - Finding model operations (comment delegation)
+- `services/comment_helpers.py` - Shared validation and rate limit helpers
+
+**Service Pattern**: Services encapsulate business logic and coordinate between repositories. Routers delegate to services, services use repositories.
+
 ### Authentication
 
 - `auth.py` - JWT token management and GitHub OAuth flow
@@ -229,6 +238,105 @@ async def unified_draft_page(
 <form hx-post="/api/finding-models/drafts/{{ draft.id }}/update-and-redirect">
   <!-- Updates draft and redirects to view mode -->
 </form>
+```
+
+### Draft Repository Methods
+
+- `save_draft()` - Create or update with upsert logic and action logging
+
+## Comment System
+
+### Architecture Pattern
+
+**Service Layer Delegation**: All comment operations go through `CommentService` for consistent validation and business logic.
+
+```python
+# ✅ CORRECT - Delegate to service
+class DraftService:
+    def __init__(self, comment_service: CommentService, ...):
+        self.comment_service = comment_service
+
+    async def add_comment_to_draft(self, draft_id, user, content, parent_id=None):
+        return await self.comment_service.add_comment(
+            "draft", draft_id, user, content, parent_id=parent_id
+        )
+
+# ❌ INCORRECT - Don't duplicate business logic in routers
+@router.post("/drafts/{id}/comments")
+async def add_comment(draft_id, user, content):
+    # Don't check rate limits here!
+    # Don't update user.comment_index here!
+    # Let the service handle it all
+```
+
+### CommentService Usage
+
+**Key Methods**:
+- `add_comment(reference_type, reference_id, user, content, parent_id=None, reference_name=None)` - Handles validation, rate limiting, persistence
+- `get_thread(reference_type, reference_id)` - Fetch comment thread
+- `report_comment(reference_type, reference_id, comment_id, user_id)` - Report with duplicate prevention
+
+**Reference Types**: `"draft"`, `"finding_model"` (extensible for new entities)
+
+**What CommentService Handles**:
+- Rate limiting (3 comments per 60 seconds)
+- Content validation (1-2000 characters)
+- Blacklist checking
+- User comment index updates
+- Draft status validation (submitted/public only)
+- Parent comment validation for replies
+
+### Adding Comments to New Features
+
+```python
+# 1. Inject CommentService in your service
+class MyNewService:
+    def __init__(self, comment_service: CommentService, ...):
+        self.comment_service = comment_service
+
+    # 2. Delegate comment operations
+    async def add_comment(self, entity_id, user, content):
+        return await self.comment_service.add_comment(
+            "my_entity_type",  # Choose descriptive reference_type
+            entity_id,
+            user,
+            content,
+            reference_name=self.get_entity_name(entity_id)
+        )
+
+# 3. Router just handles HTTP
+@router.post("/my-entities/{id}/comments")
+async def add_comment(
+    id: str,
+    content: str = Form(...),
+    user: CurrentUserDep,
+    service: MyServiceDep
+):
+    comment = await service.add_comment(id, user, content)
+    # Return rendered template...
+```
+
+### Router Pattern
+
+Routers are **thin HTTP handlers** that delegate to services:
+
+```python
+@router.post("/{draft_id}/comments")
+async def add_draft_comment(
+    draft_id: str,
+    content: str = Form(...),
+    parent_comment_id: str | None = Form(None),
+    current_user: CurrentUserDep,
+    draft_service: DraftServiceDep,
+):
+    # Just delegate to service - no business logic here
+    comment = await draft_service.add_comment_to_draft(
+        draft_id, current_user, content, parent_comment_id
+    )
+
+    # Handle HTTP concerns (HTMX response, redirects, etc.)
+    thread = await draft_service.get_comments_for_draft(draft_id)
+    return templates.TemplateResponse(...)
 ```
 
 ### Draft Repository Methods

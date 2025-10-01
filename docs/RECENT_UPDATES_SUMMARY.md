@@ -1,5 +1,33 @@
 # Recent Updates Summary - September 2025
 
+## 🔧 Refactor: Comment System - Service Layer Centralization (September 30, 2025)
+
+### Overview
+
+Refactored comment system to eliminate code duplication by centralizing all comment business logic into a shared `CommentService`. This establishes proper service layer separation with routers as thin HTTP handlers.
+
+### Changes Made
+
+- **Created CommentService** (`app/services/comment_service.py`) - Single source of truth for comment operations
+- **Eliminated duplication** - Removed duplicate rate limiting from routers
+- **Service delegation** - DraftService and FindingModelService delegate to CommentService
+- **Router cleanup** - Removed manual user index updates and business logic from routers
+- **Maintained quality** - All 491 tests passing, 79.50% coverage
+
+### Architecture Pattern
+
+```
+Router (HTTP) → Service (Business Logic) → Repository (Data)
+                      ↓
+              CommentService (shared)
+```
+
+### Developer Impact
+
+When adding comments to new features, inject CommentService and delegate comment operations. See `.serena/memories/comment_service_refactor.md` for usage patterns.
+
+---
+
 ## 🎉 Major Feature: Comment System Implementation
 
 ### What's New
