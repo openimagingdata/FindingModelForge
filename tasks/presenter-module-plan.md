@@ -1,65 +1,397 @@
-# Presenter Module Consolidation Plan
+# Draft Formatting Utilities Plan
 
-**Last Updated**: December 8, 2025
+**Last Updated**: October 2, 2025
+**Status**: ✅ Ready to implement
+**Prerequisite for**: DraftService Refactor (see `draft-service-refactor-plan.md`)
 
-## Context
-- Formatting logic (humanised timestamps, attribute extraction, author display info) is currently embedded within `DraftService` and, to a lesser extent, router layers.
-- Similar presentation requirements appear across profile pages, public draft listings, and creation workflow views.
-- To keep services and repositories focused, we will introduce lightweight presenter utilities dedicated to shaping data for templates and HTMX fragments.
+## Context & Analysis (October 2, 2025)
 
-## Objectives
-- Create a reusable presenter module (initially `app/presenters/drafts.py`) that encapsulates draft-specific formatting concerns.
-- Ensure presenters operate on domain models or plain dicts returned from services without performing I/O.
-- Provide helper functions used across routers (`drafts.py`, `profile.py`, `creation.py`) and templates to minimise duplication.
-- Keep presenter layer thin: pure functions with minimal dependencies (prefer standard lib + existing utilities like `humanize`).
+After examining the actual code, the "presenter layer" concept is **over-engineered**. The real issue is simpler:
 
-## Constraints & Assumptions
-- Presenters should not depend on FastAPI request objects or repositories; they should accept data plus optional context (e.g., `now` overrides for testing).
-- Continue using `humanize` for time display to preserve existing output; consider injecting current time for deterministic tests.
-- Avoid broad architectural changes—presenters are helper modules imported where needed, not a new framework.
-- Initial scope focuses on draft-related views; future expansion (finding models, comments) can follow once patterns are proven.
+**Current State:**
+- `DraftService` has 515 lines and mixes business logic with formatting
+- Formatting functions like `format_draft_for_display()` (82 lines) and `extract_attribute_names_from_generated_json()` (25 lines) are **pure functions** with no I/O
+- These functions only depend on `humanize` and `slugify` - they don't need services, DI, or repositories
+- The project already has `app/utils/slug.py` for pure utility functions
+
+**The Real Problem:**
+1. Service bloat - formatting logic doesn't belong in orchestration layer
+2. Code duplication - `get_drafts_for_user()` reimplements parts of `format_draft_for_display()`
+3. No clear home for pure formatting functions
+
+**Better Solution:**
+Follow the existing `app/utils/` pattern instead of inventing a new "presenter layer" architecture.
+
+## Revised Objectives
+
+- Extract pure formatting functions from `DraftService` into `app/utils/draft_formatting.py`
+- Keep functions simple: input data + optional context → formatted output
+- No new architectural patterns - just move code to where it belongs
+- Make functions testable with deterministic timestamp injection
+- Services call utils for formatting, stay focused on business logic
+- **Enable DraftService refactor**: Once formatting is extracted, service can be cleaned up to focus on business logic only (removes Python-side filtering, keeps orchestration)
+
+## Constraints & Principles
+
+- **Follow existing patterns**: Use `app/utils/` like `slug.py`, not new packages
+- **Pure functions only**: No I/O, no async, no database calls
+- **Minimal dependencies**: stdlib + `humanize` + existing utils
+- **Testable design**: Accept `now` parameter for deterministic time formatting
+- **No breaking changes**: Maintain exact same output format for backward compatibility
 
 ## Deliverables
-1. New package directory `app/presenters/` with `__init__.py` and `drafts.py` module.
-2. Functions covering existing formatting needs, e.g.:
-   - `format_draft(draft, *, comment_count=0, now=None)`
-   - `format_draft_list(drafts, *, now=None)`
-   - `extract_attribute_names(generated_json)` (if not already elsewhere)
-3. Updated routers/services to call presenter functions instead of embedding formatting logic.
-4. Unit tests for presenter functions ensuring consistent output and handling of edge cases (missing timestamps, strings vs `datetime`).
 
-## Plan
+1. **New module**: `app/utils/draft_formatting.py` with pure formatting functions
+2. **Slim services**: `DraftService` methods delegate to utils instead of implementing formatting
+3. **Comprehensive tests**: `tests/test_utils/test_draft_formatting.py` covering all edge cases
+4. **Clean separation**: Business logic in services, formatting in utils, no mixing
 
-### Phase 1 – Module Setup
-- [ ] Create `app/presenters/__init__.py` with exports for draft presenters.
-- [ ] Implement core presenter functions porting logic from `DraftService.format_draft_for_display` and related helpers.
-- [ ] Ensure helper handles both Pydantic models and dicts, matching current behaviour.
+## Implementation Plan
 
-### Phase 2 – Service & Router Integration
-- [ ] Update `DraftService.get_drafts_for_user`, `DraftService.get_public_drafts`, and creation workflow pathways to call presenter functions.
-- [ ] Adjust routers (`profile.py`, `drafts.py`) to use presenter outputs where they previously formatted data inline.
-- [ ] Confirm dependency injection remains unaffected (presenters should not require DI).
+### Phase 1 – Create Formatting Utilities
+**Status**: Not started
 
-### Phase 3 – Attribute Extraction Consolidation
-- [ ] Move `extract_attribute_names_from_generated_json` logic into presenter (or related helper) and update callers.
-- [ ] Provide backward-compatible wrapper in service if needed during transition.
+- [ ] Create `app/utils/draft_formatting.py` with functions:
+  ```python
+  def format_draft_for_display(
+      draft: dict[str, Any] | FindingModelDraft,
+      *,
+      comment_count: int = 0,
+      now: datetime | None = None
+  ) -> dict[str, Any]:
+      """Format a draft for template display.
 
-### Phase 4 – Testing
-- [ ] Introduce a `tests/test_presenters/test_draft_presenter.py` (or similar) covering:
-  - Time formatting with timezone-naïve and aware datetimes (injecting `now` for determinism)
-  - Handling of dict vs model inputs
-  - Attribute extraction error resilience and fallbacks for missing author metadata.
-- [ ] Remove/relocate the existing formatting assertions living in `tests/test_services/test_draft_service.py`
-  so that presentation behaviour is validated only via the new presenter tests.
-- [ ] Update service tests to stub presenter calls and assert delegation rather than inspecting
-  the formatted payload inline.
-- [ ] Adjust router/integration tests that assert rendered strings (`tests/test_public_draft_feature.py`,
-  `tests/test_drafts_router.py`, etc.) to consume presenter output where appropriate, ensuring
-  HTMX fragments still render the expected fields.
+      Pure function - no I/O, no database calls.
+      Accepts both dict (from cache/aggregation) and Pydantic model.
 
-### Phase 5 – Cleanup & Documentation
-- [ ] Remove redundant formatting code from `DraftService` after presenter adoption.
-- [ ] Update documentation (`app/CLAUDE.md` or internal docs) describing presenter usage patterns.
+      Args:
+          draft: Draft data from repo or cache
+          comment_count: Number of comments (default 0)
+          now: Current time for relative timestamps (default: datetime.now(UTC))
+
+      Returns:
+          Dict with all display fields (updated_display, slug, attribute_names, etc.)
+      """
+      pass
+
+  def extract_attribute_names(generated_json: str | None) -> list[str]:
+      """Extract attribute names from FindingModelFull JSON.
+
+      Returns empty list on any error (conservative parsing).
+      """
+      pass
+
+  def humanize_timestamp(
+      dt: datetime | str | None,
+      *,
+      now: datetime | None = None
+  ) -> str:
+      """Convert datetime to human-friendly relative time.
+
+      Handles timezone-naive datetimes, ISO strings, and None.
+      Returns "Unknown" for invalid inputs.
+      """
+      pass
+
+  def format_date_short(dt: datetime | str | None) -> str:
+      """Format datetime as 'Mon DD, YYYY'.
+
+      Returns "N/A" for invalid inputs.
+      """
+      pass
+  ```
+
+- [ ] Copy implementation from `DraftService` methods:
+  - Port `format_draft_for_display()` body → utils version
+  - Port `extract_attribute_names_from_generated_json()` → `extract_attribute_names()`
+  - Port timestamp logic → `humanize_timestamp()` and `format_date_short()`
+
+- [ ] Add `now` parameter to all time-dependent functions:
+  ```python
+  # Enables deterministic testing
+  if now is None:
+      now = datetime.now(UTC)
+  updated_display = humanize.naturaltime(now - updated_dt)
+  ```
+
+  **Note**: Timestamp helpers (`humanize_timestamp`, `format_date_short`) are separated for:
+  - Independent testing of edge cases (timezone-naive, strings, None)
+  - Reusability across other entities (finding models, comments)
+  - Single-responsibility principle (each function does one thing well)
+
+- [ ] Handle both dict and model inputs gracefully (copy existing pattern)
+
+### Phase 2 – Create Comprehensive Tests
+**Status**: Not started
+**Depends on**: Phase 1 complete
+
+- [ ] Create `tests/test_utils/` directory (if doesn't exist)
+- [ ] Create `tests/test_utils/test_draft_formatting.py` with test cases:
+
+  **Test `format_draft_for_display()`:**
+  - [ ] Dict input with all fields
+  - [ ] Pydantic model input with all fields
+  - [ ] Missing optional fields (created_at, generated_json, author_info)
+  - [ ] Timezone-naive vs timezone-aware datetimes
+  - [ ] String datetime from cache (ISO format with 'Z')
+  - [ ] Comment count integration
+  - [ ] Deterministic time formatting with `now` parameter
+
+  **Test `extract_attribute_names()`:**
+  - [ ] Valid FindingModelFull JSON with attributes
+  - [ ] Empty JSON / missing attributes key
+  - [ ] Invalid JSON (returns empty list)
+  - [ ] Attributes with missing name fields (fallback to title/id)
+  - [ ] None input (returns empty list)
+
+  **Test `humanize_timestamp()`:**
+  - [ ] Timezone-aware datetime
+  - [ ] Timezone-naive datetime (adds UTC)
+  - [ ] ISO string with 'Z'
+  - [ ] ISO string without timezone
+  - [ ] None input (returns "Unknown")
+  - [ ] Invalid input (returns "Unknown")
+  - [ ] Deterministic output with `now` parameter
+
+  **Test `format_date_short()`:**
+  - [ ] Valid datetime → "Mon DD, YYYY"
+  - [ ] Timezone-aware vs naive
+  - [ ] ISO string input
+  - [ ] None input → "N/A"
+  - [ ] Invalid input → "N/A"
+
+- [ ] Target: 100% code coverage for utils module
+
+### Phase 3 – Update DraftService
+**Status**: Not started
+**Depends on**: Phase 2 complete (tests passing)
+
+- [ ] Import formatting utilities in `DraftService`:
+  ```python
+  from app.utils.draft_formatting import (
+      format_draft_for_display,
+      extract_attribute_names,
+  )
+  ```
+
+- [ ] Replace `get_drafts_for_user()` formatting loop:
+  ```python
+  # OLD: Inline formatting (40+ lines)
+  for d in drafts:
+      updated_display = humanize.naturaltime(...)
+      name_slug = slugify(...)
+      # ... more formatting
+
+  # NEW: Delegate to utils
+  for d in drafts:
+      user_drafts.append(format_draft_for_display(d))
+  ```
+
+- [ ] Replace `get_public_drafts()` formatting:
+  ```python
+  # OLD: Calls self.format_draft_for_display()
+  result.append(self.format_draft_for_display(draft, comment_count))
+
+  # NEW: Calls utils directly
+  result.append(format_draft_for_display(draft, comment_count=comment_count))
+  ```
+
+- [ ] Remove methods from `DraftService`:
+  - [ ] Delete `format_draft_for_display()` (now in utils)
+  - [ ] Delete `extract_attribute_names_from_generated_json()` (now in utils)
+  - [ ] Delete `format_submitted_time()` (replaced by `humanize_timestamp()`)
+
+- [ ] Update docstrings in service methods to reflect delegation
+
+### Phase 4 – Update Service Tests
+**Status**: Not started
+**Depends on**: Phase 3 complete
+
+- [ ] Update `tests/test_services/test_draft_service.py`:
+  - [ ] Remove formatting assertion tests (now in test_draft_formatting.py):
+    - Delete `test_format_draft_for_display`
+    - Delete `test_format_draft_for_display_no_generated`
+    - Delete `test_format_draft_for_display_timestamp_error`
+    - Delete `test_extract_attribute_names_*` tests
+    - Delete `test_format_submitted_time` (if exists)
+
+  - [ ] Keep orchestration tests:
+    - `test_get_drafts_for_user_success` - verify repo call + formatting delegation
+    - `test_get_public_drafts` - verify comment integration + formatting delegation
+    - All ownership/permission tests (delete, make_public, submit)
+
+  - [ ] Verify tests still pass (should, since output format unchanged)
+
+### Phase 5 – Verify Integration
+**Status**: Not started
+**Depends on**: Phase 4 complete
+
+- [ ] Run full test suite - must remain at 100% pass rate:
+  ```bash
+  task test
+  ```
+
+- [ ] Check integration tests don't break:
+  - [ ] `tests/test_public_draft_feature.py` - public draft listings
+  - [ ] `tests/test_resume_logic.py` - draft workflow
+  - [ ] `tests/test_profile.py` - profile draft display (if exists)
+
+- [ ] Manual verification:
+  - [ ] Start dev server: `task dev`
+  - [ ] Visit profile page - verify draft list renders correctly
+  - [ ] Visit public drafts page - verify formatting matches old behavior
+  - [ ] Check timestamps show relative times ("2 hours ago")
+  - [ ] Verify author names display correctly
+
+- [ ] Performance check (should be unchanged):
+  - Formatting is still in-memory, just moved to different module
+  - No new database queries added
+
+### Phase 6 – Documentation & Cleanup
+**Status**: Not started
+**Depends on**: Phase 5 complete
+
+- [ ] Update `app/utils/__init__.py` to export formatting functions (if following that pattern)
+
+- [ ] Add docstring examples to `draft_formatting.py`:
+  ```python
+  """Draft formatting utilities.
+
+  Pure functions for formatting draft data for display.
+  Used by DraftService and routers for consistent output.
+
+  Example:
+      >>> draft_dict = {"id": "123", "name": "Test", ...}
+      >>> formatted = format_draft_for_display(draft_dict)
+      >>> formatted["updated_display"]
+      '2 hours ago'
+  """
+  ```
+
+- [ ] Update `app/CLAUDE.md` with utils pattern guidance (if not already present):
+  - Section on when to use utils vs services
+  - Example of pure formatting functions
+
+- [ ] Update `docs/RECENT_UPDATES_SUMMARY.md`:
+  - Add entry about formatting utilities extraction
+  - Note service cleanup (reduced from 515 lines)
+
+- [ ] Optional: Update `CHANGELOG.md` if visible to users
+
+## Success Criteria
+
+- [ ] All formatting logic moved out of `DraftService`
+- [ ] `DraftService` reduced from 515 to ~350 lines (removing ~165 lines of formatting)
+- [ ] New `app/utils/draft_formatting.py` with ~150 lines of pure functions
+- [ ] Tests at 100% pass rate (144+ tests remain green)
+- [ ] Test coverage for utils at 100%
+- [ ] Formatting output **identical** to current behavior (backward compatible)
+- [ ] No new dependencies added
+- [ ] Services can be imported without circular dependencies
+- [ ] **Enables next step**: DraftService refactor can proceed (Phase 0 prerequisite satisfied per `draft-service-refactor-plan.md`)
+
+## Risk Assessment
+
+**Risk: LOW** ✅
+
+- Pure code movement, not architectural change
+- Comprehensive test coverage catches regressions
+- Output format unchanged (backward compatible)
+- Can be done incrementally (one function at a time if needed)
+- Easy to rollback (just one commit)
+
+**Validation Strategy:**
+- Tests must pass at each phase
+- Manual verification before merge
+- Integration tests ensure HTMX fragments still work
+
+## Why This Approach is Better
+
+**Original "presenter layer" plan issues:**
+- ❌ Created new `app/presenters/` package (unfamiliar pattern)
+- ❌ Talked about "DI integration" for simple functions
+- ❌ Over-engineered with phases about "presenter adoption patterns"
+- ❌ Suggested 2-3 days of work for moving simple functions
+
+**This approach:**
+- ✅ Uses existing `app/utils/` pattern (like `slug.py`)
+- ✅ Pure functions - no DI, no complexity
+- ✅ Simple phases - create, test, integrate, done
+- ✅ Clear separation: utils for formatting, services for business logic
+
+**Aligns with project principles:**
+- Type safety: Functions have full type hints
+- Testability: Pure functions with deterministic testing
+- Simplicity: No new architectural patterns
+- Maintainability: Clear responsibility boundaries
+
+## How This Enables the Draft Service Refactor
+
+The **DraftService Refactor depends on this work** (see `draft-service-refactor-plan.md` Phase 0).
+
+**Why the dependency matters:**
+
+1. **Clean separation of concerns**: Once formatting is in utils, DraftService can focus purely on business logic:
+   - Remove Python-side filtering methods (they duplicate `DraftRepo`)
+   - Keep only orchestration (ownership checks, workflow transitions, service coordination)
+   - No mixed responsibilities
+
+2. **Single migration wave**: Routers and services change ONCE:
+   ```python
+   # After this refactor:
+   from app.utils.draft_formatting import format_draft_for_display
+   drafts = await draft_repo.list_for_user(user_id)
+   formatted = [format_draft_for_display(d) for d in drafts]
+
+   # Then DraftService refactor removes inefficient Python filtering:
+   # DELETE: DraftService.list_for_user_by_name() - just call repo directly
+   # DELETE: DraftService.find_editable_by_name() - just call repo directly
+   # KEEP: DraftService.delete_draft() - has ownership checks (business logic)
+   ```
+
+3. **Test stability**: Formatting tests move to `test_utils/` now. When we clean up `DraftService` later:
+   - Service tests only check business logic delegation
+   - No need to rewrite formatting assertions (already tested in utils)
+   - Integration tests remain stable (formatting output unchanged)
+
+4. **Clear completion criteria**:
+   - ✅ This plan complete = formatting extracted, services slimmed
+   - ✅ Service refactor complete = Python filtering removed, only orchestration remains
+   - Both have objective success criteria
+
+**What the service looks like after both refactors:**
+```python
+class DraftService:
+    """Orchestrates draft business logic - no formatting, no filtering."""
+
+    # Orchestration with ownership checks
+    async def delete_draft(self, draft_id, user_id) -> bool:
+        draft = await self.draft_repo.get_draft(draft_id, user_id)
+        if not draft:
+            raise NotFoundError()
+        return await self.draft_repo.delete_draft(draft_id, user_id)
+
+    # Workflow transitions
+    async def make_public_draft(self, draft_id, user_id):
+        # Verify ownership, transition status
+        ...
+
+    # Service coordination
+    async def save_draft(self, user_id, name, inputs, user=None):
+        if user:
+            await self.database.ensure_person_for_user(user)
+        return await self.draft_repo.save_draft(...)
+
+    # Comment integration
+    async def add_comment_to_draft(self, draft_id, user, content):
+        return await self.comment_service.add_comment("draft", draft_id, user, content)
+```
+
+**Services become thin orchestration layers** with:
+- Formatting in `app/utils/`
+- Queries in `app/database.py` (repositories)
+- Business logic in services (ownership, transitions, coordination)
 
 ## Open Questions
-- None currently. Use `[NEEDS CLARIFICATION]` markers if additional presenter responsibilities emerge during implementation.
+
+None - approach is clear and actionable.
