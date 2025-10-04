@@ -1,16 +1,12 @@
 """Draft service for draft management and display formatting."""
 
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
-
-import humanize
-from findingmodel import FindingModelFull
 
 from app.config import logger
 from app.database import DraftRepo, UserRepo
 from app.models import Comment, CommentThread, User
 from app.services.comment_service import CommentService
-from app.utils.slug import slugify
+from app.utils.draft_formatting import format_draft_for_display
 
 if TYPE_CHECKING:
     from app.database import Database
@@ -50,41 +46,12 @@ class DraftService:
         Returns:
             List of formatted draft dictionaries for display
         """
-        user_drafts: list[dict[str, Any]] = []
         try:
             drafts = await self.draft_repo.list_for_user(user_id)
-            for d in drafts:
-                # Humanized timestamp
-                try:
-                    updated_dt = d.updated_at
-                    if updated_dt.tzinfo is None:
-                        updated_dt = updated_dt.replace(tzinfo=UTC)
-                    updated_display = humanize.naturaltime(datetime.now(UTC) - updated_dt)
-                except Exception:
-                    updated_display = d.updated_at.isoformat()
-
-                # Slug for view links
-                name_slug = slugify(d.name or "")
-                has_generated = bool(getattr(d, "generated_json", None))
-                user_drafts.append(
-                    {
-                        "id": d.id,
-                        "name": d.name,
-                        "status": d.status,
-                        "updated_at": d.updated_at.isoformat(),
-                        "updated_display": updated_display,
-                        "slug": name_slug,
-                        "has_generated": has_generated,
-                        "attribute_names": self.extract_attribute_names_from_generated_json(
-                            getattr(d, "generated_json", None)
-                        ),
-                    }
-                )
+            return [format_draft_for_display(d) for d in drafts]
         except Exception as e:
             logger.warning(f"Failed to load drafts for user {user_id}: {e}")
-            user_drafts = []
-
-        return user_drafts
+            return []
 
     async def get_draft_by_id(self, draft_id: str, user_id: int | None = None) -> Any:
         """Get draft by ID with optional ownership check.
@@ -206,7 +173,7 @@ class DraftService:
                     # If we can't get comment count, default to 0
                     comment_count = 0
 
-                result.append(self.format_draft_for_display(draft, comment_count))
+                result.append(format_draft_for_display(draft, comment_count=comment_count))
             return result
         except Exception as e:
             logger.warning(f"Failed to load public drafts: {e}")
@@ -228,32 +195,6 @@ class DraftService:
             return [draft for draft in all_drafts if draft.name and draft.name.lower() == name.lower()]
         except Exception as e:
             logger.warning(f"Error listing drafts for user {user_id} with name '{name}': {e}")
-            return []
-
-    def extract_attribute_names_from_generated_json(self, generated_json: str | None) -> list[str]:
-        """Extract attribute names from a FindingModelFull JSON payload.
-
-        Conservative parser that looks for an 'attributes' list and returns readable names.
-
-        Args:
-            generated_json: JSON string containing FindingModelFull data
-
-        Returns:
-            List of attribute names
-        """
-        if not generated_json:
-            return []
-        try:
-            data = FindingModelFull.model_validate_json(generated_json).model_dump(mode="json", exclude_none=True)
-            attrs: list[str] = []
-            for item in data.get("attributes", []) or []:
-                if isinstance(item, dict):
-                    # Try common name fields
-                    name = item.get("name") or item.get("title") or item.get("id")
-                    if isinstance(name, str) and name:
-                        attrs.append(name)
-            return attrs
-        except Exception:
             return []
 
     async def find_editable_by_name(self, user_id: int, name: str) -> Any | None:
@@ -362,107 +303,6 @@ class DraftService:
         except Exception as e:
             logger.error(f"Error saving draft for user {user_id}: {e}")
             raise
-
-    def format_submitted_time(self, updated_at: datetime) -> str:
-        """Format submitted time in human-friendly format.
-
-        Args:
-            updated_at: Datetime when draft was submitted
-
-        Returns:
-            Human-friendly time string
-        """
-        try:
-            submitted_time = updated_at
-            # Ensure timezone-aware
-            if submitted_time.tzinfo is None:
-                submitted_time = submitted_time.replace(tzinfo=UTC)
-            return humanize.naturaltime(datetime.now(UTC) - submitted_time)
-        except Exception:
-            return updated_at.isoformat()
-
-    def format_draft_for_display(self, draft: Any, comment_count: int = 0) -> dict[str, Any]:
-        """Format a single draft for display purposes.
-
-        Args:
-            draft: Raw draft object from repository (can be dict or model)
-            comment_count: Number of comments on this draft
-
-        Returns:
-            Dictionary formatted for template display
-        """
-        # Handle both dict and model objects
-        if isinstance(draft, dict):
-            draft_dict = draft
-            updated_at = draft_dict.get("updated_at")
-            created_at = draft_dict.get("created_at")
-            draft_id = draft_dict.get("id")
-            draft_name = draft_dict.get("name")
-            draft_status = draft_dict.get("status")
-            generated_json = draft_dict.get("generated_json")
-            author_info = draft_dict.get("author_info")
-        else:
-            updated_at = draft.updated_at
-            created_at = getattr(draft, "created_at", None)
-            draft_id = draft.id
-            draft_name = draft.name
-            draft_status = draft.status
-            generated_json = getattr(draft, "generated_json", None)
-            author_info = getattr(draft, "author_info", None)
-
-        try:
-            if updated_at:
-                updated_dt = updated_at
-                if updated_dt.tzinfo is None:
-                    updated_dt = updated_dt.replace(tzinfo=UTC)
-                updated_display = humanize.naturaltime(datetime.now(UTC) - updated_dt)
-            else:
-                updated_display = "Unknown"
-        except Exception:
-            updated_display = updated_at.isoformat() if updated_at else "Unknown"
-
-        # Format created_at for display
-        try:
-            if created_at:
-                if isinstance(created_at, str):
-                    # If it's already a string (from cache), parse it back to datetime
-                    created_dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
-                else:
-                    created_dt = created_at
-                    if created_dt.tzinfo is None:
-                        created_dt = created_dt.replace(tzinfo=UTC)
-                created_at_display = created_dt.strftime("%b %d, %Y")
-            else:
-                created_at_display = "N/A"
-        except Exception:
-            created_at_display = "N/A"
-
-        name_slug = slugify(draft_name or "")
-        has_generated = bool(generated_json)
-
-        result = {
-            "id": draft_id,
-            "name": draft_name,
-            "status": draft_status,
-            "updated_at": updated_at.isoformat() if updated_at else None,
-            "updated_display": updated_display,
-            "created_at": created_at.isoformat() if created_at and hasattr(created_at, "isoformat") else created_at,
-            "created_at_display": created_at_display,
-            "slug": name_slug,
-            "has_generated": has_generated,
-            "comment_count": comment_count,
-            "attribute_names": self.extract_attribute_names_from_generated_json(generated_json),
-        }
-
-        # Add author information if available
-        if author_info:
-            result["author_name"] = author_info.get("name", author_info.get("github_username", "Unknown"))
-            result["github_username"] = author_info.get("github_username")
-        else:
-            result["author_name"] = "Unknown"
-            result["github_username"] = None
-
-        return result
 
     async def get_comments_for_draft(self, draft_id: str) -> CommentThread | None:
         """Get comment thread for a draft.

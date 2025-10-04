@@ -8,6 +8,8 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Form, HTTPException, Path, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
+from app.utils.draft_formatting import humanize_timestamp
+
 
 from findingmodel.tools.similar_finding_models import SimilarModelAnalysis  # noqa: F401
 
@@ -159,7 +161,7 @@ async def process_step_1(
             session.draft_status = latest.status
             # Human-friendly submitted time (UTC)
             try:
-                session.submitted_display_time = draft_service.format_submitted_time(latest.updated_at)
+                session.submitted_display_time = humanize_timestamp(latest.updated_at)
             except Exception:
                 session.submitted_display_time = None
             await session_manager.update_session(session)
@@ -400,7 +402,7 @@ async def resume_creation(
         if draft.status == "submitted":
             # Human-friendly submitted time (UTC)
             try:
-                session.submitted_display_time = draft_service.format_submitted_time(draft.updated_at)
+                session.submitted_display_time = humanize_timestamp(draft.updated_at)
             except Exception:
                 session.submitted_display_time = None
             await session_manager.update_session(session)
