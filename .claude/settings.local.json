@@ -51,7 +51,8 @@
       "Bash(redis-cli:*)",
       "Bash(cat:*)",
       "Bash(sed:*)",
-      "Bash(task lint)"
+      "Bash(task lint)",
+      "Bash(~/.claude-code-docs/claude-docs-helper.sh:*)"
     ],
     "deny": [],
     "ask": [],

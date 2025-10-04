@@ -1,5 +1,42 @@
 # Recent Updates Summary - September 2025
 
+## 🔧 Refactor: Draft Formatting Utilities Extraction (October 3, 2025)
+
+### Overview
+
+Extracted draft formatting logic from `DraftService` into pure utility functions (`app/utils/draft_formatting.py`), reducing service bloat and improving code organization. This follows the existing `app/utils/` pattern and enables upcoming DraftService business logic refactor.
+
+### Changes Made
+
+- **Created `app/utils/draft_formatting.py`** - 259 lines of pure formatting functions with comprehensive type hints
+  - `format_draft_for_display()` - Main orchestrator for template display data
+  - `extract_attribute_names()` - Parse FindingModelFull JSON for attribute names
+  - `humanize_timestamp()` - Convert datetimes to relative time ("2 hours ago")
+  - `format_date_short()` - Format datetimes as "Mon DD, YYYY"
+- **Reduced DraftService** - From 515 to 356 lines (-31%), removed 3 formatting methods
+- **Added comprehensive tests** - 22 new tests in `tests/test_utils_draft_formatting.py` with 100% coverage
+- **Zero breaking changes** - All 86 UI tests pass, output format identical to before
+
+### Architecture Pattern
+
+```
+Service Layer (Business Logic)
+    ↓ delegates formatting to
+Utils Layer (Pure Functions) - No I/O, fully testable
+```
+
+### Developer Impact
+
+- Import formatting utilities from `app/utils/draft_formatting` for draft display needs
+- Services remain focused on business logic and orchestration only
+- Formatting functions accept `now` parameter for deterministic testing
+
+### Why This Matters
+
+This refactoring is **Phase 0 prerequisite** for the DraftService cleanup (removing Python-side filtering). Clean separation of concerns enables safe service layer simplification.
+
+---
+
 ## 🔧 Refactor: Comment System - Service Layer Centralization (September 30, 2025)
 
 ### Overview
