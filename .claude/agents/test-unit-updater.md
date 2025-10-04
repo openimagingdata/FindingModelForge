@@ -1,5 +1,5 @@
 ---
-name: backend-test-updater
+name: test-unit-updater
 description: Use IMMEDIATELY AFTER backend refactoring to update tests. MUST BE USED to fix broken imports, update mocks for new services, and ensure 75%+ coverage maintained.
 tools: Read, Write, Edit, Grep, Bash
 model: sonnet

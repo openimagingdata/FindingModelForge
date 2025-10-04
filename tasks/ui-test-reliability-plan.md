@@ -221,7 +221,7 @@ async def test_report_comment(authenticated_page, test_finding_models):
 
 #### 4.1 Add test setup documentation
 
-Create `/tests/ui/README.md`:
+Create `/tests/ui/CLAUDE.md`:
 
 ````markdown
 # UI Test Setup

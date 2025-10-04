@@ -17,7 +17,7 @@ Also reference our coding standards (paths are relative to the workspace root):
 - Backend standards: `app/CLAUDE.md`
 - Frontend standards: `templates/CLAUDE.md`
 - Testing standards: `tests/CLAUDE.md`
-- UI Testing standards: `tests/ui/README.md`
+- UI Testing standards: `tests/ui/CLAUDE.md`
 
 ## Implementation Approach
 

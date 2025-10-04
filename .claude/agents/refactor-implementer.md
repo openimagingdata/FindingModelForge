@@ -1,5 +1,5 @@
 ---
-name: backend-refactorer
+name: refactor-implementer
 description: Use PROACTIVELY when refactoring routers into service layers. MUST BE USED for extracting business logic, creating services, and reorganizing backend structure according to tasks/router_cleanup.md.
 tools: Read, Write, Edit, MultiEdit, Grep, Glob, LS
 model: sonnet

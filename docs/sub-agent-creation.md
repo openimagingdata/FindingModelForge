@@ -95,7 +95,7 @@ When writing tests, always:
 
 Consider relevant aspects from our project:
 
-- Relevant information from `CLAUDE.md`, `tests/CLAUDE.md`, `docs/*.md`, `tests/ui/README.md`
+- Relevant information from `CLAUDE.md`, `tests/CLAUDE.md`, `docs/*.md`, `tests/ui/CLAUDE.md`
 - Filter the information to just what's needed for the sub-agent's area of focus
 - Carefully design which tools the sub-agent will need
 - Include references to external web pages we have found useful that are part of that sub-agent's domain
