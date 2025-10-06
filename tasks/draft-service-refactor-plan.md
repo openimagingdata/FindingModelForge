@@ -1,185 +1,205 @@
 # DraftService Refactor Plan
 
-**Last Updated**: October 1, 2025
-**Status**: ⚠️ **BLOCKED - DO NOT PROCEED YET**
-**Blocker**: Presenter layer must be implemented first (see Phase 0)
+**Last Updated**: October 5, 2025
+**Status**: ✅ **COMPLETE** - All steps implemented and verified
+**Time Taken**: ~45 minutes
+
+## Current State (as of October 4, 2025)
+
+✅ **Completed Prerequisites:**
+- `app/utils/draft_formatting.py` exists with all formatting functions
+- `format_draft_for_display()`, `extract_attribute_names()`, `humanize_timestamp()`, `format_date_short()`
+- `DraftService.get_drafts_for_user()` already delegates to formatting utilities
+- 22 formatting tests passing in `tests/test_utils_draft_formatting.py`
+- Service already focused on business logic for most operations
+
+❌ **Remaining Issues:**
+- 3 service methods duplicate `DraftRepo` functionality with Python-side filtering:
+  - `list_for_user_by_name()` - fetches ALL drafts, filters in Python
+  - `find_editable_by_name()` - fetches ALL drafts, filters in Python
+  - `find_latest_by_name()` - fetches ALL drafts, filters in Python
+- 2 router call sites use these inefficient methods (`creation.py:128, 147`)
+- 1 test file references `list_for_user_by_name()` (no production usage)
 
 ## Context
-- `DraftService` currently performs repository-like queries (filtering and sorting draft lists) and embeds logic duplicated with `DraftRepo`.
-- It also contains helpers for formatting data for UI consumption, which **MUST** move to a dedicated presenter module FIRST.
-- Objective is to focus `DraftService` on business rules that truly require orchestration while deferring raw persistence to `DraftRepo`.
 
-## Code Analysis Summary (October 1, 2025)
+The formatting extraction work (originally planned as "Phase 0") has been **completed**. This refactor is now a simple cleanup task to:
+1. Remove duplicate filtering methods from `DraftService`
+2. Update 2 router calls to use `DraftRepo` directly
+3. Delete associated tests
 
-**Critical Findings:**
-1. **DraftRepo is already comprehensive** - has `find_editable_by_name()`, `find_latest_by_name()`, etc. using MongoDB queries
-2. **DraftService has inefficient duplicates** - `list_for_user_by_name()`, `find_editable_by_name()`, `find_latest_by_name()` fetch ALL drafts then filter in Python! 😱
-3. **Presentation logic is mixed in** - `format_draft_for_display()`, `extract_attribute_names_from_generated_json()` belong in presenter
-4. **25+ router call sites** expect current return shapes - changing this twice (now + presenter) creates unnecessary churn
-
-**Why Wait:**
-- Moving presentation logic now means modifying the same code twice when presenter layer arrives
-- Test suite would need rewriting twice (once now, once for presenter integration)
-- Router updates would happen in two waves instead of one clean migration
-- Clear dependency: Can't "update routers to use presenter outputs" (Phase 4) if presenters don't exist!
+This is **not** an architectural change—the architecture is already correct per FastAPI 2025 best practices.
 
 ## Objectives
-- Delegate all direct data retrieval/manipulation to `DraftRepo` methods (which already exist!)
+
 - Remove Python-side filtering that duplicates database-level queries
-- Ensure `DraftService` is responsible for:
+- Ensure routers call `DraftRepo` directly for simple queries
+- Keep `DraftService` focused on orchestration and business logic:
   - Ownership/permission checks
   - Workflow transitions (make public, submit)
-  - Integrations with other services (comment tracking, contributor creation)
-  - Coordination with caching or session management when needed
-- **Presentation logic moves to DraftPresenter** (Phase 0 prerequisite)
+  - Service coordination (comment tracking, contributor creation)
+  - Formatting delegation (already done)
 
-## Constraints & Assumptions
-- `DraftRepo` **already has all needed queries** - Phase 2 is verification only, no new methods required!
-- Avoid breaking API contracts used by routers—but accept we'll change them ONCE after presenter is ready
-- **Presenter layer MUST be completed before this refactor** (not in parallel!)
+## Constraints & Principles
+
+- `DraftRepo` already has all needed query methods
 - Maintain async patterns and type hints per project standards
-- Target is 100% test success rate maintained throughout
+- Target: 100% test success rate maintained throughout
+- No breaking changes to public APIs
+- Follow existing FastAPI service layer patterns from `app/CLAUDE.md`
 
 ## Deliverables
-1. **Phase 0**: Working `DraftPresenter` with all formatting logic, routers updated, tests passing
-2. **Phase 1+**: Slimmed `DraftService` with only orchestration/business logic, no presentation or Python filtering
-3. Updated unit tests focusing on business logic, not formatting
-4. Documentation reflecting new architecture
 
-## Plan
+1. Slimmed `DraftService` with duplicate methods removed (~60 lines deleted)
+2. Updated router calls using `DraftRepo` directly (2 lines changed)
+3. Updated/removed tests (3 test methods)
+4. Documentation update in `RECENT_UPDATES_SUMMARY.md`
 
-### Phase 0 – Formatting Utilities (PREREQUISITE - DO THIS FIRST!)
-**Status**: 🚫 Not started - REQUIRED before proceeding
-**See**: `presenter-module-plan.md` for detailed implementation steps
+## Implementation Plan
 
-**Summary**: Extract formatting logic from `DraftService` into `app/utils/draft_formatting.py`:
-- [ ] Create `app/utils/draft_formatting.py` with pure formatting functions:
-  - `format_draft_for_display(draft, comment_count, now)` - move from DraftService
-  - `extract_attribute_names(json_str)` - move from DraftService
-  - `humanize_timestamp(dt, now)` - for consistent time formatting
-  - `format_date_short(dt)` - for date display
-- [ ] Create comprehensive test suite in `tests/test_utils/test_draft_formatting.py`
-  - Test all timestamp formatting edge cases (timezone-aware/naive, strings, None)
-  - Test JSON attribute extraction with various schemas
-  - Test display formatting with/without generated JSON
-  - Deterministic testing with `now` parameter injection
-- [ ] Update `DraftService` to delegate to utils:
-  - `get_drafts_for_user()` calls formatting utils
-  - `get_public_drafts()` calls formatting utils
-  - Remove formatting methods from service (165 lines reduced)
-- [ ] Update service tests - remove formatting assertions, test delegation only
-- [ ] Run full test suite - must remain at 100% pass rate
-- [ ] **GATE**: All tests passing? Formatting in utils? Service slimmed? → Proceed to Phase 1
+This is a **single-phase cleanup task**, not a multi-phase refactor.
 
-**Only proceed past this point once Phase 0 is COMPLETE and MERGED!**
+### Step 1: Update Router Call Sites (5 minutes) ✅ COMPLETE
+**File**: `app/routers/creation.py`
 
----
+- [x] Line 128: Change to call `draft_repo.find_editable_by_name()` directly
+  ```python
+  # OLD:
+  draft = await draft_service.find_editable_by_name(user_id=current_user.id, name=name)
 
-### Phase 1 – Audit & Gap Analysis
-**Status**: Not started
-**Depends on**: Phase 0 complete
+  # NEW:
+  draft = await draft_repo.find_editable_by_name(user_id=current_user.id, name=name)
+  ```
 
-- [ ] Verify `DraftRepo` has all needed methods (SPOILER: it does!)
-  - ✅ `find_editable_by_name()` - already exists with MongoDB regex
-  - ✅ `find_latest_by_name()` - already exists with MongoDB sort
-  - ✅ `list_for_user()` - already exists
-  - ✅ `get_public_drafts()` - already exists with author aggregation
-- [ ] Catalogue DraftService methods to remove:
-  - `list_for_user_by_name()` - duplicates repo, filters in Python ❌
-  - `find_editable_by_name()` - duplicates repo, filters in Python ❌
-  - `find_latest_by_name()` - duplicates repo, filters/sorts in Python ❌
-  - Presentation methods already moved to presenter ✅
-- [ ] Document methods to KEEP:
-  - `get_draft_by_id()` - orchestration with ownership checks ✅
-  - `delete_draft()` - business logic with permission checks ✅
-  - `make_public_draft()` - workflow transition ✅
-  - `submit_draft()` - workflow transition ✅
-  - `save_draft()` - orchestration with `ensure_person_for_user()` ✅
-  - Comment delegation methods ✅
+- [x] Line 147: Change to call `draft_repo.find_latest_by_name()` directly
+  ```python
+  # OLD:
+  latest = await draft_service.find_latest_by_name(user_id=current_user.id, name=name)
 
-### Phase 2 – Repository Verification (NO NEW CODE NEEDED!)
-**Status**: Not started
-**Depends on**: Phase 1 complete
+  # NEW:
+  latest = await draft_repo.find_latest_by_name(user_id=current_user.id, name=name)
+  ```
 
-- [ ] **VERIFICATION ONLY** - confirm existing DraftRepo methods work correctly:
-  - Test `find_editable_by_name()` case-insensitivity (test already exists)
-  - Test `find_latest_by_name()` sorting (test already exists)
-  - Confirm indexes support these queries efficiently
-- [ ] **Result**: No new repository methods needed! 🎉
+- [x] Verify `draft_repo` is available via dependency injection in the route handler
 
-### Phase 3 – Remove Service Duplicates
-**Status**: Not started
-**Depends on**: Phase 2 complete
+### Step 2: Remove Duplicate Methods from DraftService (10 minutes) ✅ COMPLETE
+**File**: `app/services/draft_service.py`
 
-- [ ] Remove Python-filtering methods from DraftService:
-  - Delete `list_for_user_by_name()` (lines 214-230) - callers should use repo directly
-  - Delete `find_editable_by_name()` (lines 258-277) - callers should use repo directly
-  - Delete `find_latest_by_name()` (lines 279-299) - callers should use repo directly
-- [ ] Update `get_drafts_for_user()` to return raw drafts (presenter handles formatting now)
-- [ ] Update `get_public_drafts()` to return raw drafts (presenter handles formatting now)
-- [ ] Keep orchestration methods unchanged:
-  - `save_draft()` with `ensure_person_for_user()` call
-  - `delete_draft()` with ownership verification
-  - `make_public_draft()` with ownership verification
-  - `submit_draft()` with ownership verification
-- [ ] Verify comment service delegation methods untouched
+- [x] Delete `list_for_user_by_name()` method (lines ~181-197)
+  - Duplicates `draft_repo.list_for_user()` + Python filter
+  - Currently only called in tests, not production code
 
-### Phase 4 – Update Router Call Sites
-**Status**: Not started
-**Depends on**: Phase 3 complete
+- [x] Delete `find_editable_by_name()` method (lines ~199-218)
+  - Duplicates `draft_repo.find_editable_by_name()`
+  - Now called directly from router
 
-- [ ] Update `app/routers/drafts.py`:
-  - Review ~15 call sites currently using removed service methods
-  - Change to call `draft_repo` directly or use presenter for formatting
-  - Example: `drafts = await draft_repo.list_for_user(user_id)`
-  - Example: `formatted = presenter.format_drafts_list(drafts)`
-- [ ] Update `app/routers/profile.py`:
-  - Similar review for profile-related draft queries
-- [ ] Verify creation workflow still functions (step 1/4 resume logic)
-- [ ] Test all updated endpoints manually via browser
+- [x] Delete `find_latest_by_name()` method (lines ~220-240)
+  - Duplicates `draft_repo.find_latest_by_name()`
+  - Now called directly from router
 
-### Phase 5 – Testing & Verification
-**Status**: Not started
-**Depends on**: Phase 4 complete
+- [x] Remove unused imports if any (e.g., list comprehension utils)
 
-- [ ] Update `tests/test_services/test_draft_service.py`:
-  - Remove tests for deleted methods (list_for_user_by_name, find_editable_by_name, find_latest_by_name)
-  - Remove presentation formatting tests (now in test_draft_presenter.py from Phase 0)
-  - Keep orchestration tests (delete, make_public, submit with ownership checks)
-  - Verify comment delegation tests remain
-- [ ] Update integration tests:
-  - `tests/test_public_draft_feature.py` - should already work with presenter (from Phase 0)
-  - `tests/test_resume_logic.py` - verify draft adoption still works
-  - Profile-related tests - verify draft listing works
-- [ ] Run full test suite - must remain at 100% pass rate
-- [ ] Run Playwright browser tests for draft workflows
-- [ ] Performance check: verify queries use database filtering, not Python
+**Result**: ~60 lines deleted from service
 
-### Phase 6 – Cleanup & Documentation
-**Status**: Not started
-**Depends on**: Phase 5 complete
+### Step 3: Update Tests (15 minutes) ✅ COMPLETE
+**File**: `tests/test_services/test_draft_service.py`
 
-- [ ] Remove any dead code or unused imports
-- [ ] Update docstrings to reflect new responsibilities
-- [ ] Update `docs/RECENT_UPDATES_SUMMARY.md` with:
-  - Presenter layer creation (Phase 0)
-  - Service layer cleanup (Phases 1-5)
-  - Performance improvements from database-level filtering
-- [ ] Add entry to `CHANGELOG.md` about architectural improvement
-- [ ] Consider updating `app/CLAUDE.md` with presenter pattern guidance
+- [x] Remove or update tests for deleted methods:
+  - `test_list_for_user_by_name_success`
+  - `test_list_for_user_by_name_error`
+  - Tests for `find_editable_by_name()` (if any service-level tests exist)
+  - Tests for `find_latest_by_name()` (if any service-level tests exist)
 
-## Success Criteria
-- [ ] Zero Python-side filtering of database results
-- [ ] All presentation logic in DraftPresenter
-- [ ] DraftService only does orchestration/business logic
-- [ ] 100% test pass rate maintained throughout
-- [ ] No router API changes between Phase 0 and Phase 6 completion
-- [ ] Performance: draft queries use database indexes, not Python loops
+- [x] Keep all orchestration and business logic tests:
+  - `test_get_drafts_for_user_success` (delegates to repo + formatting)
+  - `test_delete_draft` (ownership checks)
+  - `test_make_public_draft` (workflow transition)
+  - `test_submit_draft` (workflow transition)
+  - Comment delegation tests
+
+**Note**: Repository-level tests in `tests/test_draftrepo_queries.py` remain unchanged
+
+**Additional work**: Fixed test mocks in `tests/test_finding_models_comprehensive.py`:
+- Updated 8 tests to mock `app.database.DraftRepo` methods instead of removed service methods
+- Fixed `test_process_step_1_resume_existing_draft` to mock repository instance directly
+- Fixed `test_step1_resumes_submitted_draft_to_draft_view` mock setup
+
+### Step 4: Verify & Test (10 minutes) ✅ COMPLETE
+
+- [x] Run service tests:
+  ```bash
+  uv run pytest tests/test_services/test_draft_service.py -v
+  ```
+  **Result**: 16 tests passed (down from 18 as expected)
+
+- [x] Run router tests:
+  ```bash
+  uv run pytest tests/test_drafts_router.py tests/test_resume_logic.py -v
+  ```
+  **Result**: All tests passed
+
+- [x] Run full test suite:
+  ```bash
+  task test-unit
+  ```
+  **Result**: ✅ All unit tests passing! (6 skipped tests with "Complex session handling" markers)
+
+### Step 5: Documentation (5 minutes) ✅ COMPLETE
+
+- [x] Update `docs/RECENT_UPDATES_SUMMARY.md`:
+  ```markdown
+  ## Service Layer Cleanup (October 4, 2025)
+
+  - Removed duplicate filtering methods from `DraftService`
+  - Routers now call `DraftRepo` directly for simple queries
+  - Service focused on business logic only (ownership, workflows, coordination)
+  - Formatting utilities already in `app/utils/draft_formatting.py`
+  ```
+
+- [ ] Optional: Update `CHANGELOG.md` if user-visible
+
+## Success Criteria ✅ ALL COMPLETE
+
+- [x] 3 duplicate methods removed from `DraftService` (~60 lines)
+- [x] 2 router calls updated to use `DraftRepo` directly
+- [x] Test suite passes (all unit tests passing with 6 skipped)
+- [x] No Python-side filtering for simple queries
+- [x] Service remains focused on business logic:
+  - ✅ Ownership checks (`delete_draft`, `get_draft_by_id`)
+  - ✅ Workflow transitions (`submit_draft`, `make_public_draft`)
+  - ✅ Service coordination (`save_draft` with `ensure_person_for_user`)
+  - ✅ Formatting delegation (`get_drafts_for_user` calls utils)
+- [x] Documentation updated
 
 ## Risk Assessment
-- **LOW risk once Phase 0 complete** - presenter provides stable interface
-- **HIGH risk if we skip Phase 0** - would require two refactors instead of one
-- **Test coverage is excellent** - 144 tests help catch regressions
 
-## Open Questions
-- None currently. Proceed with Phase 0 when ready to invest 2-3 days of focused work.
+**Risk: VERY LOW** ✅
+
+- Simple code deletion, no architectural changes
+- Only 2 router call sites affected
+- Comprehensive test coverage catches issues
+- Can be completed and verified in under 1 hour
+- Easy to rollback (single commit)
+- Repository methods already tested and working
+
+## Verification Strategy
+
+1. **Before changes**: Run `task test-unit` (baseline)
+2. **After Step 2**: Check service tests pass
+3. **After Step 3**: Check all tests pass
+4. **Manual check**: Test creation workflow in browser (resume draft functionality)
+
+## Why This Approach
+
+**Simplified from original plan because:**
+- ✅ Formatting extraction already complete (was "Phase 0")
+- ✅ Only 2 call sites need updating (not "25+")
+- ✅ Only 3 methods to delete (straightforward)
+- ✅ No architectural changes needed (already follows best practices)
+- ✅ 1-hour task, not multi-phase project
+
+**Aligns with FastAPI 2025 best practices:**
+- Thin routers → call repos directly for simple queries ✓
+- Services → business logic and orchestration only ✓
+- Utilities → formatting and presentation ✓
+- Repository pattern → data access layer ✓

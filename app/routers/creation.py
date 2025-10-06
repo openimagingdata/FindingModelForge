@@ -20,6 +20,7 @@ from app.vite_manifest import get_vite_asset_path
 from app.dependencies import (
     CreationServiceDep,
     CreationSessionDep,
+    DraftRepoDep,
     DraftServiceDep,
     FindingModelCreationSession,
     SessionManagerDep,
@@ -112,6 +113,7 @@ async def process_step_1(
     session_manager: SessionManagerDep,
     creation_service: CreationServiceDep,
     draft_service: DraftServiceDep,
+    draft_repo: DraftRepoDep,
     name: str = Form(min_length=3, max_length=200),
 ) -> Response:
     """Process step 1: Check name and generate description."""
@@ -125,7 +127,7 @@ async def process_step_1(
         # Auto-resume: if the user has an editable draft with this name, jump to step 4
         draft = None
         try:
-            draft = await draft_service.find_editable_by_name(user_id=current_user.id, name=name)
+            draft = await draft_repo.find_editable_by_name(user_id=current_user.id, name=name)
         except Exception as e:
             logger.warning(f"Draft lookup failed for name '{name}': {e}")
         if draft is not None:
@@ -144,7 +146,7 @@ async def process_step_1(
 
         # If there's a submitted draft with this name, jump to step 5 with read-only view
         try:
-            latest = await draft_service.find_latest_by_name(user_id=current_user.id, name=name)
+            latest = await draft_repo.find_latest_by_name(user_id=current_user.id, name=name)
         except Exception:
             latest = None
         if latest is not None and latest.status == "submitted":

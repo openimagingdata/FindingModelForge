@@ -179,67 +179,6 @@ class DraftService:
             logger.warning(f"Failed to load public drafts: {e}")
             return []
 
-    async def list_for_user_by_name(self, user_id: int, name: str) -> list[Any]:
-        """List drafts for a user filtered by name.
-
-        Args:
-            user_id: User ID to filter by
-            name: Name to filter by
-
-        Returns:
-            List of draft objects matching the name
-        """
-        try:
-            # Get all drafts for user and filter by name in Python
-            all_drafts = await self.draft_repo.list_for_user(user_id)
-            return [draft for draft in all_drafts if draft.name and draft.name.lower() == name.lower()]
-        except Exception as e:
-            logger.warning(f"Error listing drafts for user {user_id} with name '{name}': {e}")
-            return []
-
-    async def find_editable_by_name(self, user_id: int, name: str) -> Any | None:
-        """Find editable draft by name for a user.
-
-        Args:
-            user_id: User ID to search for
-            name: Name to search for (case insensitive)
-
-        Returns:
-            Editable draft if found, None otherwise
-        """
-        try:
-            # Get all drafts for user and find editable one with matching name
-            all_drafts = await self.draft_repo.list_for_user(user_id)
-            for draft in all_drafts:
-                if draft.name and draft.name.lower() == name.lower() and draft.status == "draft":
-                    return draft
-            return None
-        except Exception as e:
-            logger.warning(f"Error finding editable draft by name '{name}' for user {user_id}: {e}")
-            return None
-
-    async def find_latest_by_name(self, user_id: int, name: str) -> Any | None:
-        """Find latest draft by name for a user.
-
-        Args:
-            user_id: User ID to search for
-            name: Name to search for (case insensitive)
-
-        Returns:
-            Latest draft if found, None otherwise
-        """
-        try:
-            # Get all drafts for user and find latest one with matching name
-            all_drafts = await self.draft_repo.list_for_user(user_id)
-            matching_drafts = [draft for draft in all_drafts if draft.name and draft.name.lower() == name.lower()]
-            if not matching_drafts:
-                return None
-            # Sort by updated_at descending and return first
-            return sorted(matching_drafts, key=lambda x: x.updated_at, reverse=True)[0]
-        except Exception as e:
-            logger.warning(f"Error finding latest draft by name '{name}' for user {user_id}: {e}")
-            return None
-
     async def get_draft(self, draft_id: str, user_id: int | None = None) -> Any | None:
         """Get draft by ID, optionally checking ownership.
 

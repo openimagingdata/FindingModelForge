@@ -116,8 +116,10 @@ def test_step1_resumes_submitted_draft_to_draft_view():
     db: Database = app.state.database  # type: ignore[assignment]
     db.draft_repo.find_editable_by_name = AsyncMock(return_value=None)  # type: ignore[attr-defined]
     db.draft_repo.find_latest_by_name = AsyncMock(return_value=submitted_draft)  # type: ignore[attr-defined]
-    # Also mock get_draft for the redirect target
+    # Also mock get_draft and get_draft_with_author for the redirect target
     db.draft_repo.get_draft = AsyncMock(return_value=submitted_draft)  # type: ignore[attr-defined]
+    # Mock get_draft_with_author to return model_dump() output for the draft view page
+    db.draft_repo.get_draft_with_author = AsyncMock(return_value=submitted_draft.model_dump())  # type: ignore[attr-defined]
 
     # Mock creation service since it's now used in step 1
     from app.dependencies import get_creation_service

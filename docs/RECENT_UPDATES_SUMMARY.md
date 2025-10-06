@@ -1,5 +1,44 @@
 # Recent Updates Summary - September 2025
 
+## 🔧 Refactor: Service Layer Cleanup - Direct Repository Access (October 4, 2025)
+
+### Overview
+
+Completed service layer cleanup by removing duplicate filtering methods from `DraftService` that were fetching all drafts and filtering in Python. Routers now call `DraftRepo` directly for simple queries, following FastAPI 2025 best practices for thin controllers.
+
+### Changes Made
+
+- **Removed 3 duplicate methods from DraftService** (~60 lines deleted):
+  - `list_for_user_by_name()` - Duplicated `DraftRepo.list_for_user()` with Python filtering
+  - `find_editable_by_name()` - Duplicated `DraftRepo.find_editable_by_name()` with Python filtering
+  - `find_latest_by_name()` - Duplicated `DraftRepo.find_latest_by_name()` with Python filtering
+- **Updated 2 router call sites** - `creation.py` now calls `draft_repo` directly instead of through service
+- **Removed 2 test methods** - Tests for deleted service methods no longer needed
+- **Zero breaking changes** - All 23 affected tests pass, full test suite at 100%
+
+### Architecture Pattern
+
+```
+Router (HTTP Layer)
+    ├→ Repository (Simple Queries) - Direct database access for CRUD
+    └→ Service (Business Logic) - Orchestration, permissions, workflows
+```
+
+### Service Focus
+
+`DraftService` now handles only true business logic:
+- ✅ Ownership checks (`delete_draft`, `get_draft_by_id`)
+- ✅ Workflow transitions (`submit_draft`, `make_public_draft`)
+- ✅ Service coordination (`save_draft` with `ensure_person_for_user`)
+- ✅ Formatting delegation (`get_drafts_for_user` calls utils)
+- ❌ No Python-side filtering (use repo methods)
+
+### Performance Impact
+
+Queries now use MongoDB indexes at the database level instead of fetching all drafts and filtering in Python. This improves performance for users with many drafts.
+
+---
+
 ## 🔧 Refactor: Draft Formatting Utilities Extraction (October 3, 2025)
 
 ### Overview

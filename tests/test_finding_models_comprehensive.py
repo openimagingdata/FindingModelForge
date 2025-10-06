@@ -333,8 +333,8 @@ class TestHTMXCreationWorkflow:
 
     @patch("app.services.creation_service.CreationService.generate_finding_info")
     @patch("app.services.creation_service.CreationService.check_name_availability")
-    @patch("app.services.draft_service.DraftService.find_editable_by_name")
-    @patch("app.services.draft_service.DraftService.find_latest_by_name")
+    @patch("app.database.DraftRepo.find_editable_by_name")
+    @patch("app.database.DraftRepo.find_latest_by_name")
     def test_process_step_1_new_name_success(
         self,
         mock_find_latest: AsyncMock,
@@ -1008,8 +1008,8 @@ class TestEdgeCases:
         with (
             patch("app.services.creation_service.CreationService.generate_finding_info") as mock_generate_info,
             patch("app.services.creation_service.CreationService.check_name_availability") as mock_check_name,
-            patch("app.services.draft_service.DraftService.find_editable_by_name") as mock_find_editable,
-            patch("app.services.draft_service.DraftService.find_latest_by_name") as mock_find_latest,
+            patch("app.database.DraftRepo.find_editable_by_name") as mock_find_editable,
+            patch("app.database.DraftRepo.find_latest_by_name") as mock_find_latest,
         ):
             mock_find_editable.return_value = None
             mock_find_latest.return_value = None
@@ -1479,14 +1479,8 @@ class TestDraftStateTransitions:
 class TestErrorHandlingAndEdgeCases:
     """Priority 3 tests for error handling and edge cases."""
 
-    @patch("app.services.draft_service.DraftService.find_editable_by_name")
-    @patch("app.services.draft_service.DraftService.find_latest_by_name")
-    @patch("app.services.creation_service.CreationService.generate_default_attributes_markdown")
     def test_process_step_1_resume_existing_draft(
         self,
-        mock_gen_attrs: AsyncMock,
-        mock_find_latest: AsyncMock,
-        mock_find_editable: AsyncMock,
         authenticated_client: TestClient,
         mock_database: Database,
         mock_cache: MagicMock,
@@ -1514,11 +1508,9 @@ class TestErrorHandlingAndEdgeCases:
             author_username="testuser",
         )
 
-        mock_find_editable.return_value = existing_draft
-        mock_find_latest.return_value = None
-        mock_gen_attrs.return_value = "## Default attributes"
-
-        # Also mock get_draft for the redirect target
+        # Mock the repository methods on the injected instance
+        mock_database.draft_repo.find_editable_by_name = AsyncMock(return_value=existing_draft)
+        mock_database.draft_repo.find_latest_by_name = AsyncMock(return_value=None)
         mock_database.draft_repo.get_draft = AsyncMock(return_value=existing_draft)
 
         response = authenticated_client.post("/create/step/1", data={"name": "test-finding"}, follow_redirects=False)
@@ -1528,7 +1520,7 @@ class TestErrorHandlingAndEdgeCases:
         assert response.headers.get("location") == "/drafts/existing-draft-id?mode=edit"
 
         # Verify draft lookup was attempted
-        mock_find_editable.assert_called_once_with(user_id=123, name="test-finding")
+        mock_database.draft_repo.find_editable_by_name.assert_called_once_with(user_id=123, name="test-finding")
 
     @pytest.mark.skip(reason="Complex session handling, needs refactoring")
     def test_process_step_1_resume_submitted_draft(

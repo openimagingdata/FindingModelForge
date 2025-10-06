@@ -294,36 +294,6 @@ class TestDraftService:
         with pytest.raises(NotFoundError, match="Failed to submit draft"):
             await service.submit_draft(draft_id, user_id)
 
-    async def test_list_for_user_by_name_success(
-        self, service: DraftService, mock_draft_repo: MagicMock, sample_draft: FindingModelDraft
-    ):
-        """Test listing drafts for user by name successfully."""
-        # Setup
-        user_id = 12345
-        name = "Test Finding"
-        # Service calls list_for_user and filters by name
-        mock_draft_repo.list_for_user.return_value = [sample_draft]
-
-        # Test
-        result = await service.list_for_user_by_name(user_id, name)
-
-        # Assertions
-        assert result == [sample_draft]
-        mock_draft_repo.list_for_user.assert_called_once_with(user_id)
-
-    async def test_list_for_user_by_name_error(self, service: DraftService, mock_draft_repo: MagicMock):
-        """Test listing drafts for user by name with error."""
-        # Setup
-        user_id = 12345
-        name = "Test Finding"
-        mock_draft_repo.list_for_user.side_effect = Exception("Database error")
-
-        # Test
-        result = await service.list_for_user_by_name(user_id, name)
-
-        # Assertions
-        assert result == []
-
     @pytest.mark.asyncio
     async def test_get_comments_for_draft_delegates(
         self, service: DraftService, mock_comment_service: MagicMock
