@@ -28,10 +28,10 @@ async def readiness_check(cache: CacheDep) -> JSONResponse:
     """Readiness check endpoint with cache status."""
     checks = {
         "database": "healthy",  # We assume MongoDB is healthy if we reach this point
-        "cache": "disabled" if not cache.enabled else ("healthy" if await cache.is_healthy() else "unhealthy"),
+        "cache": "healthy" if await cache.is_healthy() else "unhealthy",
     }
 
-    overall_status = "ready" if all(status in ["healthy", "disabled"] for status in checks.values()) else "not_ready"
+    overall_status = "ready" if all(status == "healthy" for status in checks.values()) else "not_ready"
 
     return JSONResponse(
         content={
@@ -56,15 +56,6 @@ async def liveness_check() -> JSONResponse:
 @router.get("/health/cache")
 async def cache_health_check(cache: CacheDep) -> JSONResponse:
     """Cache-specific health check with statistics."""
-    if not cache.enabled:
-        return JSONResponse(
-            content={
-                "status": "disabled",
-                "message": "Redis caching is disabled",
-                "timestamp": datetime.now().isoformat(),
-            }
-        )
-
     cache_stats = await cache.get_stats()
     cache_stats["timestamp"] = datetime.now().isoformat()
 

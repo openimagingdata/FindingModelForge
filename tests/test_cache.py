@@ -42,34 +42,6 @@ class TestRedisCache:
     """Test Redis cache functionality."""
 
     @pytest.mark.asyncio
-    async def test_cache_disabled_when_redis_unavailable(self, cache_config: CacheConfig) -> None:
-        """Test that cache gracefully handles Redis unavailability."""
-        # Mock Redis to fail connection
-        with patch("app.cache.redis_client", None):
-            cache = RedisCache(cache_config)
-            await cache.connect()
-
-            # Cache should be disabled
-            assert not cache.enabled
-            assert cache.client is None
-
-            # Operations should return safely with transparent fallbacks
-            result = await cache.get("test_key")
-            assert result is None
-
-            # Set should return True (no-op success) even when Redis is unavailable
-            success = await cache.set("test_key", "test_value")
-            assert success  # Transparent no-op returns True
-
-            # Delete should return True (no-op success)
-            delete_success = await cache.delete("test_key")
-            assert delete_success
-
-            # Exists should return False when Redis is unavailable
-            exists = await cache.exists("test_key")
-            assert not exists
-
-    @pytest.mark.asyncio
     async def test_user_caching(self, cache_config: CacheConfig, sample_user: User) -> None:
         """Test user caching functionality."""
         cache = RedisCache(cache_config)
@@ -204,9 +176,7 @@ class TestRedisIntegration:
             cache = RedisCache()
             await cache.connect()
 
-            if not cache.enabled:
-                pytest.skip("Redis not available")
-
+            # If connect succeeds, Redis is available
             # Test basic operations
             key = "test:integration"
             value = "test_value"
@@ -237,31 +207,26 @@ if __name__ == "__main__":
 
         cache = RedisCache()
         await cache.connect()
+        print("✅ Redis cache connected successfully")
 
-        if cache.enabled:
-            print("✅ Redis cache connected successfully")
+        # Test basic operations
+        test_key = "test:demo"
+        test_value = "Hello, Redis!"
 
-            # Test basic operations
-            test_key = "test:demo"
-            test_value = "Hello, Redis!"
+        await cache.set(test_key, test_value, timedelta(seconds=30))
+        result = await cache.get(test_key)
 
-            await cache.set(test_key, test_value, timedelta(seconds=30))
-            result = await cache.get(test_key)
-
-            if result == test_value:
-                print("✅ Cache set/get operations working")
-            else:
-                print("❌ Cache operations failed")
-
-            # Test cache stats
-            stats = await cache.get_stats()
-            print(f"✅ Cache stats: {stats.get('status', 'unknown')}")
-
-            await cache.delete(test_key)
-            print("✅ Cache cleanup completed")
-
+        if result == test_value:
+            print("✅ Cache set/get operations working")
         else:
-            print("⚠️  Redis cache not available - will fall back to database queries")
+            print("❌ Cache operations failed")
+
+        # Test cache stats
+        stats = await cache.get_stats()
+        print(f"✅ Cache stats: {stats.get('status', 'unknown')}")
+
+        await cache.delete(test_key)
+        print("✅ Cache cleanup completed")
 
         await cache.disconnect()
         print("✅ Test completed")

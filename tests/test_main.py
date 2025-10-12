@@ -71,8 +71,15 @@ async def test_lifespan_startup_success() -> None:
     mock_index = AsyncMock()
     mock_index.setup_indexes = AsyncMock()
 
+    # Mock Redis cache
+    mock_cache = AsyncMock()
+    mock_cache.connect = AsyncMock()
+    mock_cache.disconnect = AsyncMock()
+    mock_cache.is_healthy = AsyncMock(return_value=True)
+
     with (
         patch("app.main.Database", return_value=mock_database),
+        patch("app.main.RedisCache", return_value=mock_cache),
         patch("findingmodel.index.Index", return_value=mock_index),
         patch("app.main.settings") as mock_settings,
     ):
@@ -82,8 +89,7 @@ async def test_lifespan_startup_success() -> None:
         mock_settings.debug = False
         mock_settings.github_client_id = "test_client_id"
         mock_settings.mongodb_db = "test_db"
-        # Redis settings
-        mock_settings.redis_enabled = False  # Disable Redis for tests
+        # Redis settings (required)
         mock_settings.redis_host = "localhost"
         mock_settings.redis_port = 6379
         mock_settings.redis_db = 0
@@ -94,18 +100,22 @@ async def test_lifespan_startup_success() -> None:
         # Test startup
         async with lifespan(app):
             # Verify startup calls
+            mock_cache.connect.assert_called_once()
+            mock_cache.is_healthy.assert_called_once()
             mock_database.connect.assert_called_once()
 
             # Verify app state is set
             assert hasattr(app.state, "database")
+            assert hasattr(app.state, "cache")
 
         # Verify shutdown calls
         mock_database.disconnect.assert_called_once()
+        mock_cache.disconnect.assert_called_once()
 
 
 @pytest.mark.asyncio
-async def test_lifespan_with_redis_enabled_healthy() -> None:
-    """Covers Redis-enabled healthy branch in lifespan."""
+async def test_lifespan_with_redis_healthy() -> None:
+    """Test successful Redis connection during startup."""
     app = FastAPI()
 
     mock_database = AsyncMock()
@@ -128,8 +138,6 @@ async def test_lifespan_with_redis_enabled_healthy() -> None:
         mock_settings.environment = "test"
         mock_settings.debug = False
         mock_settings.github_client_id = "id"
-        # Redis enabled path
-        mock_settings.redis_enabled = True
         mock_settings.redis_host = "localhost"
         mock_settings.redis_port = 6379
         mock_settings.redis_db = 0
@@ -146,8 +154,8 @@ async def test_lifespan_with_redis_enabled_healthy() -> None:
 
 
 @pytest.mark.asyncio
-async def test_lifespan_with_redis_enabled_unhealthy() -> None:
-    """Covers Redis-enabled unhealthy branch in lifespan."""
+async def test_lifespan_with_redis_unhealthy() -> None:
+    """Test that startup fails when Redis is unavailable."""
     app = FastAPI()
 
     mock_database = AsyncMock()
@@ -163,28 +171,25 @@ async def test_lifespan_with_redis_enabled_unhealthy() -> None:
         patch("app.main.Database", return_value=mock_database),
         patch("app.main.RedisCache", return_value=mock_cache),
         patch("app.main.settings") as mock_settings,
-        patch("app.main.logger") as mock_logger,
     ):
         mock_settings.app_name = "TestApp"
         mock_settings.app_version = "1.0.0"
         mock_settings.environment = "test"
         mock_settings.debug = False
         mock_settings.github_client_id = "id"
-        # Redis enabled path
-        mock_settings.redis_enabled = True
         mock_settings.redis_host = "localhost"
         mock_settings.redis_port = 6379
         mock_settings.redis_db = 0
 
         from app.main import lifespan
 
-        async with lifespan(app):
-            pass
+        # Should raise RuntimeError when Redis is unhealthy
+        with pytest.raises(RuntimeError, match="Redis connection required but unavailable"):
+            async with lifespan(app):
+                pass
 
         mock_cache.connect.assert_called_once()
         mock_cache.is_healthy.assert_called_once()
-        mock_logger.warning.assert_any_call("Redis cache connection failed - continuing without cache")
-        await mock_cache.disconnect()
 
 
 @pytest.mark.asyncio
@@ -196,8 +201,15 @@ async def test_lifespan_startup_database_failure() -> None:
     mock_database = AsyncMock()
     mock_database.connect = AsyncMock(side_effect=Exception("Connection failed"))
 
+    # Mock Redis cache
+    mock_cache = AsyncMock()
+    mock_cache.connect = AsyncMock()
+    mock_cache.disconnect = AsyncMock()
+    mock_cache.is_healthy = AsyncMock(return_value=True)
+
     with (
         patch("app.main.Database", return_value=mock_database),
+        patch("app.main.RedisCache", return_value=mock_cache),
         patch("app.main.settings") as mock_settings,
     ):
         mock_settings.app_name = "TestApp"
@@ -205,8 +217,7 @@ async def test_lifespan_startup_database_failure() -> None:
         mock_settings.environment = "test"
         mock_settings.debug = False
         mock_settings.github_client_id = "test_client_id"
-        # Redis settings
-        mock_settings.redis_enabled = False  # Disable Redis for tests
+        # Redis settings (required)
         mock_settings.redis_host = "localhost"
         mock_settings.redis_port = 6379
         mock_settings.redis_db = 0
@@ -229,8 +240,15 @@ async def test_lifespan_warns_when_github_not_configured() -> None:
     mock_database.disconnect = AsyncMock()
     mock_database.client = MagicMock()
 
+    # Mock Redis cache
+    mock_cache = AsyncMock()
+    mock_cache.connect = AsyncMock()
+    mock_cache.disconnect = AsyncMock()
+    mock_cache.is_healthy = AsyncMock(return_value=True)
+
     with (
         patch("app.main.Database", return_value=mock_database),
+        patch("app.main.RedisCache", return_value=mock_cache),
         patch("app.main.settings") as mock_settings,
         patch("app.main.logger") as mock_logger,
     ):
@@ -239,8 +257,7 @@ async def test_lifespan_warns_when_github_not_configured() -> None:
         mock_settings.environment = "test"
         mock_settings.debug = False
         mock_settings.github_client_id = None  # Not configured
-        # Redis settings
-        mock_settings.redis_enabled = False  # Disable Redis for tests
+        # Redis settings (required)
         mock_settings.redis_host = "localhost"
         mock_settings.redis_port = 6379
         mock_settings.redis_db = 0

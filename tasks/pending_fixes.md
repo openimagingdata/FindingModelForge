@@ -46,49 +46,30 @@
 3. **Action button issues** - Fixed submit buttons by using hardcoded HTML instead of macro
 4. **Datetime comparison** - Fixed rate limiting string-to-datetime conversion
 
-## 🔍 Known Remaining Issues
+## ✅ Recently Fixed Issues
 
-### 1. **CRITICAL: Server Should Fail to Start Without Redis**
+### 1. **FIXED: Server Requires Redis to Start (October 11, 2025)**
 
-**Issue**: The creation workflow absolutely requires Redis for session management, but the server starts successfully even when Redis is unavailable. This causes silent failures where:
-- Sessions are saved but not persisted (cache operations return `True` but do nothing)
-- New sessions are created on every request
-- Users see "Session name must be set before processing step 2" errors
-- The actual problem (Redis down) is hidden behind cryptic workflow errors
+**Issue**: The creation workflow absolutely requires Redis for session management, but the server would start successfully even when Redis was unavailable. This caused silent failures.
 
-**Root Cause**: 
-- `RedisCache.connect()` catches connection failures and logs a warning but doesn't fail
-- Cache operations return success (`True`) even when Redis is disconnected
-- This "graceful degradation" approach works for optional caching but NOT for critical session management
+**Solution Implemented**:
+1. Removed `redis_enabled` setting from config - Redis is now always required
+2. Updated `RedisCache.connect()` to raise exceptions instead of gracefully degrading
+3. Added health check in `app/main.py` that raises `RuntimeError` if Redis is unavailable
+4. Removed all "no-op" fallback logic from cache methods
+5. Server now **fails to start** with clear error message if Redis is unavailable
 
-**Impact**: Production-breaking - creation workflow completely broken when Redis is down
+**Code Changes**:
+- `app/config.py` - Removed `redis_enabled` setting
+- `app/cache.py` - Removed graceful degradation logic
+- `app/main.py` - Added startup health check that raises exception if Redis unavailable
+- Tests updated to reflect Redis is always required
 
-**Fix Needed**:
-1. Add startup health check in `app/main.py` `lifespan()` function
-2. If Redis is enabled (`settings.redis_enabled`) but connection fails, **raise exception to prevent server startup**
-3. Session management is NOT optional - fail fast rather than silent failure
-
-**Code Location**:
-- `app/cache.py` - `RedisCache.connect()` line ~45-60 (currently catches and logs)
-- `app/main.py` - `lifespan()` function line ~40-55 (needs health check after `await cache.connect()`)
-
-**Suggested Implementation**:
-```python
-# In app/main.py lifespan() function after cache.connect():
-if settings.redis_enabled:
-    await cache.connect()
-    if not await cache.is_healthy():
-        raise RuntimeError(
-            "Redis connection required but unavailable. "
-            "Session management will not work. "
-            "Check REDIS_HOST/REDIS_PORT settings or disable with REDIS_ENABLED=false"
-        )
-    logger.info("Redis cache initialized and healthy")
-```
-
-**Priority**: 🔴 HIGH - Should be fixed before next deployment
+**Result**: Server will not start without Redis, giving immediate feedback instead of silent failures.
 
 ---
+
+## 🔍 Known Remaining Issues
 
 ### Previous Issues (All Resolved)
 

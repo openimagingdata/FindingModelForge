@@ -34,45 +34,42 @@ OrganizationList = TypeAdapter(list[Organization])
 
 
 class RedisCache:
-    """Redis cache manager for user data and other cacheable items."""
+    """Redis cache manager for user data and other cacheable items.
+
+    Redis is required for session management - the application will not start without it.
+    """
 
     def __init__(self, config: CacheConfig | None = None) -> None:
         """Initialize Redis cache with configuration."""
         self.config = config or CacheConfig()
         self.client: Any = None  # Redis client instance
         self.connection_pool: Any = None  # Connection pool instance
-        self.enabled = False  # Will be set to True if Redis connection succeeds
 
     async def connect(self) -> None:
-        """Connect to Redis server."""
-        try:
-            # Create connection pool for better performance
-            self.connection_pool = redis_client.ConnectionPool(
-                host=self.config.host,
-                port=self.config.port,
-                db=self.config.db,
-                decode_responses=self.config.decode_responses,
-                socket_connect_timeout=self.config.socket_connect_timeout,
-                socket_keepalive=self.config.socket_keepalive,
-                socket_keepalive_options=self.config.socket_keepalive_options,
-                health_check_interval=self.config.health_check_interval,
-                max_connections=self.config.max_connections,
-            )
+        """Connect to Redis server.
 
-            # Create Redis client using the connection pool
-            self.client = redis_client.Redis(connection_pool=self.connection_pool)
+        Raises:
+            Exception: If connection to Redis fails. This is intentional - Redis is required.
+        """
+        # Create connection pool for better performance
+        self.connection_pool = redis_client.ConnectionPool(
+            host=self.config.host,
+            port=self.config.port,
+            db=self.config.db,
+            decode_responses=self.config.decode_responses,
+            socket_connect_timeout=self.config.socket_connect_timeout,
+            socket_keepalive=self.config.socket_keepalive,
+            socket_keepalive_options=self.config.socket_keepalive_options,
+            health_check_interval=self.config.health_check_interval,
+            max_connections=self.config.max_connections,
+        )
 
-            # Test connection
-            await self.client.ping()
-            logger.info(f"Connected to Redis at {self.config.host}:{self.config.port}")
-            self.enabled = True
+        # Create Redis client using the connection pool
+        self.client = redis_client.Redis(connection_pool=self.connection_pool)
 
-        except Exception as e:
-            logger.warning(f"Failed to connect to Redis: {e} - cache will be disabled")
-            # Don't raise exception - fall back to no caching
-            self.client = None
-            self.connection_pool = None
-            self.enabled = False
+        # Test connection - will raise exception if Redis is unavailable
+        await self.client.ping()
+        logger.info(f"Connected to Redis at {self.config.host}:{self.config.port}")
 
     async def disconnect(self) -> None:
         """Disconnect from Redis server."""
@@ -103,9 +100,6 @@ class RedisCache:
 
     async def get(self, key: str) -> str | None:
         """Get value from cache."""
-        if not self.client:
-            return None
-
         try:
             value = await self.client.get(key)
             if value:
@@ -124,9 +118,6 @@ class RedisCache:
         expires_in: timedelta | None = None,
     ) -> bool:
         """Set value in cache with optional expiration."""
-        if not self.client:
-            return True  # Return True to indicate "success" (no-op)
-
         try:
             if expires_in:
                 await self.client.setex(key, expires_in, value)
@@ -140,9 +131,6 @@ class RedisCache:
 
     async def delete(self, key: str) -> bool:
         """Delete value from cache."""
-        if not self.client:
-            return True  # Return True to indicate "success" (no-op)
-
         try:
             result = await self.client.delete(key)
             logger.debug(f"Cache delete for key: {key}, result: {result}")
@@ -152,9 +140,6 @@ class RedisCache:
 
     async def exists(self, key: str) -> bool:
         """Check if key exists in cache."""
-        if not self.client:
-            return False
-
         try:
             result = await self.client.exists(key)
             return bool(result)
@@ -164,9 +149,6 @@ class RedisCache:
     # User-specific cache methods using Pydantic serialization
     async def set_user(self, user_id: str, user: User, expires: int = 3600) -> bool:
         """Cache a user object with expiration time in seconds."""
-        if not self.client:
-            return True  # Return True to indicate "success" (no-op)
-
         try:
             user_json = user.model_dump_json()
             await self.client.setex(f"user:{user_id}", expires, user_json)
@@ -177,9 +159,6 @@ class RedisCache:
 
     async def get_user(self, user_id: str) -> User | None:
         """Retrieve a user from cache and return as User object."""
-        if not self.client:
-            return None
-
         try:
             user_json = await self.client.get(f"user:{user_id}")
             if user_json:
@@ -192,9 +171,6 @@ class RedisCache:
 
     async def delete_user(self, user_id: str) -> bool:
         """Delete user from cache."""
-        if not self.client:
-            return True  # Return True to indicate "success" (no-op)
-
         try:
             result = await self.client.delete(f"user:{user_id}")
             logger.debug(f"Deleted user {user_id} from cache")
@@ -316,9 +292,6 @@ class RedisCache:
 
     async def get_stats(self) -> dict[str, Any]:
         """Get cache statistics."""
-        if not self.client:
-            return {"status": "disconnected"}
-
         try:
             info = await self.client.info()
             keyspace_hits = info.get("keyspace_hits", 0)

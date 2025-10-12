@@ -159,11 +159,12 @@ GITHUB_CLIENT_SECRET="your-oauth-secret"
 MONGODB_URI="mongodb://localhost:27017"
 MONGODB_DB="findingmodelforge"
 
-# Redis (optional but recommended)
-REDIS_ENABLED=true
+# Redis (required for session management)
 REDIS_HOST="localhost"
 REDIS_PORT=6379
 ```
+
+**Note**: Redis is **required** for session management. The server will not start without a healthy Redis connection.
 
 ## Key Features
 

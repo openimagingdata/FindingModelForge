@@ -31,22 +31,23 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info(f"Environment: {settings.environment}")
     logger.info(f"Debug mode: {settings.debug}")
 
-    # Initialize Redis cache if enabled
-    cache = RedisCache()
-    if settings.redis_enabled:
-        cache_config = CacheConfig(
-            host=settings.redis_host,
-            port=settings.redis_port,
-            db=settings.redis_db,
+    # Initialize Redis cache (required for session management)
+    cache_config = CacheConfig(
+        host=settings.redis_host,
+        port=settings.redis_port,
+        db=settings.redis_db,
+    )
+    cache = RedisCache(config=cache_config)
+    await cache.connect()
+
+    if not await cache.is_healthy():
+        raise RuntimeError(
+            "Redis connection required but unavailable. "
+            "Session management will not work. "
+            f"Check REDIS_HOST={settings.redis_host} and REDIS_PORT={settings.redis_port} settings."
         )
-        cache = RedisCache(config=cache_config)
-        await cache.connect()
-        if await cache.is_healthy():
-            logger.info("Redis cache initialized and healthy")
-        else:
-            logger.warning("Redis cache connection failed - continuing without cache")
-    else:
-        logger.info("Redis caching is disabled")
+
+    logger.info("Redis cache initialized and healthy")
     app.state.cache = cache
 
     # Create and connect to MongoDB
@@ -74,12 +75,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await database.disconnect()
     logger.info("Disconnected from MongoDB")
 
-    # Disconnect cache
-    if cache:
-        await cache.disconnect()
-        logger.info("Disconnected from Redis cache")
-    else:
-        logger.info("No Redis cache to disconnect")
+    # Disconnect Redis cache
+    await cache.disconnect()
+    logger.info("Disconnected from Redis cache")
 
 
 def create_app() -> FastAPI:
