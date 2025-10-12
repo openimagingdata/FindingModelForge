@@ -33,6 +33,8 @@ task test-full          # Tests + quality checks
 task test-playwright    # Run Playwright browser tests
 ```
 
+> When we think we're done, `task pre-commit` runs all lintings and testings to make sure we're commit-ready.
+
 ## Frontend Development
 
 ```bash

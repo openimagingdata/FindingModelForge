@@ -15,6 +15,21 @@ models define semantic labels and structured attributes for medical imaging find
 - **Frontend/UI Development**: [`templates/CLAUDE.md`](templates/CLAUDE.md) - Flowbite, Alpine.js, HTMX
 - **Testing**: [`tests/CLAUDE.md`](tests/CLAUDE.md) - Testing patterns, fixtures, commands
 
+## Using Serena (Code Intelligence)
+
+⚠️ **Use Serena MCP tools EXTENSIVELY** - Primary way to navigate this codebase.
+
+### Standard Workflow
+1. Check memories first → Find symbols → Trace references → Read files (last resort)
+2. Use `find_symbol` and `get_symbols_overview` before reading full files
+3. Use `find_referencing_symbols` to trace dependencies
+
+### Memory Maintenance
+- **Check existing first**: `list_memories` before creating new
+- **UPDATE, don't create**: Only create for genuinely new subsystems/features
+- **Key memories**: `project_overview`, `current_development_status`, component-specific
+- **Never create for**: Bug fixes, refactoring, one-off tasks → use `tasks/` files instead
+
 ## Technical Stack
 
 ### Backend
@@ -23,7 +38,7 @@ models define semantic labels and structured attributes for medical imaging find
 - **Python 3.12+** - With type hints throughout
 - **Pydantic** - Data validation and settings
 - **Motor** - Async MongoDB driver
-- **Redis** - Optional caching layer
+- **Redis** - **REQUIRED** for session management
 - **JWT + GitHub OAuth** - Authentication
 
 ### Frontend
@@ -113,7 +128,6 @@ FindingModelForge/
 - Check resource ownership before access
 - Use parameterized database queries
 - Store secrets in environment variables
-- Enable CORS restrictions in production
 
 ## Development Workflow
 
@@ -137,7 +151,7 @@ task test       # Full test suite
 2. **Type Check**: `uv run mypy app`
 3. **Test**: `task test-unit` (fast) or `task test` (comprehensive)
 4. **Check UI**: Ensure Flowbite patterns followed
-5. **Verify**: All router tests pass (78%+ coverage maintained)
+5. **Pre-commit Checks**: `task pre-commit` to make sure everything is square (includes lintings, tests, etc)
 
 ### Common Tasks
 
@@ -266,14 +280,15 @@ Simple Pages:
 4. **Document complex logic** - But avoid obvious comments
 5. **Test critical paths** - Especially auth and data operations
 
-## Technical Debt Management
+## Issue Tracking
 
-When deferring features or identifying technical debt:
+**Current issues and technical debt**: See [`tasks/pending_fixes.md`](tasks/pending_fixes.md)
+**Completed fixes**: Archived in [`tasks/done/completed_fixes.md`](tasks/done/completed_fixes.md)
 
-- Document issues in `tasks/technical_debt.md`
-- Include priority, effort estimate, and proposed solution
-- Reference the technical debt file in relevant code comments
-- Review and address high-priority items before new features
+When identifying bugs or technical debt:
+- Add to `tasks/pending_fixes.md` with priority and effort estimate
+- When fixed, move entry to `tasks/done/completed_fixes.md` with date and solution
+- Update relevant Serena memories (don't create new memories for fixes)
 
 ## Critical Planning Rule
 

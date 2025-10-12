@@ -12,7 +12,7 @@ models define semantic labels and structured attributes for medical imaging find
 - Step-by-step finding model creation workflow with draft saving
 - **Draft management system with autosave functionality**
 - GitHub OAuth authentication with JWT tokens
-- MongoDB persistence with Redis caching
+- MongoDB persistence with Redis caching (Redis REQUIRED)
 - Modern frontend with Tailwind CSS, Alpine.js, and Vite
 - **Resume workflow from drafts**
 - **Submit and lock draft functionality**
@@ -25,7 +25,7 @@ models define semantic labels and structured attributes for medical imaging find
 - **Python 3.12+** - With extensive type hinting throughout
 - **Pydantic** - Data validation for models, API contracts, and config
 - **Motor** - Async MongoDB driver for data persistence
-- **Redis** - Optional caching layer (configurable via env)
+- **Redis** - **REQUIRED** for session management (not optional)
 - **JWT + GitHub OAuth** - Authentication system with HTTP-only cookies
 - **Loguru** - Structured logging framework
 
@@ -44,6 +44,20 @@ models define semantic labels and structured attributes for medical imaging find
   - Provides `FindingInfo`, `FindingModelFull`, `Index`, `Person`, `Organization` models
   - Tools for AI-powered model generation and similarity detection
 
+## Infrastructure Requirements
+
+### Redis (REQUIRED)
+- **Purpose**: Session management for creation workflow
+- **Behavior**: Server fails to start if Redis unavailable
+- **Configuration**: `REDIS_HOST`, `REDIS_PORT` in `.env` (no enable/disable flag)
+- **Implementation**: [`app/main.py:34-51`](app/main.py#L34-L51) checks health on startup
+- **Error**: Raises `RuntimeError` with clear message if unavailable
+
+### MongoDB (REQUIRED)
+- **Purpose**: Primary data store for all application data
+- **Behavior**: Server fails to start if MongoDB unavailable
+- **Configuration**: `MONGODB_URI`, `MONGODB_DB` in `.env`
+
 ## Draft System Features
 
 - **Autosave on Step 4**: Automatically saves drafts during attribute editing
@@ -55,7 +69,7 @@ models define semantic labels and structured attributes for medical imaging find
 
 ## Current Branch
 
-- Working branch: `feature/finding-model-draft-saving`
+- Working branch: `dev`
 - Main branch: `main`
 
 ## Environment

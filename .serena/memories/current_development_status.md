@@ -1,5 +1,32 @@
 # Current Development Status
 
+## Critical Infrastructure Fix (October 2025)
+
+### Redis Requirement Enforcement
+
+**Branch**: `fix/redis-startup-check`
+**Status**: Complete, ready to merge to dev
+
+#### Problem
+Server would start without Redis, causing silent failures in creation workflow. Users saw cryptic "Session name must be set" errors when Redis was actually down.
+
+#### Solution
+- **Removed `redis_enabled` setting** - Redis is now mandatory ([`app/config.py:52-55`](app/config.py#L52-L55))
+- **Startup health check** - Server raises `RuntimeError` if Redis unavailable ([`app/main.py:43-48`](app/main.py#L43-L48))
+- **Removed graceful degradation** - All `if not self.client` checks removed from [`app/cache.py`](app/cache.py)
+- **Updated health endpoints** - [`app/health.py`](app/health.py) no longer handles "disabled" state
+
+#### Result
+Server now fails fast with clear error: "Redis connection required but unavailable. Session management will not work."
+
+#### Test Status
+- 499 tests passing, 7 skipped
+- Coverage: 77.81%
+- Deleted obsolete `tests/test_cache_noop.py`
+- Updated all tests expecting Redis to be optional
+
+---
+
 ## Recent Comprehensive Overhaul (January 2025)
 
 ### Major Accomplishments
@@ -56,43 +83,6 @@
 - **User isolation** and ownership validation
 - **Status management** with proper state transitions
 
-### Testing Infrastructure
-
-#### Test Coverage Metrics
-
-- **70 unit tests passing** with comprehensive router coverage
-- **4 test priority categories**:
-  1. Critical Happy Path Tests (4 tests)
-  2. Draft State Transitions (5 tests)
-  3. Error Handling & Edge Cases (5 tests)
-  4. Access Control & Validation (4 tests)
-- **Enhanced fixtures** for realistic testing scenarios
-- **Proper ObjectId handling** in all test cases
-
-#### Key Test Patterns
-
-- **Authenticated client setup** with session cookie management
-- **Comprehensive mocking** of database and cache dependencies
-- **Realistic test data** with valid MongoDB ObjectIds and appropriate field lengths
-- **Flexible assertions** accommodating multiple valid response codes
-- **Session adoption testing** for draft recovery scenarios
-
-### Documentation Updates
-
-#### Comprehensive Documentation Overhaul
-
-- **CHANGELOG.md**: Complete record of all changes and improvements
-- **app/CLAUDE.md**: Updated with unified draft patterns and testing examples
-- **tests/CLAUDE.md**: Enhanced with comprehensive testing patterns and examples
-- **templates/CLAUDE.md**: Updated component usage patterns
-
-#### Memory System Updates
-
-- All Serena memories updated with current state
-- Comprehensive workflow documentation
-- Testing best practices and patterns
-- Draft management system documentation
-
 ### Technical Debt Resolved
 
 #### Code Quality Improvements
@@ -109,43 +99,16 @@
 - **Proper separation of concerns** between edit and view modes
 - **Enhanced security** with ownership validation and access control
 
-### Current Branch Status
+### Key Infrastructure Notes
 
-**Branch**: `feature/finding-model-draft-saving` **Status**: Ready for review and merge **Tests**: All passing (70
-passing, 4 skipped, 0 failing) **Coverage**: 71% for finding_models.py (target achieved)
+#### Redis (REQUIRED)
+- Must be running before application starts
+- Used for session management in creation workflow
+- No graceful degradation - fail fast if unavailable
+- See [`tasks/pending_fixes.md:51-70`](tasks/pending_fixes.md#L51-L70) for details
 
-### Next Steps
+#### MongoDB (REQUIRED)
+- Primary data store for all application data
+- Connection validated on startup
 
-1. **Code review** of all changes before merge to main
-2. **Integration testing** with full application stack
-3. **Performance testing** of draft operations under load
-4. **User acceptance testing** of draft workflow
-5. **Deployment planning** for production release
-
-### Key Files Modified
-
-#### Backend
-
-- `app/routers/finding_models.py` - Major endpoint consolidation and enhancement
-- `app/database.py` - Enhanced DraftRepo with comprehensive operations
-- `app/dependencies.py` - Improved session management patterns
-
-#### Frontend
-
-- `templates/draft_editor.html` - Updated to use unified endpoint
-- `templates/draft_unified.html` - New unified edit/view template
-- Multiple new component templates for draft management
-
-#### Testing
-
-- `tests/test_finding_models_comprehensive.py` - New comprehensive test suite
-- Enhanced testing patterns throughout existing test files
-
-#### Documentation
-
-- `CHANGELOG.md` - Complete change documentation
-- All CLAUDE.md files updated with current patterns
-- Serena memories synchronized with current state
-
-This represents a major milestone in the FindingModelForge development, with a complete, robust, and well-tested draft
-management system ready for production use.
+This represents a major milestone in the FindingModelForge development, with a complete, robust, and well-tested draft management system ready for production use.
