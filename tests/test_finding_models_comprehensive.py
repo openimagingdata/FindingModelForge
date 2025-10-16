@@ -22,8 +22,8 @@ from app.dependencies import FindingModelCreationSession
 from app.main import app
 from app.models import FindingModelDraft, FindingModelInputs, User
 from app.routers.creation import render_step_template
-from app.routers.drafts import parse_synonyms
 from app.services.creation_service import CreationService
+from app.utils.forms import parse_synonyms
 
 # ===== FIXTURES =====
 
@@ -268,19 +268,20 @@ class TestHelperFunctions:
         assert "Invalid synonyms format" in str(exc_info.value.detail)
 
     def test_parse_synonyms_non_string_array(self):
-        """Test parsing array with non-strings raises AttributeError due to bug in logic."""
-        # The current implementation has a bug: it checks
-        # "not isinstance(list) and not all(...)" instead of "not isinstance(list) or not all(...)"
-        # So arrays with non-strings pass the first check but fail at .strip()
-        with pytest.raises(AttributeError):
+        """Test parsing array with non-strings raises HTTPException."""
+        with pytest.raises(HTTPException) as exc_info:
             parse_synonyms('["valid", 123, "also_valid"]')
 
+        assert exc_info.value.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert "Invalid synonyms format" in str(exc_info.value.detail)
+
     def test_parse_synonyms_non_array(self):
-        """Test parsing non-array JSON actually works due to Python's dict iteration."""
-        # Due to a bug in the logic and Python's behavior, dict objects get
-        # converted to lists of their keys when iterated with [s.strip() for s in dict]
-        result = parse_synonyms('{"not": "array"}')
-        assert result == ["not"]  # Dict keys become the list
+        """Test parsing non-array JSON raises HTTPException."""
+        with pytest.raises(HTTPException) as exc_info:
+            parse_synonyms('{"not": "array"}')
+
+        assert exc_info.value.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert "Invalid synonyms format" in str(exc_info.value.detail)
 
     def test_render_step_template_valid_steps(self, mock_session):
         """Test rendering valid step templates."""

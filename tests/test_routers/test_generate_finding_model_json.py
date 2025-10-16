@@ -1,0 +1,437 @@
+"""Tests for generate_finding_model_json helper function."""
+
+import json
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
+
+from app.models import FindingModelDraft, FindingModelInputs, User
+from app.routers.drafts.helpers import generate_finding_model_json
+
+
+@pytest.mark.asyncio
+async def test_generate_mock_model_with_normal_name():
+    """Test mock generation creates valid structure for names >=5 characters."""
+    # Create draft with name that is 5 characters (should not be modified)
+    draft = FindingModelDraft(
+        id="test-id",
+        user_id=123,
+        name="Nodule",
+        status="draft",
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+        inputs=FindingModelInputs(
+            description="Test description for normal name",
+            synonyms=["synonym1", "synonym2"],
+            attributes_markdown="## Test\n- test: value",
+        ),
+        action_log=[],
+    )
+
+    user = User(
+        id=123,
+        login="testuser",
+        name="Test User",
+        email="test@example.com",
+        avatar_url="",
+        organizations=[],
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+
+    # Mock database
+    mock_database = Mock()
+    mock_database.finding_index = True
+    mock_author = Mock()
+    mock_author.organization_code = "TEST"
+    mock_database.people.get.return_value = mock_author
+
+    # Create a mock model that returns valid JSON
+    mock_model = Mock()
+    mock_model.model_dump_json.return_value = json.dumps(
+        {
+            "name": "Nodule",
+            "description": "Test description for normal name",
+            "synonyms": ["synonym1", "synonym2"],
+            "attributes": [
+                {
+                    "name": "presence",
+                    "type": "choice",
+                    "description": "Presence of Nodule",
+                    "values": [
+                        {"name": "absent", "description": "Nodule is not visible"},
+                        {"name": "present", "description": "Nodule is clearly visible"},
+                    ],
+                    "required": False,
+                    "max_selected": 1,
+                }
+            ],
+        },
+        indent=2,
+    )
+
+    with (
+        patch("findingmodel.tools.add_ids_to_model", return_value=mock_model) as mock_add_ids,
+        patch("findingmodel.tools.add_standard_codes_to_model"),
+        patch("asyncio.sleep", new_callable=AsyncMock),
+    ):
+        # Execute
+        result = await generate_finding_model_json(
+            draft=draft,
+            description="Test description for normal name",
+            synonyms_list=["synonym1", "synonym2"],
+            attributes_markdown="## Test\n- test: value",
+            current_user=user,
+            database=mock_database,
+            is_test_user=True,
+        )
+
+    # Assertions
+    # 1. Result is valid JSON string
+    assert isinstance(result, str)
+    parsed = json.loads(result)
+
+    # 2. Verify JSON structure
+    assert parsed["name"] == "Nodule"  # Name not modified (>=5 chars)
+    assert parsed["description"] == "Test description for normal name"
+    assert parsed["synonyms"] == ["synonym1", "synonym2"]
+    assert len(parsed["attributes"]) == 1
+    assert parsed["attributes"][0]["name"] == "presence"
+    assert parsed["attributes"][0]["type"] == "choice"
+    assert len(parsed["attributes"][0]["values"]) == 2
+    assert parsed["attributes"][0]["values"][0]["name"] == "absent"
+    assert parsed["attributes"][0]["values"][1]["name"] == "present"
+
+    # 3. Verify add_ids_to_model was called with correct source
+    mock_add_ids.assert_called_once()
+    call_args = mock_add_ids.call_args
+    assert call_args.kwargs["source"] == "TEST"
+
+
+@pytest.mark.asyncio
+async def test_generate_mock_model_with_short_name():
+    """Test name padding logic for names <5 characters."""
+    # Create draft with name that is 4 characters (should be padded)
+    draft = FindingModelDraft(
+        id="test-id",
+        user_id=123,
+        name="Mass",
+        status="draft",
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+        inputs=FindingModelInputs(
+            description="Test description for short name",
+            synonyms=["synonym1"],
+            attributes_markdown="## Test\n- test: value",
+        ),
+        action_log=[],
+    )
+
+    user = User(
+        id=123,
+        login="testuser",
+        name="Test User",
+        email="test@example.com",
+        avatar_url="",
+        organizations=[],
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+
+    # Mock database
+    mock_database = Mock()
+    mock_database.finding_index = True
+    mock_author = Mock()
+    mock_author.organization_code = "TEST"
+    mock_database.people.get.return_value = mock_author
+
+    # Create a mock model that returns valid JSON with padded name
+    mock_model = Mock()
+    mock_model.model_dump_json.return_value = json.dumps(
+        {
+            "name": "Mass Test",  # Padded name
+            "description": "Test description for short name",
+            "synonyms": ["synonym1"],
+            "attributes": [
+                {
+                    "name": "presence",
+                    "type": "choice",
+                    "description": "Presence of Mass",
+                    "values": [
+                        {"name": "absent", "description": "Mass is not visible"},
+                        {"name": "present", "description": "Mass is clearly visible"},
+                    ],
+                    "required": False,
+                    "max_selected": 1,
+                }
+            ],
+        },
+        indent=2,
+    )
+
+    with (
+        patch("findingmodel.tools.add_ids_to_model", return_value=mock_model),
+        patch("findingmodel.tools.add_standard_codes_to_model"),
+        patch("asyncio.sleep", new_callable=AsyncMock),
+    ):
+        # Execute
+        result = await generate_finding_model_json(
+            draft=draft,
+            description="Test description for short name",
+            synonyms_list=["synonym1"],
+            attributes_markdown="## Test\n- test: value",
+            current_user=user,
+            database=mock_database,
+            is_test_user=True,
+        )
+
+    # Assertions
+    # 1. Result is valid JSON
+    assert isinstance(result, str)
+    parsed = json.loads(result)
+
+    # 2. Verify name was padded
+    assert parsed["name"] == "Mass Test"  # Padded with " Test"
+
+    # 3. Verify rest of structure is valid
+    assert parsed["description"] == "Test description for short name"
+    assert parsed["synonyms"] == ["synonym1"]
+    assert len(parsed["attributes"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_source_code_from_author_organization():
+    """Test source code selection uses author.organization_code when available."""
+    draft = FindingModelDraft(
+        id="test-id",
+        user_id=123,
+        name="Test Finding",
+        status="draft",
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+        inputs=FindingModelInputs(
+            description="Test description",
+            synonyms=["test"],
+            attributes_markdown="## Test\n- test: value",
+        ),
+        action_log=[],
+    )
+
+    user = User(
+        id=123,
+        login="testuser",
+        name="Test User",
+        email="test@example.com",
+        avatar_url="",
+        organizations=["ORG1", "ORG2"],  # User has organizations
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+
+    # Mock database with author that has organization_code
+    mock_database = Mock()
+    mock_database.finding_index = True
+    mock_author = Mock()
+    mock_author.organization_code = "ACME"  # Author org should take precedence
+    mock_database.people.get.return_value = mock_author
+
+    # Mock model
+    mock_model = Mock()
+    mock_model.model_dump_json.return_value = json.dumps({"name": "Test", "description": "Test"})
+
+    with (
+        patch("findingmodel.tools.add_ids_to_model", return_value=mock_model) as mock_add_ids,
+        patch("findingmodel.tools.add_standard_codes_to_model"),
+        patch("asyncio.sleep", new_callable=AsyncMock),
+    ):
+        await generate_finding_model_json(
+            draft=draft,
+            description="Test description",
+            synonyms_list=["test"],
+            attributes_markdown="## Test\n- test: value",
+            current_user=user,
+            database=mock_database,
+            is_test_user=True,
+        )
+
+    # Assertions
+    mock_add_ids.assert_called_once()
+    call_args = mock_add_ids.call_args
+    assert call_args.kwargs["source"] == "ACME"  # Author org, not user orgs
+
+
+@pytest.mark.asyncio
+async def test_source_code_from_user_organizations():
+    """Test source code falls back to user.organizations[0] when author not found."""
+    draft = FindingModelDraft(
+        id="test-id",
+        user_id=123,
+        name="Test Finding",
+        status="draft",
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+        inputs=FindingModelInputs(
+            description="Test description",
+            synonyms=["test"],
+            attributes_markdown="## Test\n- test: value",
+        ),
+        action_log=[],
+    )
+
+    user = User(
+        id=123,
+        login="testuser",
+        name="Test User",
+        email="test@example.com",
+        avatar_url="",
+        organizations=["ORG1", "ORG2"],  # User has organizations
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+
+    # Mock database with NO author
+    mock_database = Mock()
+    mock_database.finding_index = True
+    mock_database.people.get.return_value = None  # No author found
+
+    # Mock model
+    mock_model = Mock()
+    mock_model.model_dump_json.return_value = json.dumps({"name": "Test", "description": "Test"})
+
+    with (
+        patch("findingmodel.tools.add_ids_to_model", return_value=mock_model) as mock_add_ids,
+        patch("findingmodel.tools.add_standard_codes_to_model"),
+        patch("asyncio.sleep", new_callable=AsyncMock),
+    ):
+        await generate_finding_model_json(
+            draft=draft,
+            description="Test description",
+            synonyms_list=["test"],
+            attributes_markdown="## Test\n- test: value",
+            current_user=user,
+            database=mock_database,
+            is_test_user=True,
+        )
+
+    # Assertions
+    mock_add_ids.assert_called_once()
+    call_args = mock_add_ids.call_args
+    assert call_args.kwargs["source"] == "ORG1"  # First user organization
+
+
+@pytest.mark.asyncio
+async def test_source_code_fallback_to_oidm():
+    """Test source code defaults to OIDM when no author and no user orgs."""
+    draft = FindingModelDraft(
+        id="test-id",
+        user_id=123,
+        name="Test Finding",
+        status="draft",
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+        inputs=FindingModelInputs(
+            description="Test description",
+            synonyms=["test"],
+            attributes_markdown="## Test\n- test: value",
+        ),
+        action_log=[],
+    )
+
+    user = User(
+        id=123,
+        login="testuser",
+        name="Test User",
+        email="test@example.com",
+        avatar_url="",
+        organizations=[],  # Empty organizations list
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+
+    # Mock database with NO author
+    mock_database = Mock()
+    mock_database.finding_index = True
+    mock_database.people.get.return_value = None  # No author found
+
+    # Mock model
+    mock_model = Mock()
+    mock_model.model_dump_json.return_value = json.dumps({"name": "Test", "description": "Test"})
+
+    with (
+        patch("findingmodel.tools.add_ids_to_model", return_value=mock_model) as mock_add_ids,
+        patch("findingmodel.tools.add_standard_codes_to_model"),
+        patch("asyncio.sleep", new_callable=AsyncMock),
+    ):
+        await generate_finding_model_json(
+            draft=draft,
+            description="Test description",
+            synonyms_list=["test"],
+            attributes_markdown="## Test\n- test: value",
+            current_user=user,
+            database=mock_database,
+            is_test_user=True,
+        )
+
+    # Assertions
+    mock_add_ids.assert_called_once()
+    call_args = mock_add_ids.call_args
+    assert call_args.kwargs["source"] == "OIDM"  # Default fallback
+
+
+@pytest.mark.asyncio
+async def test_missing_finding_index_raises_assertion_error():
+    """Test assertion fails when database.finding_index is not initialized."""
+    draft = FindingModelDraft(
+        id="test-id",
+        user_id=123,
+        name="Test Finding",
+        status="draft",
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+        inputs=FindingModelInputs(
+            description="Test description",
+            synonyms=["test"],
+            attributes_markdown="## Test\n- test: value",
+        ),
+        action_log=[],
+    )
+
+    user = User(
+        id=123,
+        login="testuser",
+        name="Test User",
+        email="test@example.com",
+        avatar_url="",
+        organizations=[],
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+
+    # Mock database with finding_index=None (not initialized)
+    mock_database = Mock()
+    mock_database.finding_index = None  # Falsy value
+
+    # Mock model
+    mock_model = Mock()
+    mock_model.model_dump_json.return_value = json.dumps({"name": "Test", "description": "Test"})
+
+    with (
+        patch("findingmodel.tools.add_ids_to_model", return_value=mock_model),
+        patch("findingmodel.tools.add_standard_codes_to_model"),
+        patch("asyncio.sleep", new_callable=AsyncMock),
+        pytest.raises(AssertionError) as exc_info,
+    ):
+        # Execute - should raise AssertionError
+        await generate_finding_model_json(
+            draft=draft,
+            description="Test description",
+            synonyms_list=["test"],
+            attributes_markdown="## Test\n- test: value",
+            current_user=user,
+            database=mock_database,
+            is_test_user=True,
+        )
+
+    # Assertions
+    assert "FindingIndex must be initialized" in str(exc_info.value)

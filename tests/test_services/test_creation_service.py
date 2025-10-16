@@ -283,46 +283,6 @@ class TestCreationService:
         assert "Test finding is not visible" in result
         assert "How the test finding has changed compared to prior imaging" in result
 
-    def test_parse_synonyms_valid_json(self, service: CreationService):
-        """Test parsing valid synonyms JSON."""
-        # Test
-        result = service.parse_synonyms('["synonym1", "synonym2", "synonym3"]')
-
-        # Assertions
-        assert result == ["synonym1", "synonym2", "synonym3"]
-
-    def test_parse_synonyms_empty_string(self, service: CreationService):
-        """Test parsing empty synonyms string."""
-        # Test
-        result = service.parse_synonyms("")
-
-        # Assertions
-        assert result == []
-
-    def test_parse_synonyms_invalid_json(self, service: CreationService):
-        """Test parsing invalid synonyms JSON."""
-        # Test
-        with pytest.raises(ValueError, match="Invalid synonyms format"):
-            service.parse_synonyms("not valid json")
-
-    def test_parse_synonyms_not_array(self, service: CreationService):
-        """Test parsing synonyms that's not an array."""
-        # Test
-        with pytest.raises(ValueError, match="Synonyms must be a JSON array of strings"):
-            service.parse_synonyms('{"not": "array"}')
-
-    def test_parse_synonyms_not_string_array(self, service: CreationService):
-        """Test parsing synonyms array with non-strings."""
-        # Test
-        with pytest.raises(ValueError, match="Synonyms must be a JSON array of strings"):
-            service.parse_synonyms("[1, 2, 3]")
-
-    def test_parse_synonyms_empty_strings(self, service: CreationService):
-        """Test parsing synonyms array with empty strings."""
-        # Test
-        with pytest.raises(ValueError, match="Synonyms must be a JSON array of strings"):
-            service.parse_synonyms('["valid", "", "also_valid"]')
-
     def test_is_test_user_true(self, service: CreationService):
         """Test checking if user is test user (true case)."""
         # Test

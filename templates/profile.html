@@ -370,7 +370,7 @@
                     </div>
                 </div>
 
-                {% if d.status in ['draft', 'public'] %}
+                {% if d.status == 'draft' %}
                     {% from 'macros/delete_draft_modal.html' import delete_draft_modal %}
                     {{ delete_draft_modal(d.id, hx_target='#draft-card-' ~ d.id, hx_swap='delete', extra_attributes='data-action="delete-draft"') }}
                 {% endif %}

@@ -53,7 +53,9 @@
       "Bash(sed:*)",
       "Bash(task lint)",
       "Bash(~/.claude-code-docs/claude-docs-helper.sh:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(tree:*)",
+      "Bash(awk:*)"
     ],
     "deny": [],
     "ask": [],

@@ -16,6 +16,7 @@ models define semantic labels and structured attributes for medical imaging find
 - Modern frontend with Tailwind CSS, Alpine.js, and Vite
 - **Resume workflow from drafts**
 - **Submit and lock draft functionality**
+- **Comment system for collaborative feedback**
 
 ## Tech Stack
 
@@ -43,6 +44,103 @@ models define semantic labels and structured attributes for medical imaging find
 - **findingmodel** (0.3.1+) - Core library for finding model operations
   - Provides `FindingInfo`, `FindingModelFull`, `Index`, `Person`, `Organization` models
   - Tools for AI-powered model generation and similarity detection
+
+## Backend Architecture
+
+### Layered Structure
+
+```
+HTTP Request
+    ↓
+Router (app/routers/)           # HTTP handling, request/response
+    ↓
+Service (app/services/)         # Business logic orchestration
+    ↓
+Repository (app/database.py)    # Data access layer
+    ↓
+Database (MongoDB)              # Persistence
+```
+
+### Router Organization
+
+#### Simple Routers (Single File)
+For focused functionality with few endpoints:
+- **`creation.py`** - Creation workflow endpoints (3 steps)
+- **`finding_models_browse.py`** - Browse and detail pages
+- **`home.py`** - Landing page
+- **`auth_pages.py`** - Login page
+- **`profile.py`** - User profile
+
+#### Modular Routers (Directory Structure)
+For complex functionality with many endpoints, use module pattern:
+
+```
+app/routers/drafts/
+├── __init__.py              # Combines all routers
+├── views.py                 # GET endpoints (pages)
+├── mutations.py             # POST endpoints (CRUD)
+├── workflows.py             # POST endpoints (state transitions)
+├── comments.py              # POST endpoints (comment operations)
+└── helpers.py               # Shared helper functions (11 helpers)
+```
+
+**Benefits of Modular Pattern**:
+- **Discoverability**: Clear separation by HTTP method and purpose
+- **Maintainability**: Smaller files (~250 lines vs 866 lines)
+- **Testability**: Helpers can be unit tested independently
+- **Scalability**: Easy to add new routers without growing monolith
+
+**When to Use Modular Pattern**:
+- Router file exceeds ~500 lines
+- Multiple distinct workflows (view, edit, submit, delete, comment)
+- Complex helper functions that deserve unit tests
+- Team working on same router (reduces merge conflicts)
+
+### Service Layer Patterns
+
+Services orchestrate business logic and coordinate between repositories:
+
+```python
+class DraftService:
+    def __init__(self, draft_repo: DraftRepo, user_repo: UserRepo, ...):
+        self.draft_repo = draft_repo
+        self.user_repo = user_repo
+
+    async def save_draft(...):
+        # Orchestration: ensure user exists, save draft, log action
+        await ensure_person_for_user(self.user_repo, user)
+        draft = await self.draft_repo.save_draft(...)
+        return draft
+```
+
+**Service Responsibilities**:
+- Ownership verification
+- Workflow state transitions
+- Cross-repository coordination
+- Business rule enforcement
+
+**NOT Service Responsibilities**:
+- Simple CRUD (call repo directly from router)
+- Data filtering (do in database queries)
+- HTTP concerns (router responsibility)
+
+### Repository Pattern
+
+Repositories provide async database operations:
+
+```python
+class DraftRepo:
+    async def save_draft(...)  # Create or update
+    async def get_draft(...)   # Read by ID
+    async def list_for_user(...)  # Query with filters
+    async def delete_draft(...)  # Delete
+```
+
+**Repository Best Practices**:
+- Use MongoDB queries for filtering (not Python loops)
+- Return domain models (FindingModelDraft, User, etc.)
+- Handle database errors, raise domain exceptions
+- Use indexes for performance
 
 ## Infrastructure Requirements
 

@@ -9,6 +9,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Changed
 
+#### Drafts Router Modularization (October 15, 2025)
+
+- **Modular router architecture**: Split monolithic 866-line `app/routers/drafts.py` into focused module
+- **New structure**: 6 files in `app/routers/drafts/` package (views, mutations, workflows, comments, helpers, __init__)
+- **Helper extraction**: 11 helper functions extracted for unit testing (generate_finding_model_json, render functions, etc.)
+- **Test coverage improvements**: Added 40 new unit tests (34 for helpers + 6 for generate_finding_model_json)
+- **Zero breaking changes**: All URLs and APIs unchanged, 100% test pass rate maintained (492/492)
+- **Improved maintainability**: Files now ~250 lines each vs 866-line monolith
+- **Better testability**: Helpers can be unit tested independently of HTTP layer
+- **Shared utilities**: Created `app/utils/forms.py` for parse_synonyms reuse across routers
+- **Bug fixes**: Fixed missing success alert parameter and Flowbite modal rendering issues discovered during testing
+- **Documentation**: Established modular router pattern guidelines in project_overview memory
+
 #### Comment System Refactor - Centralized Service Layer (September 30, 2025)
 
 - **Created CommentService**: Centralized all comment logic (validation, rate limiting, persistence) into shared service

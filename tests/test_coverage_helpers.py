@@ -14,8 +14,8 @@ from app.database import CommentRepo, Database, DraftRepo, UserRepo
 from app.dependencies import SessionManager
 from app.main import app
 from app.models import User
-from app.routers.drafts import parse_synonyms
 from app.services.creation_service import CreationService
+from app.utils.forms import parse_synonyms
 
 
 def test_parse_synonyms_valid() -> None:

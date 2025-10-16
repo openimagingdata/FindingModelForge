@@ -5,7 +5,7 @@
 FindingModelForge is a FastAPI-based web application for creating and managing medical imaging finding models. These
 models define semantic labels and structured attributes for medical imaging findings.
 
-**Current Branch**: `refactor/router-cleanup` (main branch: `main`)
+**Current Branch**: `dev` (main branch: `main`)
 
 ## Domain-Specific Guides
 
@@ -64,7 +64,12 @@ FindingModelForge/
 ├── app/                    # Backend application (see app/CLAUDE.md)
 │   ├── routers/           # Focused API endpoints
 │   │   ├── creation.py    # Creation workflow (/create/*)
-│   │   ├── drafts.py      # Draft management (/drafts/*)
+│   │   ├── drafts/        # Draft management (/drafts/*) - modular router
+│   │   │   ├── views.py          # GET endpoints
+│   │   │   ├── mutations.py      # POST CRUD endpoints
+│   │   │   ├── workflows.py      # POST state transitions
+│   │   │   ├── comments.py       # POST comment operations
+│   │   │   └── helpers.py        # Shared helper functions
 │   │   ├── finding_models_browse.py  # Browse/detail (/finding-models/*)
 │   │   ├── home.py        # Landing page (/)
 │   │   ├── auth_pages.py  # Login page (/login)

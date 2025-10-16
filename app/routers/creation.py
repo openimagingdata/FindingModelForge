@@ -2,7 +2,6 @@
 
 # ruff: noqa: B008, I001
 
-import json
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Form, HTTPException, Path, Request, status
@@ -26,27 +25,12 @@ from app.dependencies import (
     SessionManagerDep,
 )
 from app.models import FindingModelInputs
+from app.utils.forms import parse_synonyms
 
 TEST_USER_ID = 999999
 
 # Type definition for step numbers in the creation workflow
 StepNumber = Annotated[int, Path(ge=1, le=3, description="Step number (1-3) in the creation workflow")]
-
-
-def parse_synonyms(synonyms: str) -> list[str]:
-    """Parse synonyms from JSON string."""
-    if not synonyms.strip():
-        return []
-
-    try:
-        synonyms_parsed = json.loads(synonyms)
-        if not isinstance(synonyms_parsed, list) and not all(s and isinstance(s, str) for s in synonyms_parsed):
-            raise ValueError("Synonyms must be a JSON array of strings")
-        return [s.strip() for s in synonyms_parsed]
-    except (json.JSONDecodeError, ValueError) as e:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Invalid synonyms format: {str(e)}"
-        ) from e
 
 
 def render_step_template(

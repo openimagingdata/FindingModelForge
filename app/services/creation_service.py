@@ -1,7 +1,6 @@
 """Creation service for finding model generation and workflow."""
 
 import asyncio
-import json
 from typing import Any
 
 from findingmodel import FindingInfo, FindingModelBase
@@ -211,29 +210,6 @@ How the {finding_name} has changed compared to prior imaging
 - larger: {finding_name.capitalize()} is larger
 - smaller: {finding_name.capitalize()} is smaller
 """
-
-    def parse_synonyms(self, synonyms: str) -> list[str]:
-        """Parse synonyms from JSON string.
-
-        Args:
-            synonyms: JSON string containing synonyms array
-
-        Returns:
-            List of parsed synonyms
-
-        Raises:
-            ValueError: If synonyms format is invalid
-        """
-        if not synonyms.strip():
-            return []
-
-        try:
-            synonyms_parsed = json.loads(synonyms)
-            if not isinstance(synonyms_parsed, list) or not all(s and isinstance(s, str) for s in synonyms_parsed):
-                raise ValueError("Synonyms must be a JSON array of strings")
-            return [s.strip() for s in synonyms_parsed]
-        except (json.JSONDecodeError, ValueError) as e:
-            raise ValueError(f"Invalid synonyms format: {str(e)}") from e
 
     def is_test_user(self, user_id: int) -> bool:
         """Check if user ID is the test user.
