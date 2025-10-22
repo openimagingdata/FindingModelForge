@@ -41,25 +41,11 @@ class TestDatabaseLifecycle:
         mock_db = AsyncMock()
         mock_client.__getitem__.return_value = mock_db
 
-        # Mock Index (findingmodel library)
+        # Mock Index (findingmodel library v0.4.0 - DuckDB-based)
         mock_index = AsyncMock()
-
-        # Mock collections for people and organizations loading
-        mock_people_collection = AsyncMock()
-        mock_orgs_collection = AsyncMock()
-
-        # Create async iterators for empty data - need to make find() return the iterator directly
-        def mock_people_find(*args, **kwargs):
-            return AsyncIteratorMock([])
-
-        def mock_orgs_find(*args, **kwargs):
-            return AsyncIteratorMock([])
-
-        mock_people_collection.find = mock_people_find
-        mock_orgs_collection.find = mock_orgs_find
-
-        mock_index.people_collection = mock_people_collection
-        mock_index.organizations_collection = mock_orgs_collection
+        # Mock the new async methods (not collections)
+        mock_index.get_people = AsyncMock(return_value=[])
+        mock_index.get_organizations = AsyncMock(return_value=[])
 
         with (
             patch("app.database.AsyncIOMotorClient", return_value=mock_client),
@@ -93,55 +79,50 @@ class TestDatabaseLifecycle:
         mock_db = AsyncMock()
         mock_client.__getitem__.return_value = mock_db
 
-        # Mock finding index with test data
+        # Mock finding index with test data (v0.4.0 DuckDB API)
         mock_index = AsyncMock()
-        mock_people_collection = AsyncMock()
-        mock_orgs_collection = AsyncMock()
 
-        # Sample test data
+        # Sample test data - now as Person and Organization objects
+        from findingmodel.contributor import Organization, Person
+
         people_data = [
-            {"github_username": "user1", "name": "User One", "affiliation": "Test Org"},
-            {"github_username": "user2", "name": "User Two", "affiliation": "Another Org"},
-            {"no_github": "user3", "name": "User Three"},  # User without GitHub username
+            Person(
+                github_username="user1",
+                name="User One",
+                email="user1@test.com",
+                organization_code="TEST",
+                url="https://github.com/user1",
+            ),
+            Person(
+                github_username="user2",
+                name="User Two",
+                email="user2@test.com",
+                organization_code="TEST",
+                url="https://github.com/user2",
+            ),
         ]
 
         orgs_data = [
-            {"code": "ACR", "name": "American College of Radiology"},
-            {"code": "RSNA", "name": "Radiological Society of North America"},
-            {"code": "SIIM", "name": "Society for Imaging Informatics in Medicine"},
+            Organization(code="ACR", name="American College of Radiology", url="https://acr.org"),
+            Organization(code="RSNA", name="Radiological Society of North America", url="https://rsna.org"),
+            Organization(code="SIIM", name="Society for Imaging Informatics in Medicine", url="https://siim.org"),
         ]
 
-        # Create async iterators with test data
-        def mock_people_find(*args, **kwargs):
-            return AsyncIteratorMock(people_data)
-
-        def mock_orgs_find(*args, **kwargs):
-            return AsyncIteratorMock(orgs_data)
-
-        mock_people_collection.find = mock_people_find
-        mock_orgs_collection.find = mock_orgs_find
-
-        mock_index.people_collection = mock_people_collection
-        mock_index.organizations_collection = mock_orgs_collection
+        # Mock the new async methods
+        mock_index.get_people = AsyncMock(return_value=people_data)
+        mock_index.get_organizations = AsyncMock(return_value=orgs_data)
 
         with (
             patch("app.database.AsyncIOMotorClient", return_value=mock_client),
             patch("app.database.Index", return_value=mock_index),
-            patch("app.database.Person") as mock_person_class,
-            patch("app.database.Organization") as mock_org_class,
         ):
-            # Mock Person and Organization model validation
-            mock_person_class.model_validate.side_effect = lambda x: MagicMock(github_username=x.get("github_username"))
-            mock_org_class.model_validate.side_effect = lambda x: MagicMock(code=x["code"])
-
             database = Database()
             await database.connect()
 
-            # Verify people loaded (only those with github_username)
+            # Verify people loaded
             assert len(database.people) == 2
             assert "user1" in database.people
             assert "user2" in database.people
-            assert "user3" not in database.people  # No github_username
 
             # Verify organizations loaded
             assert len(database.organizations) == 3
@@ -157,16 +138,9 @@ class TestDatabaseLifecycle:
         mock_client.__getitem__.return_value = mock_db
 
         mock_index = AsyncMock()
-        mock_people_collection = AsyncMock()
-        mock_orgs_collection = AsyncMock()
 
-        # Mock database error during people loading - need to make find() method raise exception
-        def mock_people_find_error(*args, **kwargs):
-            raise Exception("Database connection lost")
-
-        mock_people_collection.find = mock_people_find_error
-        mock_index.people_collection = mock_people_collection
-        mock_index.organizations_collection = mock_orgs_collection
+        # Mock database error during people loading (v0.4.0 API)
+        mock_index.get_people = AsyncMock(side_effect=Exception("Database connection lost"))
 
         with (
             patch("app.database.AsyncIOMotorClient", return_value=mock_client),

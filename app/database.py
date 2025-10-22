@@ -66,12 +66,12 @@ class Database:
 
         # Load people from DuckDB index using get_people() method
         self.people.clear()
-        for person in self.finding_index.get_people():
+        for person in await self.finding_index.get_people():
             self.people[person.github_username] = person
 
         # Load organizations from DuckDB index using get_organizations() method
         self.organizations.clear()
-        for organization in self.finding_index.get_organizations():
+        for organization in await self.finding_index.get_organizations():
             self.organizations[organization.code] = organization
 
     async def ensure_person_for_user(self, user: "User") -> Person:
@@ -98,7 +98,7 @@ class Database:
             return self.people[user.login]
 
         # Check if Person exists in Index (read-only canonical source)
-        if existing_person := self.finding_index.get_person(user.login):
+        if existing_person := await self.finding_index.get_person(user.login):
             self.people[user.login] = existing_person
             return existing_person
 

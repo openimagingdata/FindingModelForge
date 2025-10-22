@@ -96,11 +96,8 @@ async def get_organization_list(index: FindingIndexDep, cache: CacheDep) -> list
     organizations: list[Organization] | None = None
     if (organizations := await cache.get_organizations()) is not None:
         return organizations
-    organizations_data: list[dict[str, Any]] = await index.organizations_collection.find().to_list(length=None)
-    organizations = []
-    for org_data in organizations_data:
-        org_data.pop("_id")
-        organizations.append(Organization.model_validate(org_data))
+    # Get organizations from DuckDB Index (v0.4.0+)
+    organizations = await index.get_organizations()
 
     await cache.set_organizations(organizations)
     return organizations
