@@ -14,8 +14,8 @@ if TYPE_CHECKING:
     from .services.finding_model_service import FindingModelService
 
 from fastapi import Depends, Request
+from findingmodel import Index
 from findingmodel.contributor import Organization
-from findingmodel.index import Index
 from pydantic import BaseModel
 
 from .cache import RedisCache

@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
-from findingmodel.index import Index
+from findingmodel import Index
 
 from app.auth import get_current_user
 from app.database import Database, UserRepo

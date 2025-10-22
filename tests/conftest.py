@@ -65,7 +65,7 @@ def client() -> TestClient:
     mock_database.draft_repo = mock_draft_repo
 
     # Create a mock finding_index
-    from findingmodel.index import Index
+    from findingmodel import Index
 
     mock_finding_index = MagicMock(spec=Index)
     mock_database.finding_index = mock_finding_index

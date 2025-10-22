@@ -80,7 +80,7 @@ async def test_lifespan_startup_success() -> None:
     with (
         patch("app.main.Database", return_value=mock_database),
         patch("app.main.RedisCache", return_value=mock_cache),
-        patch("findingmodel.index.Index", return_value=mock_index),
+        patch("findingmodel.Index", return_value=mock_index),
         patch("app.main.settings") as mock_settings,
     ):
         mock_settings.app_name = "TestApp"
