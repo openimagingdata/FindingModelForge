@@ -49,32 +49,15 @@ Review all documentation in these locations:
 - Deprecated features with migration guides
 - Updated examples using actual code from tests
 
-### Update .serena/project.yml
+## 4. UPDATE SERENA'S MEMORY (Integration Only)
 
-- Verify project metadata is current
-- Update technology stack if new tools were added
-- Ensure build/test commands reflect current setup
+**Integrate into existing memories** - never create new ones:
 
-## 4. SYNCHRONIZE WITH SERENA'S MEMORY
+- `project_overview`: Expand architecture sections if patterns/structure changed
+- `current_development_status`: Add timeline entry for completed work
+- Existing component memories: Update if that component was modified
 
-Ask Serena to:
-
-- Store important architectural decisions in memory
-- Update technology understanding based on new patterns
-- Record rationale for significant changes
-- Save learned optimizations and performance improvements
-
-Use these Serena commands:
-
-- `serena_store_memory`: Save key decisions and patterns
-- `serena_read_memory`: Verify stored knowledge is accurate
-- `serena_update_memory`: Refine existing memories with new insights
-
-## 5. CREATE OR UPDATE SPECIALIZED DOCS
-
-Especially, make sure to document `UI_COMPONENT_MACROS.md` to be up to date with current components and macros.0
-
-## 6. VALIDATE DOCUMENTATION
+## 5. VALIDATE DOCUMENTATION
 
 For each updated document:
 
@@ -84,19 +67,9 @@ For each updated document:
 - Confirm consistency across all docs
 - Test that newcomers could follow the guides
 
-## 7. UPDATE TEAM KNOWLEDGE
+## 6. IMPORTANT RULES
 
-Create a summary of changes for the team:
-
-- What's new that everyone should know
-- Breaking changes or migration needs
-- New tools or workflows introduced
-- Performance improvements achieved
-- Lessons learned worth sharing
-
-## IMPORTANT RULES
-
-- Use bash's `date` command to find the current date--you won't know it otherwise (it's not January 2025)
+- Use bash's `date` command to find the current date--you won't know it otherwise
 - NEVER remove existing valid documentation without explicit approval
 - ALWAYS preserve historical context and rationale
 - USE Serena's semantic understanding to ensure accuracy
@@ -108,7 +81,6 @@ Create a summary of changes for the team:
 ## SERENA INTEGRATION NOTES
 
 - Serena stores memories in .serena/memories/ - use this knowledge
-- Check .serena/project.yml for project configuration
 - Leverage Serena's understanding of code relationships
 - Use Serena's symbol-level comprehension for accurate API docs
 - Let Serena help identify what's truly important to document

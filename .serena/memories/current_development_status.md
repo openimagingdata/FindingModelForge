@@ -1,5 +1,68 @@
 # Current Development Status
 
+## Contributor Repository Refactor (October 22, 2025)
+
+### Status: ✅ COMPLETE - Production Ready
+
+**Branch**: `feature/contributor-repos-refactor`
+
+Implemented Repository pattern to separate canonical contributors (Index) from draft contributors (MongoDB). Prepares for findingmodel's Index backend transition from MongoDB to DuckDB while maintaining clean abstraction boundaries.
+
+#### What Changed
+
+**Created**:
+- `app/repositories/people_repo.py` - PeopleRepo with dual-source lookup (Index → MongoDB)
+- `app/repositories/organization_repo.py` - OrganizationRepo with dual-source lookup
+- `tests/test_repositories/test_people_repo.py` - 11 comprehensive tests (100% coverage)
+- `tests/test_repositories/test_organization_repo.py` - 8 comprehensive tests (100% coverage)
+
+**Modified**:
+- `app/database.py` - Removed in-memory dicts, added repository attributes (-50 lines)
+- `app/main.py` - Updated logging to reflect repository initialization
+- `app/routers/drafts/helpers.py` - Updated to use async repository calls
+- `app/services/creation_service.py` - Updated to use async repository calls
+- 7 test files - Updated mocks from dict pattern to AsyncMock repository pattern
+
+#### Architecture
+
+**Dual-Source Repository Pattern**:
+```
+Application Code
+    ↓
+Repository Layer (PeopleRepo, OrganizationRepo)
+    ↓
+    ├── Index (read-only, canonical) - Abstracts DuckDB backend
+    └── MongoDB (write, drafts) - draft_people, draft_organizations collections
+```
+
+**Key Principles**:
+1. **Index Abstraction**: Application NEVER mentions DuckDB. Index class abstracts backend.
+2. **Read-Only Index**: Index is canonical source, never written to. Writes go to MongoDB.
+3. **Lazy Loading**: Index data loaded once on first access, cached in-memory.
+4. **Lookup Precedence**: Cache → Index (canonical) → MongoDB (drafts) → None
+
+#### Test Results
+
+- **All tests passing**: 517/517 (100%)
+- **New repository tests**: 19 tests (11 PeopleRepo, 8 OrganizationRepo)
+- **Coverage**: 100% for repository modules, 80.10% overall
+- **Zero breaking changes**: All existing functionality preserved
+
+#### Benefits Achieved
+
+1. **Abstraction**: Application isolated from Index backend changes (MongoDB → DuckDB)
+2. **Read-Only Canonical**: Index treated as immutable source of truth
+3. **Write Isolation**: Clear separation between canonical (Index) and draft (MongoDB) data
+4. **Performance**: O(1) in-memory cache for fast lookups
+5. **Type Safety**: Full type hints, mypy clean throughout
+6. **Testability**: Pure unit tests with 100% coverage
+
+#### Next Steps
+
+Future work: Extract remaining repositories (`DraftRepo`, `UserRepo`, `CommentRepo`) from `app/database.py` to `app/repositories/` for consistency.
+
+---
+
 ## Drafts Router Refactoring (October 15, 2025)
 
 ### Status: ✅ COMPLETE - Production Ready

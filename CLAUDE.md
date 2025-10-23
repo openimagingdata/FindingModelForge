@@ -25,10 +25,10 @@ models define semantic labels and structured attributes for medical imaging find
 3. Use `find_referencing_symbols` to trace dependencies
 
 ### Memory Maintenance
-- **Check existing first**: `list_memories` before creating new
-- **UPDATE, don't create**: Only create for genuinely new subsystems/features
-- **Key memories**: `project_overview`, `current_development_status`, component-specific
-- **Never create for**: Bug fixes, refactoring, one-off tasks → use `tasks/` files instead
+- **Memories are reference material, not task logs**: Organize by topic/component, not by what you just did
+- **Integrate into existing, never create new**: Check `list_memories` - all work belongs in existing structure
+- **Structure**: `project_overview` (architecture), `current_development_status` (timeline), component-specific (subsystems)
+- **When in doubt**: Update `project_overview` or `current_development_status`, or use `tasks/` files
 
 ## Technical Stack
 

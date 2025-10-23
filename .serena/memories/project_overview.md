@@ -126,7 +126,61 @@ class DraftService:
 
 ### Repository Pattern
 
-Repositories provide async database operations:
+Repositories provide async database operations with clear separation between data sources.
+
+#### Repository Organization
+
+**Location**: `app/repositories/` (extracted repos) and `app/database.py` (legacy repos to be migrated)
+
+**Current Repositories**:
+- **`PeopleRepo`** (`app/repositories/people_repo.py`) - Person contributor management with dual-source lookup
+- **`OrganizationRepo`** (`app/repositories/organization_repo.py`) - Organization contributor management
+- **`DraftRepo`** (`app/database.py`) - Draft CRUD operations (to be migrated)
+- **`UserRepo`** (`app/database.py`) - User management (to be migrated)
+- **`CommentRepo`** (`app/database.py`) - Comment operations (to be migrated)
+
+#### Dual-Source Repository Pattern (PeopleRepo, OrganizationRepo)
+
+For contributors (people/organizations), we use a dual-source pattern separating canonical from draft data:
+
+```python
+class PeopleRepo:
+    def __init__(self, index: Index, draft_collection: AsyncIOMotorCollection):
+        self.index = index  # Read-only canonical source (abstracts DuckDB backend)
+        self.draft_people = draft_collection  # Write-only draft source
+        self._cache: dict[str, Person] = {}  # In-memory cache for O(1) lookups
+        self._index_loaded = False  # Lazy loading flag
+
+    async def get_by_username(self, username: str) -> Person | None:
+        # Lookup order: Cache → Index (canonical) → MongoDB (drafts) → None
+        if username in self._cache:
+            return self._cache[username]
+
+        if not self._index_loaded:
+            await self._load_from_index()
+
+        if username in self._cache:
+            return self._cache[username]
+
+        # Check MongoDB for draft contributors
+        if doc := await self.draft_people.find_one({"github_username": username}):
+            person = Person.model_validate(doc)
+            self._cache[username] = person
+            return person
+
+        return None
+```
+
+**Key Principles**:
+- **Index Abstraction**: Application NEVER mentions DuckDB. The `Index` class from `findingmodel` abstracts the backend.
+- **Read-Only Index**: Index is canonical source, never written to. All writes go to MongoDB `draft_people`/`draft_organizations`.
+- **Lazy Loading**: Index data loaded once on first access, cached in-memory for performance.
+- **Lookup Precedence**: Cache → Index (canonical) → MongoDB (drafts) → None
+- **In-Memory Cache**: Small dataset (~1MB), O(1) lookups, no Redis overhead needed.
+
+#### Standard Repository Pattern (DraftRepo, UserRepo, CommentRepo)
+
+For application-specific data, use standard MongoDB repository pattern:
 
 ```python
 class DraftRepo:
@@ -141,6 +195,7 @@ class DraftRepo:
 - Return domain models (FindingModelDraft, User, etc.)
 - Handle database errors, raise domain exceptions
 - Use indexes for performance
+- Type hints throughout, async all the way
 
 ## Infrastructure Requirements
 
