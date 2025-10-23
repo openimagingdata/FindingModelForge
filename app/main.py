@@ -56,7 +56,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await database.connect()
         logger.info("Connected to MongoDB")
         logger.info("FindingModel Index initialized")
-        logger.info(f"Loaded {len(database.people)} people and {len(database.organizations)} organizations into memory")
+        logger.info("Initialized contributor repositories (people_repo, org_repo)")
 
         # Store database in app state for dependency injection
         app.state.database = database

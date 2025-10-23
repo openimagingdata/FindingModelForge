@@ -347,7 +347,8 @@ async def generate_finding_model_json(
 
     # Add IDs and contributors
     assert database.finding_index, "FindingIndex must be initialized in the database"
-    author = database.people.get(current_user.login)
+    assert database.people_repo, "PeopleRepo must be initialized in the database"
+    author = await database.people_repo.get_by_username(current_user.login)
     source = (
         author.organization_code
         if author

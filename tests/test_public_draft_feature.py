@@ -89,11 +89,15 @@ class TestPublicDraftFeature:
     @pytest.fixture
     def mock_database(self) -> MagicMock:
         """Create a mock Database."""
-        from app.database import Database
+        from app.database import Database, PeopleRepo
 
         db = MagicMock(spec=Database)
         db.ensure_person_for_user = AsyncMock(return_value=None)
-        db.people = {}
+
+        # Mock people_repo
+        db.people_repo = MagicMock(spec=PeopleRepo)
+        db.people_repo.get_by_username = AsyncMock(return_value=None)
+
         return db
 
     @pytest.fixture

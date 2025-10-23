@@ -170,8 +170,10 @@ class CreationService:
         # Add IDs and contributors
         if not self.database.finding_index:
             raise RuntimeError("FindingIndex must be initialized in the database")
+        if not self.database.people_repo:
+            raise RuntimeError("PeopleRepo must be initialized in the database")
 
-        author = self.database.people.get(user.login)
+        author = await self.database.people_repo.get_by_username(user.login)
         source = author.organization_code if author else (user.organizations[0] if user.organizations else "OIDM")
         fm = add_ids_to_model(finding_model_generated, source=source)
         add_standard_codes_to_model(fm)

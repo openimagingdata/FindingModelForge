@@ -10,7 +10,7 @@ import humanize
 
 from bson import ObjectId
 from findingmodel import Index
-from findingmodel.contributor import Organization, Person
+from findingmodel.contributor import Person
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from pymongo.errors import DuplicateKeyError
 
@@ -26,6 +26,7 @@ from .models import (
     UserCreate,
     UserUpdate,
 )
+from .repositories import OrganizationRepo, PeopleRepo
 
 
 class Database:
@@ -38,8 +39,8 @@ class Database:
         self.draft_repo: DraftRepo | None = None
         self.comment_repo: CommentRepo | None = None
         self.finding_index: Index | None = None
-        self.people: dict[str, Person] = {}
-        self.organizations: dict[str, Organization] = {}
+        self.people_repo: PeopleRepo | None = None
+        self.org_repo: OrganizationRepo | None = None
 
     async def connect(self) -> None:
         """Connect to MongoDB."""
@@ -53,26 +54,16 @@ class Database:
         # db_path=None uses default location from findingmodel package
         self.finding_index = Index(db_path=None, read_only=True)
 
+        # Initialize contributor repositories
+        # NOTE: Index abstracts the backend - could be DuckDB, MongoDB, etc.
+        # We just read from it, never write to it.
+        self.people_repo = PeopleRepo(index=self.finding_index, draft_collection=self.db.draft_people)
+        self.org_repo = OrganizationRepo(index=self.finding_index, draft_collection=self.db.draft_organizations)
+
         # Create indices for comment threads collection
         comment_threads = self.db.comment_threads
         await comment_threads.create_index([("reference_type", 1), ("reference_id", 1)], unique=True)
         await comment_threads.create_index([("reported_count", -1)])
-
-        await self._load_people_and_organizations()
-
-    async def _load_people_and_organizations(self) -> None:
-        """Load people and organizations into memory from DuckDB Index."""
-        assert self.finding_index is not None, "Finding index is not initialized"
-
-        # Load people from DuckDB index using get_people() method
-        self.people.clear()
-        for person in await self.finding_index.get_people():
-            self.people[person.github_username] = person
-
-        # Load organizations from DuckDB index using get_organizations() method
-        self.organizations.clear()
-        for organization in await self.finding_index.get_organizations():
-            self.organizations[organization.code] = organization
 
     async def ensure_person_for_user(self, user: "User") -> Person:
         """Create or get a Person for a User.
@@ -82,54 +73,11 @@ class Database:
 
         Returns:
             Person object (existing or newly created)
-
-        Note: This is a TEMPORARY implementation. With DuckDB Index (0.4.0+),
-        the Index is read-only. New contributors should be written to a separate
-        draft_people collection. This will be refactored per
-        tasks/contributor_repos_refactor_plan.md
         """
-        if not self.finding_index:
-            raise RuntimeError("Finding index not initialized")
-        if not self.db:
-            raise RuntimeError("Database not initialized")
+        if not self.people_repo:
+            raise RuntimeError("People repository not initialized")
 
-        # Check if Person already exists in memory cache
-        if user.login in self.people:
-            return self.people[user.login]
-
-        # Check if Person exists in Index (read-only canonical source)
-        if existing_person := await self.finding_index.get_person(user.login):
-            self.people[user.login] = existing_person
-            return existing_person
-
-        # Check if Person exists in MongoDB draft_people collection
-        draft_people = self.db.draft_people
-        if existing_draft := await draft_people.find_one({"github_username": user.login}):
-            person = Person.model_validate(existing_draft)
-            self.people[user.login] = person
-            return person
-
-        # Create new Person from User data
-        # Default organization code - could be enhanced to detect from user orgs
-        org_code = "INDV"  # Individual contributor by default
-
-        person_data = {
-            "github_username": user.login,
-            "email": user.email or f"{user.login}@users.noreply.github.com",
-            "name": user.name or user.login,
-            "organization_code": org_code,
-            "url": user.html_url,
-        }
-
-        # Insert into MongoDB draft_people (NOT Index - Index is read-only)
-        await draft_people.insert_one(person_data)
-
-        # Create Person object and cache it
-        person = Person.model_validate(person_data)
-        self.people[user.login] = person
-
-        logger.info(f"Created new draft Person for user {user.login}")
-        return person
+        return await self.people_repo.ensure_for_user(user)
 
     async def disconnect(self) -> None:
         """Disconnect from MongoDB."""
@@ -139,6 +87,8 @@ class Database:
         self.draft_repo = None
         self.comment_repo = None
         self.finding_index = None
+        self.people_repo = None
+        self.org_repo = None
 
 
 class DraftRepo:

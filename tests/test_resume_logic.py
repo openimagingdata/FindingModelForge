@@ -29,8 +29,12 @@ def _client_with_state(session_json: str) -> TestClient:
 
     db.finding_index = MagicMock()
     db.draft_repo = MagicMock(spec=DraftRepo)
-    db.people = {}
-    db.organizations = {}
+
+    # Mock people_repo
+    from app.database import PeopleRepo
+
+    db.people_repo = MagicMock(spec=PeopleRepo)
+    db.people_repo.get_by_username = AsyncMock(return_value=None)
 
     # Add ensure_person_for_user method required by DraftService
     db.ensure_person_for_user = AsyncMock(return_value=None)

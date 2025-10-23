@@ -74,8 +74,12 @@ def mock_database() -> Database:
     db.comment_repo.report_comment = AsyncMock()
 
     db.finding_index = MagicMock()
-    db.people = {}
-    db.organizations = {}
+
+    # Mock PeopleRepo
+    from app.database import PeopleRepo
+
+    db.people_repo = MagicMock(spec=PeopleRepo)
+    db.people_repo.get_by_username = AsyncMock(return_value=None)
 
     # Add ensure_person_for_user method required by DraftService
     db.ensure_person_for_user = AsyncMock(return_value=None)
@@ -1212,8 +1216,12 @@ class TestCriticalHappyPaths:
 
         # Mock database components
         mock_database.finding_index = MagicMock()
-        mock_database.people = MagicMock()
-        mock_database.people.get.return_value = MagicMock(organization_code="TEST")
+
+        # Mock people_repo with async method
+        mock_author = MagicMock(organization_code="TEST")
+        mock_people_repo = AsyncMock()
+        mock_people_repo.get_by_username = AsyncMock(return_value=mock_author)
+        mock_database.people_repo = mock_people_repo
 
         response = authenticated_client.post(
             "/drafts/test-draft-id/update-and-redirect",

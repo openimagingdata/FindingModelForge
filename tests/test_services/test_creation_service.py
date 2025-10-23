@@ -28,12 +28,13 @@ class TestCreationService:
         """Mock database."""
         db = MagicMock(spec=Database)
         db.finding_index = MagicMock()
-        db.people = MagicMock()
 
-        # Mock person lookup
+        # Mock people_repo with async method
         mock_person = MagicMock()
         mock_person.organization_code = "OIDM"
-        db.people.get.return_value = mock_person
+        mock_people_repo = AsyncMock()
+        mock_people_repo.get_by_username = AsyncMock(return_value=mock_person)
+        db.people_repo = mock_people_repo
 
         return db
 

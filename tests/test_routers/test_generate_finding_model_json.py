@@ -45,7 +45,11 @@ async def test_generate_mock_model_with_normal_name():
     mock_database.finding_index = True
     mock_author = Mock()
     mock_author.organization_code = "TEST"
-    mock_database.people.get.return_value = mock_author
+
+    # Mock people_repo with async method
+    mock_people_repo = AsyncMock()
+    mock_people_repo.get_by_username = AsyncMock(return_value=mock_author)
+    mock_database.people_repo = mock_people_repo
 
     # Create a mock model that returns valid JSON
     mock_model = Mock()
@@ -144,7 +148,11 @@ async def test_generate_mock_model_with_short_name():
     mock_database.finding_index = True
     mock_author = Mock()
     mock_author.organization_code = "TEST"
-    mock_database.people.get.return_value = mock_author
+
+    # Mock people_repo with async method
+    mock_people_repo = AsyncMock()
+    mock_people_repo.get_by_username = AsyncMock(return_value=mock_author)
+    mock_database.people_repo = mock_people_repo
 
     # Create a mock model that returns valid JSON with padded name
     mock_model = Mock()
@@ -234,7 +242,11 @@ async def test_source_code_from_author_organization():
     mock_database.finding_index = True
     mock_author = Mock()
     mock_author.organization_code = "ACME"  # Author org should take precedence
-    mock_database.people.get.return_value = mock_author
+
+    # Mock people_repo with async method
+    mock_people_repo = AsyncMock()
+    mock_people_repo.get_by_username = AsyncMock(return_value=mock_author)
+    mock_database.people_repo = mock_people_repo
 
     # Mock model
     mock_model = Mock()
@@ -293,7 +305,11 @@ async def test_source_code_from_user_organizations():
     # Mock database with NO author
     mock_database = Mock()
     mock_database.finding_index = True
-    mock_database.people.get.return_value = None  # No author found
+
+    # Mock people_repo with async method returning None
+    mock_people_repo = AsyncMock()
+    mock_people_repo.get_by_username = AsyncMock(return_value=None)
+    mock_database.people_repo = mock_people_repo
 
     # Mock model
     mock_model = Mock()
@@ -352,7 +368,11 @@ async def test_source_code_fallback_to_oidm():
     # Mock database with NO author
     mock_database = Mock()
     mock_database.finding_index = True
-    mock_database.people.get.return_value = None  # No author found
+
+    # Mock people_repo with async method returning None
+    mock_people_repo = AsyncMock()
+    mock_people_repo.get_by_username = AsyncMock(return_value=None)
+    mock_database.people_repo = mock_people_repo
 
     # Mock model
     mock_model = Mock()
