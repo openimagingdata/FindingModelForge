@@ -173,8 +173,5 @@ app/
 
 ## Current Branch Status
 
-**Branch**: `feature-public-drafts`
-**Status**: Ready for merge
-**Tests**: All 144 tests passing
-**Coverage**: 75%+ maintained
-**Date**: September 17, 2025
+**Branch**: `feature-public-drafts` **Status**: Ready for merge **Tests**: All 144 tests passing **Coverage**: 75%+
+maintained **Date**: September 17, 2025

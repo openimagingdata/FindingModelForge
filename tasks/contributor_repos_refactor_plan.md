@@ -1,16 +1,16 @@
 # Contributor Repository Refactor: Index + MongoDB Dual-Source Pattern
 
-**Status**: 🟢 Ready to Implement (findingmodel 0.4.0 verified)
-**Created**: 2025-10-22
-**Updated**: 2025-10-22
-**Branch**: `feature/contributor-repos-refactor`
-**Goal**: Separate canonical contributors (Index) from draft contributors (MongoDB) using Repository pattern
+**Status**: 🟢 Ready to Implement (findingmodel 0.4.0 verified) **Created**: 2025-10-22 **Updated**: 2025-10-22
+**Branch**: `feature/contributor-repos-refactor` **Goal**: Separate canonical contributors (Index) from draft
+contributors (MongoDB) using Repository pattern
 
-**🔑 Key Principle**: Never reference DuckDB in application code. The `Index` class from `findingmodel` abstracts the storage backend.
+**🔑 Key Principle**: Never reference DuckDB in application code. The `Index` class from `findingmodel` abstracts the
+storage backend.
 
 ## ✅ Verification Complete
 
 **findingmodel 0.4.0 Upgrade Status**: ✅ COMPLETE
+
 - ✅ Upgraded to findingmodel 0.4.0 (DuckDB-based Index)
 - ✅ Fixed all imports: `from findingmodel import Index` (not `from findingmodel.index import Index`)
 - ✅ Updated `Database.connect()` to use new `Index(db_path=None, read_only=True)` constructor
@@ -25,13 +25,16 @@
 ## Problem Statement
 
 ### Current Architecture
+
 - `Database` class uses in-memory dicts: `self.people`, `self.organizations`
 - Loads from MongoDB via `finding_index.people_collection` on startup
 - `ensure_person_for_user()` writes to MongoDB, treating Index as application data
 - **Issue**: Index conceptually should be read-only canonical data, not writable application data
 
 ### Future Architecture (with Index backend change)
-- **Index** (via `findingmodel` package): Read-only canonical contributors (backend: DuckDB in future, MongoDB currently)
+
+- **Index** (via `findingmodel` package): Read-only canonical contributors (backend: DuckDB in future, MongoDB
+  currently)
 - **MongoDB `draft_people`/`draft_organizations`**: Writable draft contributors not yet published
 - **Need**: Dual-source lookup that checks both, writes only to MongoDB draft collections
 - **Important**: Application code should never know about DuckDB - that's Index's internal implementation detail
@@ -68,18 +71,22 @@
 ### Repository Responsibilities
 
 **PeopleRepo:**
+
 - Lookup precedence: In-memory cache → Index (canonical) → MongoDB (drafts)
 - **Index abstraction**: Never mention DuckDB - Index class hides the backend
 - Write operations: Only to MongoDB `draft_people` collection (Index is read-only)
 - Methods: `get_by_username()`, `ensure_for_user()`, `clear_cache()`
 
 **OrganizationRepo:**
+
 - Same pattern, keyed by organization code
 - Methods: `get_by_code()`, `clear_cache()`
 
-**Key Design Principle**: The application should never know about DuckDB. The `Index` class from `findingmodel` package abstracts the storage backend. Our repos just read from Index (canonical) and write to MongoDB (drafts).
+**Key Design Principle**: The application should never know about DuckDB. The `Index` class from `findingmodel` package
+abstracts the storage backend. Our repos just read from Index (canonical) and write to MongoDB (drafts).
 
 ### Cache Strategy
+
 - **In-memory** cache (not Redis) - matches current pattern
 - Fast lookups (~1000x faster than Redis)
 - Small dataset (< 1MB for thousands of contributors)
@@ -91,24 +98,25 @@
 
 ### ✅ Block 1: Create Repository Infrastructure
 
-**Status**: ⬜ Not Started
-**Owner**: TBD
-**Files**: New files in `app/repositories/`
+**Status**: ⬜ Not Started **Owner**: TBD **Files**: New files in `app/repositories/`
 
 #### Current Abstraction Violations to Fix
 
 **Problem**: We're currently violating the Index abstraction by accessing MongoDB-specific collections:
+
 - `finding_index.people_collection.find()` (line 65)
 - `finding_index.organizations_collection.find()` (line 70)
 - `finding_index.people_collection.find_one()` (line 92)
 - `finding_index.people_collection.insert_one()` (line 112) ⚠️ **Writing to Index!**
 
 **Why this is bad**:
+
 - We're treating Index as if it's MongoDB-specific
 - We're **writing** to Index (should be read-only!)
 - When Index moves to DuckDB backend, this all breaks
 
 **Correct approach**:
+
 - Read from `index.people` and `index.organizations` (if Index exposes these)
 - NEVER write to Index - it's canonical data
 - Write draft contributors to separate `draft_people`/`draft_organizations` collections
@@ -116,6 +124,7 @@
 #### Deliverables
 
 1. **`app/repositories/__init__.py`**
+
    ```python
    from .people_repo import PeopleRepo
    from .organization_repo import OrganizationRepo
@@ -124,6 +133,7 @@
    ```
 
 2. **`app/repositories/people_repo.py`**
+
    ```python
    from typing import Any
    from motor.motor_asyncio import AsyncIOMotorCollection
@@ -215,6 +225,7 @@
    ```
 
 3. **`app/repositories/organization_repo.py`**
+
    ```python
    from typing import Any
    from motor.motor_asyncio import AsyncIOMotorCollection
@@ -295,6 +306,7 @@
      - `search(query: str, *, limit: int = 10) → list[IndexEntry]` - Search finding models
 
    **Our approach**: Load these into our repository's internal dict cache:
+
    ```python
    # In PeopleRepo.__init__ or lazy-load method
    async def _load_from_index(self) -> None:
@@ -324,18 +336,18 @@
 
 ### ✅ Block 2: Update Database Class
 
-**Status**: ⬜ Not Started
-**Owner**: TBD
-**Files**: `app/database.py`
+**Status**: ⬜ Not Started **Owner**: TBD **Files**: `app/database.py`
 
 #### Changes Required
 
 1. **Add imports**:
+
    ```python
    from .repositories import PeopleRepo, OrganizationRepo
    ```
 
 2. **Modify `Database.__init__`** (lines 34-42):
+
    ```python
    def __init__(self) -> None:
        self.client: AsyncIOMotorClient[Any] | None = None
@@ -350,6 +362,7 @@
    ```
 
 3. **Modify `Database.connect()`** (lines 44-60):
+
    ```python
    async def connect(self) -> None:
        """Connect to MongoDB."""
@@ -383,6 +396,7 @@
    ```
 
 4. **Replace `ensure_person_for_user()`** (lines 75-119):
+
    ```python
    async def ensure_person_for_user(self, user: "User") -> Person:
        """Create or get a Person for a User.
@@ -400,6 +414,7 @@
    ```
 
 5. **Update `disconnect()`** (lines 121-128):
+
    ```python
    async def disconnect(self) -> None:
        """Disconnect from MongoDB."""
@@ -419,13 +434,12 @@
 
 ### ✅ Block 3: Update Application Code
 
-**Status**: ⬜ Not Started
-**Owner**: TBD
-**Files**: 3 files accessing `db.people`
+**Status**: ⬜ Not Started **Owner**: TBD **Files**: 3 files accessing `db.people`
 
 #### Changes Required
 
 1. **`app/main.py:59`** - Update logging:
+
    ```python
    # OLD:
    logger.info(f"Loaded {len(database.people)} people and {len(database.organizations)} organizations into memory")
@@ -435,6 +449,7 @@
    ```
 
 2. **`app/routers/drafts/helpers.py:350`** - Update author lookup:
+
    ```python
    # OLD:
    author = database.people.get(current_user.login)
@@ -446,6 +461,7 @@
    **Note**: Function signature must change to `async` if not already!
 
 3. **`app/services/creation_service.py:174`** - Update author lookup:
+
    ```python
    # OLD:
    author = self.database.people.get(user.login)
@@ -460,9 +476,7 @@
 
 ### ✅ Block 4: Update Test Infrastructure
 
-**Status**: ⬜ Not Started
-**Owner**: TBD
-**Files**: Multiple test files
+**Status**: ⬜ Not Started **Owner**: TBD **Files**: Multiple test files
 
 #### Test Files Requiring Updates
 
@@ -510,9 +524,7 @@ mock_db.people_repo = mock_people_repo
 
 ### ✅ Block 5: Add Repository Tests
 
-**Status**: ⬜ Not Started
-**Owner**: TBD
-**Files**: New test files
+**Status**: ⬜ Not Started **Owner**: TBD **Files**: New test files
 
 #### Test Files to Create
 
@@ -561,16 +573,19 @@ async def people_repo(mock_duckdb_index, mongodb_collection):
 ### Handling Existing Data
 
 **Current state**:
+
 - People/organizations exist in MongoDB via `finding_index.people_collection`
 - These are mixed with canonical Index data
 
 **Migration approach**: **Lazy Migration**
+
 1. Don't migrate data upfront
 2. New `draft_people` collection starts empty
 3. As users interact with the app, create entries in `draft_people` as needed
 4. Eventually deprecate writes to `finding_index.people_collection`
 
 **Benefits**:
+
 - No risky data migration step
 - Gradual transition
 - Can run both systems in parallel temporarily
@@ -580,6 +595,7 @@ async def people_repo(mock_duckdb_index, mongodb_collection):
 ## Success Criteria
 
 ### Functional Requirements
+
 - ✅ All existing tests pass (144 tests)
 - ✅ Dual-source lookup works correctly (DuckDB → MongoDB precedence)
 - ✅ Writes only go to MongoDB, never DuckDB (read-only enforced)
@@ -587,12 +603,14 @@ async def people_repo(mock_duckdb_index, mongodb_collection):
 - ✅ `ensure_person_for_user()` creates draft contributors correctly
 
 ### Non-Functional Requirements
+
 - ✅ Type hints throughout, `mypy` clean
 - ✅ No breaking changes to existing API contracts
 - ✅ Clear separation of concerns (canonical vs draft data)
 - ✅ Maintainable repository pattern following existing conventions
 
 ### Test Coverage
+
 - ✅ New repository unit tests (18+ tests)
 - ✅ Integration tests updated for new architecture
 - ✅ All mocks properly updated
@@ -602,18 +620,21 @@ async def people_repo(mock_duckdb_index, mongodb_collection):
 ## Rollout Plan
 
 ### Phase 1: Implementation
+
 1. Complete Blocks 1-3 (new repos, update Database class, update app code)
 2. Run unit tests to verify basic functionality
 3. Update test infrastructure (Block 4)
 4. Verify all existing tests pass
 
 ### Phase 2: Testing
+
 1. Add new repository tests (Block 5)
 2. Run full test suite (`task test`)
 3. Manual testing of draft creation workflow
 4. Verify contributor display works correctly
 
 ### Phase 3: Deployment
+
 1. Merge to `dev` branch
 2. Deploy to staging environment
 3. Verify DuckDB read-only constraint (when DuckDB is implemented)
@@ -624,6 +645,7 @@ async def people_repo(mock_duckdb_index, mongodb_collection):
 ## Notes & Open Questions
 
 ### Design Decisions
+
 - ✅ **Abstraction layer**: Use Index class, never reference DuckDB directly
 - ✅ **Cache strategy**: In-memory (not Redis) - matches current pattern, simpler
 - ✅ **Lookup precedence**: Index (canonical) before MongoDB (drafts) - canonical source wins
@@ -631,16 +653,19 @@ async def people_repo(mock_duckdb_index, mongodb_collection):
 - ✅ **Migration**: Lazy creation - no risky upfront data migration
 
 ### Critical Requirements
+
 - 🔴 **NEVER mention DuckDB** in application code - that's Index's internal detail
 - 🔴 **NEVER write to Index** - it's read-only canonical data
 - ✅ **Index API confirmed**: `get_people() → list[Person]` and `get_organizations() → list[Organization]`
 
 ### Future Considerations
+
 - **Index updates**: When new Index version loads (with updated backend), call `clear_cache()` on repos
 - **Cache warming**: Could pre-populate cache from Index on startup if beneficial
 - **Redis migration**: Repository interface supports swapping cache backend later if needed
 
 ### Related Work
+
 - Blocked by: None (but should verify Index API first)
 - Blocks: Future `findingmodel` package upgrade to DuckDB backend
 - Related to: Index class abstraction from `findingmodel` package
@@ -649,17 +674,16 @@ async def people_repo(mock_duckdb_index, mongodb_collection):
 
 ## Progress Tracking
 
-| Block | Status | Owner | Completion Date | Notes |
-|-------|--------|-------|-----------------|-------|
-| 1. Repository Infrastructure | ⬜ Not Started | TBD | - | - |
-| 2. Database Class Update | ⬜ Not Started | TBD | - | - |
-| 3. Application Code Update | ⬜ Not Started | TBD | - | - |
-| 4. Test Infrastructure Update | ⬜ Not Started | TBD | - | - |
-| 5. Repository Tests | ⬜ Not Started | TBD | - | - |
+| Block                         | Status         | Owner | Completion Date | Notes |
+| ----------------------------- | -------------- | ----- | --------------- | ----- |
+| 1. Repository Infrastructure  | ⬜ Not Started | TBD   | -               | -     |
+| 2. Database Class Update      | ⬜ Not Started | TBD   | -               | -     |
+| 3. Application Code Update    | ⬜ Not Started | TBD   | -               | -     |
+| 4. Test Infrastructure Update | ⬜ Not Started | TBD   | -               | -     |
+| 5. Repository Tests           | ⬜ Not Started | TBD   | -               | -     |
 
 **Legend**: ⬜ Not Started | 🟡 In Progress | ✅ Complete | ❌ Blocked
 
 ---
 
-**Last Updated**: 2025-10-22
-**Document Owner**: @talkasab
+**Last Updated**: 2025-10-22 **Document Owner**: @talkasab

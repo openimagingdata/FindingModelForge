@@ -4,7 +4,9 @@
 
 ### Overview
 
-Completed service layer cleanup by removing duplicate filtering methods from `DraftService` that were fetching all drafts and filtering in Python. Routers now call `DraftRepo` directly for simple queries, following FastAPI 2025 best practices for thin controllers.
+Completed service layer cleanup by removing duplicate filtering methods from `DraftService` that were fetching all
+drafts and filtering in Python. Routers now call `DraftRepo` directly for simple queries, following FastAPI 2025 best
+practices for thin controllers.
 
 ### Changes Made
 
@@ -27,6 +29,7 @@ Router (HTTP Layer)
 ### Service Focus
 
 `DraftService` now handles only true business logic:
+
 - ✅ Ownership checks (`delete_draft`, `get_draft_by_id`)
 - ✅ Workflow transitions (`submit_draft`, `make_public_draft`)
 - ✅ Service coordination (`save_draft` with `ensure_person_for_user`)
@@ -35,7 +38,8 @@ Router (HTTP Layer)
 
 ### Performance Impact
 
-Queries now use MongoDB indexes at the database level instead of fetching all drafts and filtering in Python. This improves performance for users with many drafts.
+Queries now use MongoDB indexes at the database level instead of fetching all drafts and filtering in Python. This
+improves performance for users with many drafts.
 
 ---
 
@@ -43,7 +47,9 @@ Queries now use MongoDB indexes at the database level instead of fetching all dr
 
 ### Overview
 
-Extracted draft formatting logic from `DraftService` into pure utility functions (`app/utils/draft_formatting.py`), reducing service bloat and improving code organization. This follows the existing `app/utils/` pattern and enables upcoming DraftService business logic refactor.
+Extracted draft formatting logic from `DraftService` into pure utility functions (`app/utils/draft_formatting.py`),
+reducing service bloat and improving code organization. This follows the existing `app/utils/` pattern and enables
+upcoming DraftService business logic refactor.
 
 ### Changes Made
 
@@ -72,7 +78,8 @@ Utils Layer (Pure Functions) - No I/O, fully testable
 
 ### Why This Matters
 
-This refactoring is **Phase 0 prerequisite** for the DraftService cleanup (removing Python-side filtering). Clean separation of concerns enables safe service layer simplification.
+This refactoring is **Phase 0 prerequisite** for the DraftService cleanup (removing Python-side filtering). Clean
+separation of concerns enables safe service layer simplification.
 
 ---
 
@@ -80,7 +87,8 @@ This refactoring is **Phase 0 prerequisite** for the DraftService cleanup (remov
 
 ### Overview
 
-Refactored comment system to eliminate code duplication by centralizing all comment business logic into a shared `CommentService`. This establishes proper service layer separation with routers as thin HTTP handlers.
+Refactored comment system to eliminate code duplication by centralizing all comment business logic into a shared
+`CommentService`. This establishes proper service layer separation with routers as thin HTTP handlers.
 
 ### Changes Made
 
@@ -100,7 +108,8 @@ Router (HTTP) → Service (Business Logic) → Repository (Data)
 
 ### Developer Impact
 
-When adding comments to new features, inject CommentService and delegate comment operations. See `.serena/memories/comment_service_refactor.md` for usage patterns.
+When adding comments to new features, inject CommentService and delegate comment operations. See
+`.serena/memories/comment_service_refactor.md` for usage patterns.
 
 ---
 

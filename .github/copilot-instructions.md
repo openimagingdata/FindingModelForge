@@ -9,9 +9,9 @@ models define semantic labels and structured attributes for medical imaging find
 
 ## Quick Technology Reference
 
-**Backend**: FastAPI (Python 3.12+), Pydantic, Motor (MongoDB), Redis, JWT + GitHub OAuth
-**Frontend**: Jinja2, Tailwind CSS v4, Alpine.js, Flowbite components, HTMX
-**Tools**: uv (package manager), Task (automation), Ruff (linting), MyPy (type checking), Pytest
+**Backend**: FastAPI (Python 3.12+), Pydantic, Motor (MongoDB), Redis, JWT + GitHub OAuth **Frontend**: Jinja2, Tailwind
+CSS v4, Alpine.js, Flowbite components, HTMX **Tools**: uv (package manager), Task (automation), Ruff (linting), MyPy
+(type checking), Pytest
 
 For detailed technology information, see **CLAUDE.md**.
 
@@ -34,9 +34,9 @@ For detailed technology information, see **CLAUDE.md**.
 
 ## Development Workflow
 
-**Quick Start**: `task setup` → `task dev` → Edit `.env` for GitHub OAuth credentials
-**Quality**: `task lint` (fix issues) → `task test` (run tests) → `task check` (CI checks)
-**Frontend**: `task build-frontend` (build assets) → `task dev-watch` (CSS watching)
+**Quick Start**: `task setup` → `task dev` → Edit `.env` for GitHub OAuth credentials **Quality**: `task lint` (fix
+issues) → `task test` (run tests) → `task check` (CI checks) **Frontend**: `task build-frontend` (build assets) →
+`task dev-watch` (CSS watching)
 
 For detailed workflow information, see **CLAUDE.md**.
 
@@ -45,6 +45,7 @@ For detailed workflow information, see **CLAUDE.md**.
 **MANDATORY**: Read **templates/CLAUDE.md** before ANY UI work.
 
 **Golden Rules:**
+
 - ✅ ALWAYS use Flowbite components from https://flowbite.com/docs/
 - ✅ ALWAYS use Alpine.js for interactivity
 - ❌ NEVER create custom CSS classes or JavaScript
@@ -55,10 +56,10 @@ For detailed workflow information, see **CLAUDE.md**.
 ## Key Features & Patterns
 
 **Multi-step Creation Workflow**: HTMX-driven, server-side logic (see `docs/finding-model-creation-workflow.md`)
-**Comment System**: Collaborative feedback on models/drafts (see `docs/RECENT_UPDATES_SUMMARY.md`)
-**Draft Management**: Unified edit/view with autosave (see `docs/DRAFT_WORKFLOW.md`)
-**Profile Management**: In-place editing with real-time validation (see `docs/PROFILE_PAGE_FEATURES.md`)
-**Cache Layer**: Redis with graceful degradation (see `docs/REDIS_CACHE_IMPLEMENTATION.md`)
+**Comment System**: Collaborative feedback on models/drafts (see `docs/RECENT_UPDATES_SUMMARY.md`) **Draft Management**:
+Unified edit/view with autosave (see `docs/DRAFT_WORKFLOW.md`) **Profile Management**: In-place editing with real-time
+validation (see `docs/PROFILE_PAGE_FEATURES.md`) **Cache Layer**: Redis with graceful degradation (see
+`docs/REDIS_CACHE_IMPLEMENTATION.md`)
 
 ## Before You Code Checklist
 
@@ -72,52 +73,45 @@ For detailed workflow information, see **CLAUDE.md**.
 
 ## Authentication & Security
 
-**Authentication**: GitHub OAuth + JWT with HTTP-only cookies (see `app/CLAUDE.md`)
-**Security**: Environment variables, CORS, Pydantic validation (see `CLAUDE.md`)
-**Patterns**: Check `app/CLAUDE.md` for security best practices
+**Authentication**: GitHub OAuth + JWT with HTTP-only cookies (see `app/CLAUDE.md`) **Security**: Environment variables,
+CORS, Pydantic validation (see `CLAUDE.md`) **Patterns**: Check `app/CLAUDE.md` for security best practices
 
 ## Database & API Patterns
 
-**Database**: MongoDB with Motor (async), repository pattern (see `app/CLAUDE.md`)
-**Schemas**: See `docs/database.md` for collection structures
-**API Design**: FastAPI dependency injection, Pydantic models (see `app/CLAUDE.md`)
+**Database**: MongoDB with Motor (async), repository pattern (see `app/CLAUDE.md`) **Schemas**: See `docs/database.md`
+for collection structures **API Design**: FastAPI dependency injection, Pydantic models (see `app/CLAUDE.md`)
 
-**URL Structure**: Simplified in v1.3.0 (see `CLAUDE.md` for current routes)
-**Router Architecture**: Domain-focused organization (see `app/CLAUDE.md`)
+**URL Structure**: Simplified in v1.3.0 (see `CLAUDE.md` for current routes) **Router Architecture**: Domain-focused
+organization (see `app/CLAUDE.md`)
 
 ## Testing
 
-**Current Status**: 144 tests passing (100% success rate)
-**Patterns**: Unit + integration tests, Playwright UI tests (see `tests/CLAUDE.md`)
-**Requirements**: HTMX-aware testing, test-auth system for UI tests
+**Current Status**: 144 tests passing (100% success rate) **Patterns**: Unit + integration tests, Playwright UI tests
+(see `tests/CLAUDE.md`) **Requirements**: HTMX-aware testing, test-auth system for UI tests
 
 ## Environment Configuration
 
-**Required**: SECRET_KEY, GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, MONGODB_URI
-**Optional**: REDIS_* for caching
+**Required**: SECRET*KEY, GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, MONGODB_URI **Optional**: REDIS*\* for caching
 
 See `CLAUDE.md` for complete environment variable reference.
 
 ## Common Development Tasks
 
-**Add API Endpoint**: See `app/CLAUDE.md` for router patterns and testing
-**Add UI Component**: See `templates/CLAUDE.md` for Flowbite + Alpine.js patterns
-**Add Tests**: See `tests/CLAUDE.md` for comprehensive testing strategies
-**Database Operations**: See `app/CLAUDE.md` for repository patterns
+**Add API Endpoint**: See `app/CLAUDE.md` for router patterns and testing **Add UI Component**: See
+`templates/CLAUDE.md` for Flowbite + Alpine.js patterns **Add Tests**: See `tests/CLAUDE.md` for comprehensive testing
+strategies **Database Operations**: See `app/CLAUDE.md` for repository patterns
 
 ## Debugging & Monitoring
 
-**Logging**: Loguru with structured logging (see `app/CLAUDE.md`)
-**Health Checks**: `/api/health/*` endpoints available
+**Logging**: Loguru with structured logging (see `app/CLAUDE.md`) **Health Checks**: `/api/health/*` endpoints available
 **Debugging Tips**: See `CLAUDE.md` for common issues and solutions
 
 ## Best Practices for Development
 
-**Domain Context**: Medical imaging finding models - maintain professional standards
-**Code Quality**: Type hints, async patterns, comprehensive testing (see domain-specific CLAUDE.md files)
-**UI Development**: Flowbite components only, Alpine.js for interactivity (see `templates/CLAUDE.md`)
-**Performance**: Async throughout, MongoDB optimization, Redis caching (see `app/CLAUDE.md`)
-**Deployment**: Docker + Railway platform (see `CLAUDE.md`)
+**Domain Context**: Medical imaging finding models - maintain professional standards **Code Quality**: Type hints, async
+patterns, comprehensive testing (see domain-specific CLAUDE.md files) **UI Development**: Flowbite components only,
+Alpine.js for interactivity (see `templates/CLAUDE.md`) **Performance**: Async throughout, MongoDB optimization, Redis
+caching (see `app/CLAUDE.md`) **Deployment**: Docker + Railway platform (see `CLAUDE.md`)
 
 ## Documentation Reference
 
@@ -132,21 +126,25 @@ See `CLAUDE.md` for complete environment variable reference.
 ### Key Documentation by Task Type
 
 **UI/Frontend Work:**
+
 - MUST read `templates/CLAUDE.md` first - Contains mandatory Flowbite/Alpine.js rules
 - Check `docs/UI_COMPONENT_MACROS.md` for existing components
 - Never create custom CSS/JS - Use Flowbite components only
 
 **Backend Development:**
+
 - Read `app/CLAUDE.md` for FastAPI patterns and repository layer
 - Check `docs/database.md` for MongoDB schemas
 - Follow async/await patterns throughout
 
 **Testing:**
+
 - Read `tests/CLAUDE.md` for testing strategies
 - Use Playwright with test-auth system for UI tests
 - Follow HTMX testing patterns for creation workflow
 
 **Recent Changes:**
+
 - Check `docs/RECENT_UPDATES_SUMMARY.md` for latest features and patterns
 - Review `docs/TEAM_UPDATE_SEPTEMBER_2025.md` for current project status
 
@@ -171,4 +169,5 @@ task run-container    # Run in container
 
 ---
 
-**Remember**: This is a professional medical domain application. Always check the relevant CLAUDE.md files before coding, follow established patterns, and maintain comprehensive test coverage.
+**Remember**: This is a professional medical domain application. Always check the relevant CLAUDE.md files before
+coding, follow established patterns, and maintain comprehensive test coverage.

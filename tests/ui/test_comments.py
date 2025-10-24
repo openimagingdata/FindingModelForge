@@ -31,8 +31,8 @@ class TestAuthenticatedComments:
         """Test empty state shows encouraging message for authenticated users."""
         page, errors, warnings = authenticated_page_with_console
 
-        # Navigate to a finding model without comments (use a less common one)
-        await page.goto("http://localhost:8000/finding-models/liver-lesion")
+        # Navigate to a finding model without comments
+        await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
         await page.wait_for_load_state("networkidle")
 
         # Verify comment section is present
@@ -657,11 +657,11 @@ class TestAnonymousUsers:
         page, errors, warnings = page_with_console_tracking
 
         # Navigate without authentication
-        await page.goto("http://localhost:8000/finding-models/liver-lesion")
+        await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
         await page.wait_for_load_state("networkidle")
 
         # Should see empty state with login prompt
-        empty_state = page.locator("#comment-thread-finding_model-liver-lesion")
+        empty_state = page.locator("#comment-thread-finding_model-abdominal-abscess")
         await expect(empty_state).to_be_visible(timeout=5000)
 
         # Check if we're actually authenticated (shouldn't be)

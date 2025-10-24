@@ -20,14 +20,17 @@ models define semantic labels and structured attributes for medical imaging find
 ⚠️ **Use Serena MCP tools EXTENSIVELY** - Primary way to navigate this codebase.
 
 ### Standard Workflow
+
 1. Check memories first → Find symbols → Trace references → Read files (last resort)
 2. Use `find_symbol` and `get_symbols_overview` before reading full files
 3. Use `find_referencing_symbols` to trace dependencies
 
 ### Memory Maintenance
+
 - **Memories are reference material, not task logs**: Organize by topic/component, not by what you just did
 - **Integrate into existing, never create new**: Check `list_memories` - all work belongs in existing structure
-- **Structure**: `project_overview` (architecture), `current_development_status` (timeline), component-specific (subsystems)
+- **Structure**: `project_overview` (architecture), `current_development_status` (timeline), component-specific
+  (subsystems)
 - **When in doubt**: Update `project_overview` or `current_development_status`, or use `tasks/` files
 
 ## Technical Stack
@@ -287,10 +290,11 @@ Simple Pages:
 
 ## Issue Tracking
 
-**Current issues and technical debt**: See [`tasks/pending_fixes.md`](tasks/pending_fixes.md)
-**Completed fixes**: Archived in [`tasks/done/completed_fixes.md`](tasks/done/completed_fixes.md)
+**Current issues and technical debt**: See [`tasks/pending_fixes.md`](tasks/pending_fixes.md) **Completed fixes**:
+Archived in [`tasks/done/completed_fixes.md`](tasks/done/completed_fixes.md)
 
 When identifying bugs or technical debt:
+
 - Add to `tasks/pending_fixes.md` with priority and effort estimate
 - When fixed, move entry to `tasks/done/completed_fixes.md` with date and solution
 - Update relevant Serena memories (don't create new memories for fixes)

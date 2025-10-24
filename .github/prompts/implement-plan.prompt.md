@@ -5,7 +5,8 @@ mode: agent
 
 # Implement Development Plan
 
-You are tasked with implementing a development plan systematically and thoughtfully. This prompt guides you through executing a multi-phase plan while maintaining high code quality and alignment with project standards.
+You are tasked with implementing a development plan systematically and thoughtfully. This prompt guides you through
+executing a multi-phase plan while maintaining high code quality and alignment with project standards.
 
 ## Reference the Plan
 
@@ -41,11 +42,11 @@ You will work through the plan **one phase at a time**. For each phase:
    - Identify potential pitfalls or edge cases
    - Think about how to keep the implementation simple (YAGNI principle)
    - Plan how to maintain alignment with our coding standards:
-     * Type safety (extensive type hints)
-     * Async patterns (async/await for I/O)
-     * UI components (Flowbite + Alpine.js only)
-     * Test coverage (100% pass rate maintained)
-     * Code organization (follow existing patterns)
+     - Type safety (extensive type hints)
+     - Async patterns (async/await for I/O)
+     - UI components (Flowbite + Alpine.js only)
+     - Test coverage (100% pass rate maintained)
+     - Code organization (follow existing patterns)
    - Consider how changes will be tested
 
 4. **Confirm Readiness**
@@ -108,6 +109,7 @@ Before moving to the next phase, thoroughly evaluate what you've implemented:
 ### Decision Point
 
 After assessment, decide:
+
 - ✅ **Phase complete**: All criteria met, ready to move to next phase
 - ⚠️ **Needs refinement**: Identified issues that should be fixed before proceeding
 - ❌ **Reconsider approach**: Fundamental issues requiring a different implementation strategy
@@ -147,4 +149,5 @@ After completing ALL phases, perform a final holistic review:
 
 ## Remember
 
-The goal is not just to complete the plan, but to complete it **well** - with clean, maintainable, well-tested code that aligns with our project's high standards. Take your time at each phase to get it right.
+The goal is not just to complete the plan, but to complete it **well** - with clean, maintainable, well-tested code that
+aligns with our project's high standards. Take your time at each phase to get it right.

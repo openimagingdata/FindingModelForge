@@ -44,9 +44,9 @@ class PlaywrightTestRunner:
             for _ in range(30):  # Wait up to 30 seconds
                 time.sleep(1)
                 try:
-                    import requests
+                    import httpx
 
-                    response = requests.get(f"http://localhost:{self.server_port}/api/health", timeout=2)
+                    response = httpx.get(f"http://localhost:{self.server_port}/api/health", timeout=2)
                     if response.status_code == 200:
                         print("✅ Server is ready!")
                         return True

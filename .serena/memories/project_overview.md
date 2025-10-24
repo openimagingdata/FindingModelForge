@@ -64,7 +64,9 @@ Database (MongoDB)              # Persistence
 ### Router Organization
 
 #### Simple Routers (Single File)
+
 For focused functionality with few endpoints:
+
 - **`creation.py`** - Creation workflow endpoints (3 steps)
 - **`finding_models_browse.py`** - Browse and detail pages
 - **`home.py`** - Landing page
@@ -72,6 +74,7 @@ For focused functionality with few endpoints:
 - **`profile.py`** - User profile
 
 #### Modular Routers (Directory Structure)
+
 For complex functionality with many endpoints, use module pattern:
 
 ```
@@ -85,12 +88,14 @@ app/routers/drafts/
 ```
 
 **Benefits of Modular Pattern**:
+
 - **Discoverability**: Clear separation by HTTP method and purpose
 - **Maintainability**: Smaller files (~250 lines vs 866 lines)
 - **Testability**: Helpers can be unit tested independently
 - **Scalability**: Easy to add new routers without growing monolith
 
 **When to Use Modular Pattern**:
+
 - Router file exceeds ~500 lines
 - Multiple distinct workflows (view, edit, submit, delete, comment)
 - Complex helper functions that deserve unit tests
@@ -114,12 +119,14 @@ class DraftService:
 ```
 
 **Service Responsibilities**:
+
 - Ownership verification
 - Workflow state transitions
 - Cross-repository coordination
 - Business rule enforcement
 
 **NOT Service Responsibilities**:
+
 - Simple CRUD (call repo directly from router)
 - Data filtering (do in database queries)
 - HTTP concerns (router responsibility)
@@ -133,6 +140,7 @@ Repositories provide async database operations with clear separation between dat
 **Location**: `app/repositories/` (extracted repos) and `app/database.py` (legacy repos to be migrated)
 
 **Current Repositories**:
+
 - **`PeopleRepo`** (`app/repositories/people_repo.py`) - Person contributor management with dual-source lookup
 - **`OrganizationRepo`** (`app/repositories/organization_repo.py`) - Organization contributor management
 - **`DraftRepo`** (`app/database.py`) - Draft CRUD operations (to be migrated)
@@ -172,8 +180,10 @@ class PeopleRepo:
 ```
 
 **Key Principles**:
+
 - **Index Abstraction**: Application NEVER mentions DuckDB. The `Index` class from `findingmodel` abstracts the backend.
-- **Read-Only Index**: Index is canonical source, never written to. All writes go to MongoDB `draft_people`/`draft_organizations`.
+- **Read-Only Index**: Index is canonical source, never written to. All writes go to MongoDB
+  `draft_people`/`draft_organizations`.
 - **Lazy Loading**: Index data loaded once on first access, cached in-memory for performance.
 - **Lookup Precedence**: Cache → Index (canonical) → MongoDB (drafts) → None
 - **In-Memory Cache**: Small dataset (~1MB), O(1) lookups, no Redis overhead needed.
@@ -191,6 +201,7 @@ class DraftRepo:
 ```
 
 **Repository Best Practices**:
+
 - Use MongoDB queries for filtering (not Python loops)
 - Return domain models (FindingModelDraft, User, etc.)
 - Handle database errors, raise domain exceptions
@@ -200,6 +211,7 @@ class DraftRepo:
 ## Infrastructure Requirements
 
 ### Redis (REQUIRED)
+
 - **Purpose**: Session management for creation workflow
 - **Behavior**: Server fails to start if Redis unavailable
 - **Configuration**: `REDIS_HOST`, `REDIS_PORT` in `.env` (no enable/disable flag)
@@ -207,6 +219,7 @@ class DraftRepo:
 - **Error**: Raises `RuntimeError` with clear message if unavailable
 
 ### MongoDB (REQUIRED)
+
 - **Purpose**: Primary data store for all application data
 - **Behavior**: Server fails to start if MongoDB unavailable
 - **Configuration**: `MONGODB_URI`, `MONGODB_DB` in `.env`

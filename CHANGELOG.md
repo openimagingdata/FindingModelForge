@@ -12,8 +12,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 #### Drafts Router Modularization (October 15, 2025)
 
 - **Modular router architecture**: Split monolithic 866-line `app/routers/drafts.py` into focused module
-- **New structure**: 6 files in `app/routers/drafts/` package (views, mutations, workflows, comments, helpers, __init__)
-- **Helper extraction**: 11 helper functions extracted for unit testing (generate_finding_model_json, render functions, etc.)
+- **New structure**: 6 files in `app/routers/drafts/` package (views, mutations, workflows, comments, helpers, **init**)
+- **Helper extraction**: 11 helper functions extracted for unit testing (generate_finding_model_json, render functions,
+  etc.)
 - **Test coverage improvements**: Added 40 new unit tests (34 for helpers + 6 for generate_finding_model_json)
 - **Zero breaking changes**: All URLs and APIs unchanged, 100% test pass rate maintained (492/492)
 - **Improved maintainability**: Files now ~250 lines each vs 866-line monolith

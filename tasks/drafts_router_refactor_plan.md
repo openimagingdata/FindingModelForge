@@ -1,14 +1,12 @@
 # Drafts Router Refactor Plan
 
-**Created**: October 14, 2025
-**Status**: ✅ COMPLETE - All phases finished successfully
-**Priority**: 🔥 HIGH (866 lines - largest router file)
-**Last Updated**: October 14, 2025
-**Completion Date**: October 14, 2025
+**Created**: October 14, 2025 **Status**: ✅ COMPLETE - All phases finished successfully **Priority**: 🔥 HIGH (866
+lines - largest router file) **Last Updated**: October 14, 2025 **Completion Date**: October 14, 2025
 
 ## Problem Statement
 
 The `app/routers/drafts.py` file has grown to **866 lines** with 13 endpoints handling:
+
 - View rendering (full page + HTMX fragments)
 - CRUD operations (create, read, update, delete)
 - Workflow transitions (draft → public → submitted)
@@ -16,6 +14,7 @@ The `app/routers/drafts.py` file has grown to **866 lines** with 13 endpoints ha
 - Complex HTMX logic with OOB swaps
 
 **Specific Issues:**
+
 1. **Massive endpoints**: `unified_draft_page` (178 lines), `update_draft_and_redirect` (202 lines)
 2. **Mixed concerns**: Views, mutations, workflows, and comments all in one file
 3. **Code duplication**: `parse_synonyms` duplicated across 3 files
@@ -34,6 +33,7 @@ The `app/routers/drafts.py` file has grown to **866 lines** with 13 endpoints ha
 ## Current Test Coverage
 
 **Comprehensive coverage exists:**
+
 - `tests/test_drafts_router.py` - Router endpoint tests (5 tests currently, but more exist for other endpoints)
 - `tests/test_public_draft_feature.py` - Public draft feature tests
 - `tests/test_services/test_draft_service.py` - Service layer tests (16 tests)
@@ -80,18 +80,18 @@ app/utils/forms.py              # NEW: Form parsing utilities
 
 ## Endpoint Mapping
 
-| Current Route | Lines | Module | New Function Name |
-|--------------|-------|---------|-------------------|
-| `POST /save` | 64-148 (85) | `mutations.py` | `save_draft()` |
-| `POST /{draft_id}/submit` | 151-204 (54) | `workflows.py` | `submit_draft()` (public→submitted) |
-| `POST /{draft_id}/delete` | 207-252 (46) | `mutations.py` | `delete_draft()` |
-| `GET /{draft_id}/edit` | 258-313 (56) | `views.py` | `edit_draft()` |
-| `GET /{draft_id}` | 316-493 (178) | `views.py` | `unified_draft_page()` ⚠️ |
-| `POST /{draft_id}/update-and-redirect` | 496-697 (202) | `mutations.py` | `update_draft_and_redirect()` ⚠️ |
-| `POST /{draft_id}/comments` | 700-765 (66) | `comments.py` | `add_draft_comment()` |
-| `POST /{draft_id}/comments/{comment_id}/report` | 768-796 (29) | `comments.py` | `report_draft_comment()` |
-| `POST /{draft_id}/make-public` | 799-819 (21) | `workflows.py` | `make_draft_public()` |
-| `GET /` | 822-866 (45) | `views.py` | `list_public_drafts()` |
+| Current Route                                   | Lines         | Module         | New Function Name                   |
+| ----------------------------------------------- | ------------- | -------------- | ----------------------------------- |
+| `POST /save`                                    | 64-148 (85)   | `mutations.py` | `save_draft()`                      |
+| `POST /{draft_id}/submit`                       | 151-204 (54)  | `workflows.py` | `submit_draft()` (public→submitted) |
+| `POST /{draft_id}/delete`                       | 207-252 (46)  | `mutations.py` | `delete_draft()`                    |
+| `GET /{draft_id}/edit`                          | 258-313 (56)  | `views.py`     | `edit_draft()`                      |
+| `GET /{draft_id}`                               | 316-493 (178) | `views.py`     | `unified_draft_page()` ⚠️           |
+| `POST /{draft_id}/update-and-redirect`          | 496-697 (202) | `mutations.py` | `update_draft_and_redirect()` ⚠️    |
+| `POST /{draft_id}/comments`                     | 700-765 (66)  | `comments.py`  | `add_draft_comment()`               |
+| `POST /{draft_id}/comments/{comment_id}/report` | 768-796 (29)  | `comments.py`  | `report_draft_comment()`            |
+| `POST /{draft_id}/make-public`                  | 799-819 (21)  | `workflows.py` | `make_draft_public()`               |
+| `GET /`                                         | 822-866 (45)  | `views.py`     | `list_public_drafts()`              |
 
 ⚠️ = Needs helper extraction before moving
 
@@ -102,14 +102,17 @@ app/utils/forms.py              # NEW: Form parsing utilities
 **Goal**: Ensure comprehensive test coverage before structural changes
 
 #### Step 0.1: Test Coverage Audit ✅
+
 - [x] Run `uv run pytest tests/test_drafts_router.py -v` - verify all pass
 - [x] Run `uv run pytest tests/test_public_draft_feature.py -v` - verify all pass
 - [x] Document current test count baseline: 458 unit tests passing
 
 #### Step 0.2: Identify Test Gaps ✅
+
 **Result**: Test coverage is comprehensive, no gaps identified.
 
 **Success Criteria:**
+
 - ✅ All existing tests pass (458 unit tests)
 - ✅ Major endpoints have path coverage
 - ✅ Error cases covered
@@ -122,6 +125,7 @@ app/utils/forms.py              # NEW: Form parsing utilities
 **Goal**: Extract shared code before splitting routers
 
 #### Step 1.1: Create Form Utilities Module ✅
+
 - [x] Create `app/utils/forms.py`
 - [x] Move `parse_synonyms()` function from 3 locations
 - [x] Add type hints and docstring
@@ -131,6 +135,7 @@ app/utils/forms.py              # NEW: Form parsing utilities
 - [x] Run tests - all pass (458 tests)
 
 **Code:**
+
 ```python
 # app/utils/forms.py
 """Form parsing and validation utilities."""
@@ -168,6 +173,7 @@ def parse_synonyms(synonyms: str) -> list[str]:
 ```
 
 #### Step 1.2: Create Draft Router Helper Module ✅
+
 - [x] Rename `drafts.py` → `drafts_old.py`
 - [x] Create `app/routers/drafts/` directory
 - [x] Create `app/routers/drafts/__init__.py` (exports router from drafts_old)
@@ -176,6 +182,7 @@ def parse_synonyms(synonyms: str) -> list[str]:
 - [x] Run tests - all pass
 
 **Success Criteria:**
+
 - ✅ `parse_synonyms()` moved to `app/utils/forms.py`
 - ✅ All usages updated (3 files)
 - ✅ HTMX helpers created and tested (2 functions)
@@ -190,6 +197,7 @@ def parse_synonyms(synonyms: str) -> list[str]:
 #### Step 2.1: Refactor `unified_draft_page()` ✅ COMPLETE
 
 **Current Issues**: 178 lines handling:
+
 - Permission checks
 - Draft fetching with author aggregation
 - Finding model parsing
@@ -201,6 +209,7 @@ def parse_synonyms(synonyms: str) -> list[str]:
 **Result**: Reduced from 178 → 129 lines (49-line reduction, 27.5%)
 
 **Helpers Extracted** (all added to `app/routers/drafts/helpers.py`):
+
 - [x] `fetch_draft_with_context()` - Fetch draft with author info
 - [x] `check_draft_permissions()` - Check edit/delete permissions
 - [x] `parse_finding_model_from_draft()` - Parse finding model from JSON
@@ -213,6 +222,7 @@ def parse_synonyms(synonyms: str) -> list[str]:
 **Original Details** (for reference):
 
 - [x] Extract `fetch_draft_with_context()` helper:
+
   ```python
   async def fetch_draft_with_context(
       draft_id: str,
@@ -237,6 +247,7 @@ def parse_synonyms(synonyms: str) -> list[str]:
   ```
 
 - [ ] Extract `check_draft_permissions()` helper:
+
   ```python
   def check_draft_permissions(
       draft: FindingModelDraft,
@@ -270,6 +281,7 @@ def parse_synonyms(synonyms: str) -> list[str]:
   ```
 
 - [ ] Extract `render_draft_view()` helper:
+
   ```python
   async def render_draft_view(
       request: Request,
@@ -315,6 +327,7 @@ def parse_synonyms(synonyms: str) -> list[str]:
 **Result**: Reduced from 202 → 96 lines (106-line reduction, 52%)
 
 **Helpers Extracted** (all added to `app/routers/drafts/helpers.py`):
+
 - [x] `should_regenerate_model()` - Check if model regeneration needed
 - [x] `generate_finding_model_json()` - Generate model JSON (test + real AI)
 - [x] `build_update_htmx_response()` - Build HTMX response with OOB swaps
@@ -324,6 +337,7 @@ def parse_synonyms(synonyms: str) -> list[str]:
 **Original Details** (for reference):
 
 **Original Issues**: 202 lines handling:
+
 - Draft fetching and validation
 - Permission checks
 - Input parsing and validation
@@ -336,6 +350,7 @@ def parse_synonyms(synonyms: str) -> list[str]:
 **Strategy**: Extract helpers
 
 - [ ] Extract `should_regenerate_model()` helper:
+
   ```python
   def should_regenerate_model(
       draft: FindingModelDraft,
@@ -352,6 +367,7 @@ def parse_synonyms(synonyms: str) -> list[str]:
   ```
 
 - [ ] Extract `generate_finding_model()` helper:
+
   ```python
   async def generate_finding_model(
       draft: FindingModelDraft,
@@ -368,6 +384,7 @@ def parse_synonyms(synonyms: str) -> list[str]:
   ```
 
 - [ ] Extract `build_update_response()` helper:
+
   ```python
   async def build_update_response(
       request: Request,
@@ -391,6 +408,7 @@ def parse_synonyms(synonyms: str) -> list[str]:
 - [ ] Run tests - ensure all pass
 
 **Success Criteria:**
+
 - ✅ `unified_draft_page()` reduced from 178 to ~50 lines
 - ✅ `update_draft_and_redirect()` reduced from 202 to ~60 lines
 - ✅ Helper functions in `helpers.py` are tested
@@ -404,8 +422,10 @@ def parse_synonyms(synonyms: str) -> list[str]:
 **Goal**: Set up router module directory
 
 #### Step 3.1: Create Module Directory ✅ COMPLETE
+
 - [x] Create `app/routers/drafts/` directory
 - [x] Create `app/routers/drafts/__init__.py` with router export:
+
   ```python
   """Draft management router module."""
   from fastapi import APIRouter
@@ -430,6 +450,7 @@ def parse_synonyms(synonyms: str) -> list[str]:
 - [x] Keep old file active in `app/main.py` for now
 
 **Success Criteria:**
+
 - ✅ Directory structure created
 - ✅ Old file backed up
 - ✅ Module can be imported
@@ -443,6 +464,7 @@ def parse_synonyms(synonyms: str) -> list[str]:
 **Goal**: Move endpoints one module at a time, testing between each
 
 #### Step 4.1: Create Comments Router ✅ COMPLETE
+
 - [x] Create `app/routers/drafts/comments.py` (112 lines)
 - [x] Move comment endpoints from `drafts_old.py`:
   - `add_draft_comment()` (lines 16-82)
@@ -456,12 +478,14 @@ def parse_synonyms(synonyms: str) -> list[str]:
 - [x] Run full test suite - 512 tests passing
 
 **Results:**
+
 - Reduced `drafts_old.py` from 866+ to 590 lines (~32% reduction)
 - All routes registered correctly at `/drafts/{draft_id}/comments/*`
 - Backend reviewer: PASS with no issues
 - Zero logic changes - pure extraction
 
 **Template for new module:**
+
 ```python
 """Draft comment management endpoints."""
 
@@ -479,6 +503,7 @@ router = APIRouter()
 ```
 
 #### Step 4.2: Create Workflows Router ✅ COMPLETE
+
 - [x] Create `app/routers/drafts/workflows.py` (95 lines)
 - [x] Move workflow endpoints from `drafts_old.py`:
   - `submit_draft()` - POST /{draft_id}/submit (public→submitted transition)
@@ -490,15 +515,18 @@ router = APIRouter()
 - [x] Run full test suite - 527 tests passing
 
 **Results:**
+
 - Reduced `drafts_old.py` from 590 to 508 lines (~14% additional reduction)
 - All routes registered correctly at `/drafts/{draft_id}/submit` and `/drafts/{draft_id}/make-public`
 - Backend reviewer: PASS (with documentation clarification)
 - Zero logic changes - pure extraction
 - Cleaned up unused imports: contextlib, datetime/UTC, humanize
 
-**Note:** Plan originally stated "draft→submitted" but actual implementation is "public→submitted" (verified in repository and tests). Documentation updated to reflect correct workflow.
+**Note:** Plan originally stated "draft→submitted" but actual implementation is "public→submitted" (verified in
+repository and tests). Documentation updated to reflect correct workflow.
 
 #### Step 4.3: Create Mutations Router ✅ COMPLETE
+
 - [x] Create `app/routers/drafts/mutations.py` (248 lines)
 - [x] Move mutation endpoints from `drafts_old.py`:
   - `save_draft()` - POST /save (86 lines)
@@ -511,6 +539,7 @@ router = APIRouter()
 - [x] Run full test suite - 527 tests passing
 
 **Results:**
+
 - Reduced `drafts_old.py` from 508 to 258 lines (~49% reduction)
 - All routes registered correctly
 - Backend reviewer: PASS - Complete success, zero issues
@@ -519,6 +548,7 @@ router = APIRouter()
 - **Cumulative progress: 866 → 258 lines (70% total reduction)**
 
 #### Step 4.4: Create Views Router ✅ COMPLETE (FINAL PHASE)
+
 - [x] Create `app/routers/drafts/views.py` (252 lines)
 - [x] Move all remaining view endpoints from `drafts_old.py`:
   - `edit_draft()` - GET /{draft_id}/edit (57 lines)
@@ -533,6 +563,7 @@ router = APIRouter()
 - [x] Run full test suite - 492 tests passing (100% pass rate)
 
 **Results:**
+
 - Created `views.py` with all 3 GET endpoints (252 lines)
 - **DELETED `drafts_old.py` completely** - Zero remnants
 - Final clean `__init__.py` combining all 4 routers
@@ -542,9 +573,11 @@ router = APIRouter()
 - **Total project progress: 866-line monolith → 6 maintainable modules**
 
 #### Step 4.5: Finalize Module Integration ✅ COMPLETE
+
 - [x] Verify all endpoints moved (10 total routes)
 - [x] Delete `app/routers/drafts_old.py` (completed in Phase 4.4)
 - [x] Clean up `app/routers/drafts/__init__.py`:
+
   ```python
   """Draft management router module.
 
@@ -570,10 +603,12 @@ router = APIRouter()
 
   __all__ = ["router"]
   ```
+
 - [x] Run full test suite - 492 tests passing (100% pass rate)
 - [x] Test app locally - Application starts successfully, all 51 routes registered
 
 **Success Criteria:**
+
 - ✅ All endpoints moved to appropriate modules (10 draft routes)
 - ✅ Old file deleted (`drafts_old.py` completely removed)
 - ✅ All 492 unit tests passing (100% pass rate)
@@ -588,17 +623,21 @@ router = APIRouter()
 **Goal**: Update test imports if they break
 
 #### Step 5.1: Check Test Imports ✅ VERIFIED
+
 - [x] Run `uv run pytest tests/test_drafts_router.py -v` - All pass
 - [x] Check if any tests import from `app.routers.drafts` directly - None found
 - [x] Note any failures related to imports - Zero failures
 
 #### Step 5.2: Update Test Imports ✅ NOT NEEDED
+
 **Tests work without any changes:**
+
 - [x] All tests import via dependency injection, not direct imports
 - [x] No test file changes required
 - [x] Test coverage maintained at 75.29%
 
 **Success Criteria:**
+
 - ✅ All tests pass with new structure (492/492 passing)
 - ✅ No import errors
 - ✅ Test coverage maintained (75.29% > 75% requirement)
@@ -610,7 +649,9 @@ router = APIRouter()
 **Goal**: Update documentation and clean up
 
 #### Step 6.1: Update Documentation (30 minutes)
+
 - [ ] Update `app/CLAUDE.md` with new router structure:
+
   ```markdown
   ## Draft Router Structure
 
@@ -641,6 +682,7 @@ router = APIRouter()
   ```
 
 - [ ] Update `docs/RECENT_UPDATES_SUMMARY.md`:
+
   ```markdown
   ## Drafts Router Refactoring (October 2025)
 
@@ -655,12 +697,14 @@ router = APIRouter()
 - [ ] Update `CHANGELOG.md` (if applicable)
 
 #### Step 6.2: Code Quality Check (15 minutes)
+
 - [ ] Run `uv run ruff check app/routers/drafts/`
 - [ ] Run `uv run mypy app/routers/drafts/`
 - [ ] Fix any linting or type errors
 - [ ] Run `task lint` to verify project-wide quality
 
 #### Step 6.3: Final Verification (30 minutes)
+
 - [ ] Run full test suite: `task test-unit`
 - [ ] Run UI tests: `task test-ui` (if applicable)
 - [ ] Manual testing checklist:
@@ -676,6 +720,7 @@ router = APIRouter()
 - [ ] Review git diff for any unintended changes
 
 **Success Criteria:**
+
 - ✅ Documentation updated
 - ✅ Linting passes
 - ✅ Type checking passes
@@ -691,24 +736,26 @@ router = APIRouter()
 
 ### Risks and Mitigations
 
-| Risk | Impact | Likelihood | Mitigation |
-|------|--------|------------|------------|
-| Test failures after split | HIGH | LOW | Comprehensive test suite run after each phase |
-| Import circular dependencies | MEDIUM | LOW | Careful dependency management, helpers module |
-| Behavior changes in HTMX | HIGH | LOW | Extensive UI tests, manual testing checklist |
-| Helper function bugs | MEDIUM | MEDIUM | Unit tests for helpers, incremental extraction |
-| Missing error handling | MEDIUM | LOW | Review each endpoint's try/except blocks carefully |
-| Cache invalidation issues | LOW | LOW | Preserve all cache logic exactly as-is |
+| Risk                         | Impact | Likelihood | Mitigation                                         |
+| ---------------------------- | ------ | ---------- | -------------------------------------------------- |
+| Test failures after split    | HIGH   | LOW        | Comprehensive test suite run after each phase      |
+| Import circular dependencies | MEDIUM | LOW        | Careful dependency management, helpers module      |
+| Behavior changes in HTMX     | HIGH   | LOW        | Extensive UI tests, manual testing checklist       |
+| Helper function bugs         | MEDIUM | MEDIUM     | Unit tests for helpers, incremental extraction     |
+| Missing error handling       | MEDIUM | LOW        | Review each endpoint's try/except blocks carefully |
+| Cache invalidation issues    | LOW    | LOW        | Preserve all cache logic exactly as-is             |
 
 ### Rollback Strategy
 
 **If something goes wrong:**
+
 1. Revert to backup: `git checkout app/routers/drafts_old.py → drafts.py`
 2. Update `app/main.py` import
 3. Run tests to verify rollback works
 4. Investigate issue before retrying
 
 **Commit Strategy:**
+
 - Commit after each phase completes and tests pass
 - Use clear commit messages: "Phase X: [description]"
 - Tag baseline before starting: `git tag drafts-refactor-baseline`
@@ -717,18 +764,19 @@ router = APIRouter()
 
 ## Time Estimates
 
-| Phase | Description | Estimated Time |
-|-------|-------------|----------------|
-| **Phase 0** | Pre-refactoring safety net | 2-3 hours |
-| **Phase 1** | Shared utilities extraction | 1.5 hours |
-| **Phase 2** | Complex endpoint refactoring | 4-6 hours |
-| **Phase 3** | Module structure setup | 15 minutes |
-| **Phase 4** | Split routers incrementally | 6-7 hours |
-| **Phase 5** | Update tests (if needed) | 0-1 hour |
-| **Phase 6** | Documentation and cleanup | 1.5 hours |
-| **TOTAL** | **15-20 hours** | **2-3 days** |
+| Phase       | Description                  | Estimated Time |
+| ----------- | ---------------------------- | -------------- |
+| **Phase 0** | Pre-refactoring safety net   | 2-3 hours      |
+| **Phase 1** | Shared utilities extraction  | 1.5 hours      |
+| **Phase 2** | Complex endpoint refactoring | 4-6 hours      |
+| **Phase 3** | Module structure setup       | 15 minutes     |
+| **Phase 4** | Split routers incrementally  | 6-7 hours      |
+| **Phase 5** | Update tests (if needed)     | 0-1 hour       |
+| **Phase 6** | Documentation and cleanup    | 1.5 hours      |
+| **TOTAL**   | **15-20 hours**              | **2-3 days**   |
 
 **Recommended Approach:**
+
 - **Day 1**: Phases 0-2 (safety net + helper extraction) - 7-9 hours
 - **Day 2**: Phases 3-4 (module creation + splitting) - 6-8 hours
 - **Day 3**: Phases 5-6 (tests + documentation) - 2-3 hours
@@ -738,6 +786,7 @@ router = APIRouter()
 ## Success Criteria
 
 ### Quantitative Metrics
+
 - ✅ File size: 866 lines → ~200 lines per module (max)
 - ✅ Largest endpoint: 202 lines → ~60 lines (max)
 - ✅ Test pass rate: 100% maintained throughout
@@ -745,6 +794,7 @@ router = APIRouter()
 - ✅ Code duplication: `parse_synonyms` 3x → 1x
 
 ### Qualitative Metrics
+
 - ✅ Easier to find specific endpoints (logical grouping)
 - ✅ Clearer separation of concerns (views vs mutations vs workflows)
 - ✅ Reduced cognitive load (smaller files, extracted helpers)
@@ -797,9 +847,8 @@ Before starting, please confirm:
 
 ## 🎉 PROJECT COMPLETION SUMMARY
 
-**Completion Date:** October 14, 2025
-**Status:** ✅ COMPLETE - All phases successfully finished
-**Backend Review:** COMPREHENSIVE PASS
+**Completion Date:** October 14, 2025 **Status:** ✅ COMPLETE - All phases successfully finished **Backend Review:**
+COMPREHENSIVE PASS
 
 ### Final Module Structure
 
@@ -818,12 +867,14 @@ Total: 1,170 lines across 6 focused modules
 ### Achievements
 
 **Code Organization:**
+
 - ✅ Transformed 866-line monolith → 6 focused, maintainable modules
 - ✅ All 10 draft routes properly organized by responsibility
 - ✅ Each router < 300 lines (highly maintainable)
 - ✅ `drafts_old.py` completely deleted - zero remnants
 
 **Quality Metrics:**
+
 - ✅ 492/492 unit tests passing (100% pass rate)
 - ✅ 75.29% code coverage (exceeds 75% requirement)
 - ✅ Zero logic changes (pure code reorganization)
@@ -831,11 +882,13 @@ Total: 1,170 lines across 6 focused modules
 - ✅ ruff: All checks passed
 
 **Helper Functions:**
+
 - ✅ 11 helper functions extracted (443 lines)
 - ✅ 37 comprehensive unit tests for helpers
 - ✅ Reduced largest endpoints from 178/202 lines to 116/89 lines
 
 **Router Distribution:**
+
 - **Views** (252 lines): GET endpoints for page rendering
 - **Mutations** (248 lines): POST endpoints for CRUD operations
 - **Comments** (112 lines): POST endpoints for comment management
@@ -857,18 +910,21 @@ Total: 1,170 lines across 6 focused modules
 ### Impact
 
 **Maintainability:**
+
 - Finding specific endpoints: Fast (logical grouping by responsibility)
 - Understanding code: Easy (smaller, focused files)
 - Adding new features: Simple (clear module boundaries)
 - Debugging issues: Straightforward (isolated concerns)
 
 **Code Quality:**
+
 - Separation of concerns: Excellent
 - Type safety: Complete (100% coverage)
 - Test coverage: Strong (75.29%)
 - Documentation: Comprehensive
 
 **Developer Experience:**
+
 - Easier onboarding for new developers
 - Faster code navigation and search
 - Clearer mental model of system
@@ -888,4 +944,5 @@ Total: 1,170 lines across 6 focused modules
 
 ---
 
-**This refactoring demonstrates excellent software engineering practices and serves as a model for future module reorganizations in the FindingModelForge project.**
+**This refactoring demonstrates excellent software engineering practices and serves as a model for future module
+reorganizations in the FindingModelForge project.**

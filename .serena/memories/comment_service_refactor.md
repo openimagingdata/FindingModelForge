@@ -1,19 +1,24 @@
 # CommentService Refactor - Centralized Comment Logic
 
 ## Implementation Date
+
 September 30, 2025
 
 ## Purpose
-Centralize all comment business logic into a shared `CommentService` to eliminate code duplication and establish proper service layer separation.
+
+Centralize all comment business logic into a shared `CommentService` to eliminate code duplication and establish proper
+service layer separation.
 
 ## Architecture
 
 ### Service Layer Pattern
+
 ```
 Router (HTTP) → Service (Business Logic) → Repository (Data Access)
 ```
 
 **CommentService** acts as the single source of truth for:
+
 - Rate limiting (3 comments per 60 seconds)
 - Content validation (1-2000 characters)
 - Blacklist checking
@@ -26,8 +31,10 @@ Router (HTTP) → Service (Business Logic) → Repository (Data Access)
 ### CommentService (`app/services/comment_service.py`)
 
 Key methods:
+
 - `get_thread(reference_type, reference_id)` - Fetch comment thread
-- `add_comment(reference_type, reference_id, user, content, parent_id=None, reference_name=None)` - Add comment with full validation
+- `add_comment(reference_type, reference_id, user, content, parent_id=None, reference_name=None)` - Add comment with
+  full validation
 - `report_comment(reference_type, reference_id, comment_id, reporting_user_id)` - Report with duplicate prevention
 
 Supports both `"draft"` and `"finding_model"` reference types.
@@ -35,12 +42,14 @@ Supports both `"draft"` and `"finding_model"` reference types.
 ### Service Integration
 
 **DraftService** delegates to CommentService:
+
 ```python
 async def add_comment_to_draft(self, draft_id, user, content, parent_id=None):
     return await self.comment_service.add_comment("draft", draft_id, user, content, parent_id=parent_id)
 ```
 
 **FindingModelService** delegates to CommentService:
+
 ```python
 async def add_comment_to_model(self, oifm_id, user, content, parent_id=None):
     model = await self.get_by_oifm_id(oifm_id)
@@ -50,6 +59,7 @@ async def add_comment_to_model(self, oifm_id, user, content, parent_id=None):
 ### Router Cleanup
 
 Routers are now thin HTTP handlers:
+
 - No rate limiting logic (delegated to service)
 - No manual user index updates (handled by service)
 - Simple delegation to service methods
@@ -78,6 +88,7 @@ When adding comments to new entity types:
 4. Router only handles HTTP concerns (parsing, responses)
 
 Example:
+
 ```python
 class MyNewService:
     def __init__(self, comment_service: CommentService):
@@ -103,6 +114,7 @@ class MyNewService:
 ## Future Considerations
 
 If adding new comment features (edit, delete, reactions):
+
 - Add methods to CommentService
 - Update both DraftService and FindingModelService simultaneously
 - Maintain delegation pattern in routers

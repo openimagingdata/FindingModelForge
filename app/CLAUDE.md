@@ -37,7 +37,8 @@ The backend follows a layered architecture:
 - `services/finding_model_service.py` - Finding model operations (comment delegation)
 - `services/comment_helpers.py` - Shared validation and rate limit helpers
 
-**Service Pattern**: Services encapsulate business logic and coordinate between repositories. Routers delegate to services, services use repositories.
+**Service Pattern**: Services encapsulate business logic and coordinate between repositories. Routers delegate to
+services, services use repositories.
 
 ### Authentication
 
@@ -248,7 +249,8 @@ async def unified_draft_page(
 
 ### Architecture Pattern
 
-**Service Layer Delegation**: All comment operations go through `CommentService` for consistent validation and business logic.
+**Service Layer Delegation**: All comment operations go through `CommentService` for consistent validation and business
+logic.
 
 ```python
 # ✅ CORRECT - Delegate to service
@@ -272,13 +274,16 @@ async def add_comment(draft_id, user, content):
 ### CommentService Usage
 
 **Key Methods**:
-- `add_comment(reference_type, reference_id, user, content, parent_id=None, reference_name=None)` - Handles validation, rate limiting, persistence
+
+- `add_comment(reference_type, reference_id, user, content, parent_id=None, reference_name=None)` - Handles validation,
+  rate limiting, persistence
 - `get_thread(reference_type, reference_id)` - Fetch comment thread
 - `report_comment(reference_type, reference_id, comment_id, user_id)` - Report with duplicate prevention
 
 **Reference Types**: `"draft"`, `"finding_model"` (extensible for new entities)
 
 **What CommentService Handles**:
+
 - Rate limiting (3 comments per 60 seconds)
 - Content validation (1-2000 characters)
 - Blacklist checking
