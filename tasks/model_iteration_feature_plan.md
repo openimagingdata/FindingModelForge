@@ -179,12 +179,13 @@ class IterationService:
         model_data = json.loads(published_model_json)
 
         # Create new iteration draft
-        # Note: We don't populate inputs because iterations can't be manually edited
+        # Note: Placeholder inputs required by draft schema
+        # These are not used for iteration drafts (AI-only editing)
         draft = await self.draft_repo.create_draft(
             user_id=user_id,
             name=model_data["name"],
             inputs=FindingModelInputs(
-                description="[Iteration - not manually editable]",
+                description="",  # Empty - not used for iterations
                 synonyms=None,
                 attributes_markdown=None
             ),
@@ -221,10 +222,10 @@ class IterationService:
         current_model = FindingModelFull.model_validate_json(draft.generated_json)
 
         try:
-            # Call findingmodel tool
-            edit_result = edit_model_natural_language(
-                original=current_model,
-                requested_text=user_request
+            # Call findingmodel tool (async)
+            edit_result = await edit_model_natural_language(
+                model=current_model,
+                command=user_request
             )
 
             # Save interaction
@@ -320,10 +321,10 @@ class IterationService:
         current_model = FindingModelFull.model_validate_json(draft.generated_json)
 
         try:
-            # Call findingmodel tool
-            edit_result = edit_model_markdown(
-                original=current_model,
-                requested_text=edited_markdown
+            # Call findingmodel tool (async)
+            edit_result = await edit_model_markdown(
+                model=current_model,
+                edited_markdown=edited_markdown
             )
 
             # Save interaction
@@ -505,7 +506,13 @@ async def start_iteration(
 
 ### AI Iteration Endpoints
 
-**New File**: `app/routers/drafts/ai_operations.py`
+**File**: `app/routers/drafts/workflows.py` (add to existing file)
+
+**Rationale**: Iteration operations are state transitions (they modify draft state), so they belong in `workflows.py` alongside submit, delete, etc. This maintains the existing modular router pattern:
+- `views.py` - GET endpoints
+- `mutations.py` - POST CRUD operations
+- `workflows.py` - POST state transitions (submit, delete, **iterate**)
+- `comments.py` - POST comment operations
 
 **HTMX Request Handling Pattern**:
 - **GET endpoints** (return partials): Check `is_htmx_request()` and redirect to parent page if false
@@ -514,16 +521,17 @@ async def start_iteration(
 Following existing patterns from research:
 
 ```python
-from fastapi import APIRouter, Depends, Form, Request, HTTPException
+# Add to existing app/routers/drafts/workflows.py
+from fastapi import Depends, Form, Request, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from typing import Annotated
 from app.models import User
 from app.dependencies import require_current_user, get_templates
 from app.services.iteration_service import IterationService
 from app.database import DraftRepo
-from app.routers.drafts.helpers import is_htmx_request
+from app.routers.drafts.helpers import is_htmx_request, build_htmx_response_with_oob
 
-router = APIRouter()
+# Type aliases already defined in workflows.py
 
 # Type aliases for cleaner code
 CurrentUserDep = Annotated[User, Depends(require_current_user)]
@@ -660,13 +668,7 @@ async def get_iteration_history(
     )
 ```
 
-**Integration**: Add to `app/routers/drafts/__init__.py`:
-
-```python
-from app.routers.drafts import ai_operations
-
-router.include_router(ai_operations.router, tags=["ai_operations"])
-```
+**Note**: No router registration needed - these endpoints are added directly to the existing `workflows.py` router.
 
 ---
 
@@ -1048,12 +1050,40 @@ router.include_router(ai_operations.router, tags=["ai_operations"])
 
 **CRITICAL: JSON Preview Refresh via Out-of-Band Swap**
 
-The endpoint should use HTMX out-of-band (OOB) swaps to refresh the JSON preview instead of inline scripts:
+The endpoint should use HTMX out-of-band (OOB) swaps to refresh the JSON preview instead of inline scripts.
+
+**New Generic OOB Helper** (to be added to `app/routers/drafts/helpers.py`):
 
 ```python
-# In endpoint handler (app/routers/drafts/workflows.py)
-from app.routers.drafts.helpers import build_htmx_response_with_oob
+def build_htmx_response_with_oob(
+    main_content: str,
+    oob_swaps: dict[str, str],
+) -> HTMLResponse:
+    """
+    Build HTMX response with arbitrary out-of-band swaps.
 
+    Args:
+        main_content: Primary HTML content for the hx-target
+        oob_swaps: Dict of element_id -> HTML content for OOB updates
+
+    Returns:
+        HTMLResponse with main content and OOB swap fragments
+    """
+    oob_fragments = []
+    for element_id, html in oob_swaps.items():
+        if 'hx-swap-oob' not in html:
+            oob_fragments.append(
+                f'<div id="{element_id}" hx-swap-oob="true">\n{html}\n</div>'
+            )
+        else:
+            oob_fragments.append(html)
+
+    return _combine_content_with_oob_fragments(main_content, oob_fragments)
+```
+
+**Usage in Iteration Endpoints** (`app/routers/drafts/workflows.py`):
+
+```python
 # After successful iteration
 result_html = templates.TemplateResponse(
     "components/iteration_result.html",
@@ -1061,19 +1091,21 @@ result_html = templates.TemplateResponse(
 ).body.decode()
 
 # Render updated JSON accordion
+updated_draft = await draft_repo.get_draft(draft_id, current_user.id)
 updated_json_html = templates.TemplateResponse(
     "macros/json_accordion.html",
-    {"request": request, "data": updated_draft.model_dict(), "id": "draft-json", "title": "Current Model JSON"}
+    {"request": request, "data": updated_draft.model_dict(),
+     "id": "draft-json", "title": "Current Model JSON"}
 ).body.decode()
 
-# Combine with OOB swap
+# Combine with OOB swap using new generic helper
 return build_htmx_response_with_oob(
     main_content=result_html,
     oob_swaps={'draft-json-container': updated_json_html}
 )
 ```
 
-This follows existing patterns in `drafts/helpers.py` and eliminates need for inline scripts.
+**Refactoring Required**: The existing `build_htmx_response_with_oob` function is draft-specific and should be renamed to `build_draft_mode_toggle_response`. Create the new generic helper above and extract shared logic to `_combine_content_with_oob_fragments` internal helper.
 
 ---
 
@@ -1189,7 +1221,7 @@ This follows existing patterns in `drafts/helpers.py` and eliminates need for in
 
 ### Actual Available Functions
 
-From `findingmodel.tools`:
+From `findingmodel.tools` (external library: https://github.com/openimagingdata/findingmodel):
 
 ```python
 from findingmodel import FindingModelFull
@@ -1199,30 +1231,38 @@ from findingmodel.tools import (
     export_model_for_editing,
 )
 
-# EditResult structure
+# EditResult structure (Pydantic BaseModel)
 class EditResult:
     model: FindingModelFull      # Updated model
     rejections: list[str]         # Changes that were rejected with reasons
     changes: list[str]            # Changes that were applied
 
-# Function signatures
-def edit_model_natural_language(
-    original: FindingModelFull,
-    requested_text: str
+# Function signatures (NOTE: First two are async!)
+async def edit_model_natural_language(
+    model: FindingModelFull,
+    command: str,
+    *,
+    agent: Agent[EditDeps, EditResult] | None = None
 ) -> EditResult:
     """Edit model using natural language commands."""
 
-def edit_model_markdown(
-    original: FindingModelFull,
-    requested_text: str
+async def edit_model_markdown(
+    model: FindingModelFull,
+    edited_markdown: str,
+    *,
+    agent: Agent[EditDeps, EditResult] | None = None
 ) -> EditResult:
     """Edit model using markdown-like text."""
 
 def export_model_for_editing(
-    model: FindingModelFull
+    model: FindingModelFull,
+    *,
+    attributes_only: bool = False
 ) -> str:
     """Export model to editable markdown format."""
 ```
+
+**IMPORTANT**: The editing functions are **async** and must be awaited. The `agent` parameter is optional and defaults to a built-in agent if not provided.
 
 ### Guardrails
 
@@ -1296,13 +1336,17 @@ Test cases:
 ### Phase 2: API Endpoints
 
 - [ ] Add `POST /iterate/{slug}` to `finding_models_browse.py`
-- [ ] Create `app/routers/drafts/ai_operations.py`
-- [ ] Implement `POST /drafts/{id}/iterate`
-- [ ] Implement `POST /drafts/{id}/export-markdown`
-- [ ] Implement `POST /drafts/{id}/iterate-markdown`
-- [ ] Implement `GET /drafts/{id}/iteration-history`
-- [ ] Add `is_htmx_request()` helper if not exists
-- [ ] Register router in `app/routers/drafts/__init__.py`
+- [ ] Add iteration endpoints to `app/routers/drafts/workflows.py`:
+  - [ ] Implement `POST /drafts/{id}/iterate` (natural language)
+  - [ ] Implement `GET /drafts/{id}/export-markdown` (idempotent export)
+  - [ ] Implement `POST /drafts/{id}/iterate-markdown` (apply markdown edits)
+  - [ ] Implement `GET /drafts/{id}/iteration-history` (lazy-loaded timeline)
+- [ ] Add base_model_slug lookup to `GET /drafts/{id}` in `views.py`
+- [ ] Create new OOB helper functions in `helpers.py`:
+  - [ ] Rename existing `build_htmx_response_with_oob` → `build_draft_mode_toggle_response`
+  - [ ] Add `_combine_content_with_oob_fragments` (internal helper)
+  - [ ] Add new generic `build_htmx_response_with_oob`
+  - [ ] Update existing calls to use new names
 - [ ] Write integration tests
 - [ ] Verify all tests pass
 
@@ -1349,15 +1393,43 @@ Test cases:
 
 ### 2. Base Model Slug Lookup
 
-**Issue**: Need slug to link back to original model from banner.
+**Issue**: Need slug to link back to original model from iteration banner.
 
 **Solution**: Fetch model from finding_model_service using `base_model_id` when rendering iteration draft page.
 
+**Implementation** (in `app/routers/drafts/views.py`, `GET /drafts/{draft_id}` endpoint):
+
 ```python
-# In drafts/views.py
+# After fetching draft, before rendering template
+base_model_slug = None
 if draft.is_iteration and draft.base_model_id:
-    base_model = await finding_model_service.get_by_oifm_id(draft.base_model_id)
-    base_model_slug = base_model.slug if base_model else None
+    try:
+        base_model = await finding_model_service.get_by_oifm_id(draft.base_model_id)
+        base_model_slug = base_model.slug if base_model else None
+    except Exception as e:
+        logger.warning(f"Could not fetch base model {draft.base_model_id}: {e}")
+        # Continue rendering without slug - banner will handle gracefully
+
+# Add to template context
+context = {
+    "draft": draft,
+    "mode": mode,
+    "base_model_slug": base_model_slug,  # ← Add this
+    ...
+}
+```
+
+**Template Usage** (`templates/macros/iteration_components.html`):
+
+```jinja
+{% macro iteration_banner(model_name, base_model_slug) %}
+<div class="...">
+  <span class="font-medium">Iterating on:</span> {{ model_name }}
+  {% if base_model_slug %}
+  <a href="/finding-models/{{ base_model_slug }}" ...>View Original</a>
+  {% endif %}
+</div>
+{% endmacro %}
 ```
 
 ---
