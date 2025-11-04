@@ -55,7 +55,8 @@
       "Bash(~/.claude-code-docs/claude-docs-helper.sh:*)",
       "Bash(git checkout:*)",
       "Bash(tree:*)",
-      "Bash(awk:*)"
+      "Bash(awk:*)",
+      "WebFetch(domain:github.com)"
     ],
     "deny": [],
     "ask": [],
