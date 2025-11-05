@@ -111,8 +111,8 @@ class TestBasicCreationFlow:
         await expect(make_public_btn).to_be_visible(timeout=5000)
         print("DEBUG: Found 'Make Public' button - draft created successfully")
 
-        # Verify the draft model display elements (should be in preview mode now)
-        await expect(page.locator("h2")).to_contain_text(finding_name)
+        # Verify the draft model display elements (should be in preview mode now, case-insensitive due to AI)
+        await expect(page.locator("h2")).to_contain_text(finding_name, ignore_case=True)
         await expect(page.locator("h3:has-text('Attributes')")).to_be_visible()
         await expect(page.locator("text=Status: Draft")).to_be_visible()
 
@@ -349,8 +349,8 @@ class TestMultipleEditCycles:
         # Navigate to draft page in preview mode (has generated model)
         await page.goto(f"http://localhost:8000/drafts/{draft_id}?mode=view")
 
-        # Verify we're in preview mode with generated model
-        await expect(page.locator("h2")).to_contain_text(finding_name)
+        # Verify we're in preview mode with generated model (case-insensitive due to AI generation)
+        await expect(page.locator("h2")).to_contain_text(finding_name, ignore_case=True)
         await expect(page.locator("button:has-text('Edit')")).to_be_visible()
 
         # Test Edit → Update → Preview cycle
@@ -426,9 +426,10 @@ class TestResumeFlow:
         synonym_badge = page.locator("span.inline-flex.items-center:has-text('test')").first
         await expect(synonym_badge).to_be_visible()  # From seeded synonyms
 
-        # Should show attributes section
+        # Should show attributes section with at least one attribute (AI generates attribute names)
         await expect(page.locator("h3:has-text('Attributes')")).to_be_visible()
-        await expect(page.locator("h4:has-text('presence')")).to_be_visible()
+        # Check for presence of attribute card structure (not specific AI-generated names)
+        await expect(page.locator("div.border.rounded-lg h4").first).to_be_visible()
 
         # Should show status as "Submitted"
         await expect(page.locator("text=Status:")).to_be_visible()
