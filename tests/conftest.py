@@ -64,24 +64,27 @@ def client() -> TestClient:
     mock_draft_repo.save_draft = AsyncMock(side_effect=_save_draft)
     mock_database.draft_repo = mock_draft_repo
 
-    # Create a mock finding_index with DuckDB connection
+    # Create a mock finding_index with new Index API (v0.5.0)
     from findingmodel import Index
 
     mock_finding_index = MagicMock(spec=Index)
 
-    # Mock the DuckDB connection for direct SQL queries
-    mock_conn = MagicMock()
+    # Mock the new Index API methods that return tuples
+    # all() returns tuple (list[IndexEntry], int)
+    mock_finding_index.all = AsyncMock(return_value=([], 0))
 
-    # Mock execute() to return empty results by default
-    mock_result = MagicMock()
-    mock_result.fetchone.return_value = [0]  # For COUNT queries
-    mock_result.fetchall.return_value = []  # For SELECT queries
-    mock_conn.execute.return_value = mock_result
+    # search_by_slug() returns tuple (list[IndexEntry], int)
+    mock_finding_index.search_by_slug = AsyncMock(return_value=([], 0))
 
-    # Mock _ensure_connection to return the mock connection
-    mock_finding_index._ensure_connection = MagicMock(return_value=mock_conn)
-    mock_finding_index.conn = mock_conn
+    # get() returns IndexEntry or None (for slug lookup)
     mock_finding_index.get = AsyncMock(return_value=None)
+
+    # get_full() returns FindingModelFull (requires oifm_id)
+    mock_finding_index.get_full = AsyncMock(return_value=None)
+
+    # get_organizations() returns list[Organization]
+    mock_finding_index.get_organizations = AsyncMock(return_value=[])
+
     mock_database.finding_index = mock_finding_index
 
     # Mock cache for tests

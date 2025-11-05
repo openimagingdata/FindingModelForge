@@ -62,8 +62,8 @@ def test_finding_models_detail_valid_slug(client: TestClient) -> None:
     mock_finding_model.last_modified = None
     mock_finding_model.version = None
     mock_finding_model.oifm_id = None
-    mock_index_entry = MagicMock()
-    mock_service.get_model_by_slug.return_value = (mock_finding_model, mock_index_entry)
+    # NEW: get_model_by_slug returns FindingModelFull directly, not tuple
+    mock_service.get_model_by_slug.return_value = mock_finding_model
     mock_service.get_comments_for_model.return_value = None  # No comments for test
 
     app.dependency_overrides[get_finding_model_service] = lambda: mock_service
@@ -89,8 +89,8 @@ def test_finding_models_detail_htmx_request(client: TestClient) -> None:
     mock_finding_model.last_modified = None
     mock_finding_model.version = None
     mock_finding_model.oifm_id = None
-    mock_index_entry = MagicMock()
-    mock_service.get_model_by_slug.return_value = (mock_finding_model, mock_index_entry)
+    # NEW: get_model_by_slug returns FindingModelFull directly, not tuple
+    mock_service.get_model_by_slug.return_value = mock_finding_model
     mock_service.get_comments_for_model.return_value = None  # No comments for test
 
     app.dependency_overrides[get_finding_model_service] = lambda: mock_service
@@ -161,8 +161,8 @@ def test_finding_models_service_detail_integration(client: TestClient) -> None:
     mock_finding_model.last_modified = None
     mock_finding_model.version = None
     mock_finding_model.oifm_id = None
-    mock_index_entry = MagicMock()
-    mock_service.get_model_by_slug.return_value = (mock_finding_model, mock_index_entry)
+    # NEW: get_model_by_slug returns FindingModelFull directly, not tuple
+    mock_service.get_model_by_slug.return_value = mock_finding_model
     mock_service.get_comments_for_model.return_value = None  # No comments for test
 
     app.dependency_overrides[get_finding_model_service] = lambda: mock_service
@@ -217,8 +217,8 @@ def test_finding_models_detail_dynamic_title(client: TestClient) -> None:
     mock_finding_model.last_modified = None
     mock_finding_model.version = None
     mock_finding_model.oifm_id = None
-    mock_index_entry = MagicMock()
-    mock_service.get_model_by_slug.return_value = (mock_finding_model, mock_index_entry)
+    # NEW: get_model_by_slug returns FindingModelFull directly, not tuple
+    mock_service.get_model_by_slug.return_value = mock_finding_model
     mock_service.get_comments_for_model.return_value = None  # No comments for test
 
     app.dependency_overrides[get_finding_model_service] = lambda: mock_service
@@ -306,7 +306,8 @@ def test_report_comment_success(client: TestClient) -> None:
     mock_finding_model = MagicMock()
     mock_finding_model.oifm_id = "oifm_test123"
     mock_finding_model.name = "Test Model"
-    mock_service.get_model_by_slug = AsyncMock(return_value=(mock_finding_model, None))
+    # NEW: get_model_by_slug returns FindingModelFull directly, not tuple
+    mock_service.get_model_by_slug = AsyncMock(return_value=mock_finding_model)
     # Mock report_model_comment to succeed
     mock_service.report_model_comment = AsyncMock()
 
@@ -365,9 +366,9 @@ def test_report_comment_unauthenticated(client: TestClient) -> None:
 
 def test_report_comment_model_not_found(client: TestClient) -> None:
     """Test invalid slug returns 404."""
-    # Mock the service to return (None, None)
+    # Mock the service to return None
     mock_service = AsyncMock()
-    mock_service.get_model_by_slug = AsyncMock(return_value=(None, None))
+    mock_service.get_model_by_slug = AsyncMock(return_value=None)
 
     # Mock current user
     now = datetime.now(UTC)
@@ -400,7 +401,8 @@ def test_report_comment_thread_not_found(client: TestClient) -> None:
     mock_finding_model = MagicMock()
     mock_finding_model.oifm_id = "oifm_test123"
     mock_finding_model.name = "Test Model"
-    mock_service.get_model_by_slug = AsyncMock(return_value=(mock_finding_model, None))
+    # NEW: get_model_by_slug returns FindingModelFull directly, not tuple
+    mock_service.get_model_by_slug = AsyncMock(return_value=mock_finding_model)
     # Mock report_model_comment to raise 404 (thread not found)
     mock_service.report_model_comment = AsyncMock(
         side_effect=HTTPException(status_code=404, detail="Comment thread not found")
@@ -437,7 +439,8 @@ def test_report_comment_already_reported(client: TestClient) -> None:
     mock_finding_model = MagicMock()
     mock_finding_model.oifm_id = "oifm_test123"
     mock_finding_model.name = "Test Model"
-    mock_service.get_model_by_slug = AsyncMock(return_value=(mock_finding_model, None))
+    # NEW: get_model_by_slug returns FindingModelFull directly, not tuple
+    mock_service.get_model_by_slug = AsyncMock(return_value=mock_finding_model)
     # Mock report_model_comment to raise 400 (already reported)
     mock_service.report_model_comment = AsyncMock(
         side_effect=HTTPException(status_code=400, detail="Comment already reported by this user")

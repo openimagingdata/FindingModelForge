@@ -33,7 +33,8 @@ Verify backend unit tests:
 
 **Test Quality:**
 - [ ] Tests are clear and focused
-- [ ] Uses appropriate fixtures
+- [ ] No duplicate fixtures (check conftest.py)
+- [ ] Sample data from tests/data/*.json (not manually constructed)
 - [ ] Realistic test data (valid ObjectIds, etc.)
 - [ ] Proper mocking of dependencies
 - [ ] Follows async patterns correctly

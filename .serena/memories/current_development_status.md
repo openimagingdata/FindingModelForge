@@ -4,7 +4,7 @@
 
 ### Status: ✅ COMPLETE - Production Ready
 
-**Branch**: `feature/contributor-repos-refactor`  
+**Branch**: `feature/contributor-repos-refactor`
 **Completion Date**: October 24, 2025
 
 Implemented Repository pattern to separate canonical contributors (Index) from draft contributors (MongoDB). Prepares for findingmodel's Index backend transition from MongoDB to DuckDB while maintaining clean abstraction boundaries.

@@ -44,7 +44,7 @@ async def finding_models(
         if slug:
             # Return detail fragment
             try:
-                finding_model, index_entry = await finding_model_service.get_model_by_slug(slug)
+                finding_model = await finding_model_service.get_model_by_slug(slug)
                 # Get the comment thread for this finding model
                 thread = await finding_model_service.get_comments_for_model(finding_model.oifm_id)
                 response = templates.TemplateResponse(
@@ -52,7 +52,6 @@ async def finding_models(
                     name="fragments/finding_model_detail_content.html",
                     context={
                         "finding_model": finding_model,
-                        "index_entry": index_entry,
                         "thread": thread,
                         "reference_type": "finding_model",
                         "reference_id": slug,
@@ -146,14 +145,13 @@ async def finding_models(
     if slug:
         # Preload the detail data for initial render
         try:
-            finding_model, index_entry = await finding_model_service.get_model_by_slug(slug)
+            finding_model = await finding_model_service.get_model_by_slug(slug)
             # Get the comment thread for this finding model
             thread = await finding_model_service.get_comments_for_model(finding_model.oifm_id)
             context.update(
                 {
                     "initial_model": finding_model,
                     "finding_model": finding_model,  # Also add for fragment compatibility
-                    "index_entry": index_entry,
                     "thread": thread,
                     "reference_type": "finding_model",
                     "reference_id": slug,
@@ -259,7 +257,7 @@ async def add_finding_model_comment(
             raise HTTPException(status_code=401, detail="Authentication required")
 
         # Get the finding model to get its oifm_id
-        finding_model, _ = await finding_model_service.get_model_by_slug(slug)
+        finding_model = await finding_model_service.get_model_by_slug(slug)
         if not finding_model:
             raise HTTPException(status_code=404, detail=f"Finding model '{slug}' not found")
 
@@ -322,7 +320,7 @@ async def report_model_comment(
 
     try:
         # Get the finding model to verify it exists and get its oifm_id
-        finding_model, _ = await finding_model_service.get_model_by_slug(slug)
+        finding_model = await finding_model_service.get_model_by_slug(slug)
         if not finding_model:
             return HTMLResponse('<div class="alert alert-danger">Model not found</div>', status_code=404)
 

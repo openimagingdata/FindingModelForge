@@ -1,13 +1,10 @@
 """Redis cache implementation for FindingModelForge."""
 
 import asyncio
-import json
 from datetime import timedelta
 from typing import Any
 
-import jiter
 import redis.asyncio as redis_client
-from findingmodel import FindingModelFull
 from findingmodel.contributor import Organization
 from loguru import logger
 from pydantic import BaseModel, TypeAdapter
@@ -242,37 +239,6 @@ class RedisCache:
 
         return await self.set(key, user_json, expires_in)
 
-    # Finding models cache methods
-    async def get_finding_model(self, slug: str) -> FindingModelFull | None:
-        """Get finding model data from cache."""
-        key = self._make_key("finding_model", slug.lower())
-        cached_data = await self.get(key)
-
-        if cached_data:
-            try:
-                return FindingModelFull.model_validate_json(cached_data)
-            except Exception as e:
-                logger.warning(f"Failed to deserialize cached finding model {slug}: {e}")
-                await self.delete(key)
-
-        return None
-
-    async def set_finding_model(
-        self,
-        slug: str,
-        model_data: FindingModelFull,
-        expires_in: timedelta | None = None,
-    ) -> bool:
-        """Set finding model data in cache."""
-        key = self._make_key("finding_model", slug.lower())
-        model_json = model_data.model_dump_json()
-
-        # Finding models can be cached longer as they don't change frequently
-        if expires_in is None:
-            expires_in = timedelta(hours=1)
-
-        return await self.set(key, model_json, expires_in)
-
     async def invalidate_user_cache(self, user: User) -> None:
         """Invalidate all cached data for a user."""
         tasks = [
@@ -310,47 +276,6 @@ class RedisCache:
             }
         except Exception:
             return {"status": "error"}
-
-    async def get_finding_models(self) -> list[dict[str, Any]] | None:
-        """Get all finding models from cache."""
-        key = self._make_key("finding_models", "all")
-        cached_data = await self.get(key)
-
-        if cached_data:
-            try:
-                return jiter.from_json(cached_data.encode("utf-8"))  # type: ignore
-            except ValueError:
-                logger.warning(f"Cached finding models data is not valid: {cached_data}")
-                await self.delete(key)
-            except TypeError:
-                logger.warning(f"Cached finding models data is not a valid JSON: {cached_data}")
-                await self.delete(key)
-            except Exception as e:
-                logger.warning(f"Failed to deserialize cached finding models: {e}")
-                await self.delete(key)
-
-        return None
-
-    async def set_finding_models(
-        self,
-        finding_models: list[dict[str, Any]],
-        expires_in: timedelta | None = None,
-    ) -> bool:
-        """Set all finding models in cache."""
-        key = self._make_key("finding_models", "all")
-        models_json = json.dumps(finding_models)
-
-        # Finding models can be cached longer as they don't change frequently
-        if expires_in is None:
-            expires_in = timedelta(seconds=settings.cache_finding_models_expires_in)
-
-        return await self.set(key, models_json, expires_in)
-
-    async def invalidate_finding_models_cache(self, slug: str) -> None:
-        """Invalidate cached finding model list."""
-        key = self._make_key("finding_models", "all")
-        await self.delete(key)
-        logger.info("Invalidated cache for finding models list")
 
     async def get_organizations(self) -> list[Organization] | None:
         """Get all organizations from cache."""

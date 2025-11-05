@@ -252,7 +252,6 @@ CreationSessionDep = Annotated[FindingModelCreationSession, Depends(get_creation
 
 def get_finding_model_service(
     index: FindingIndexDep,
-    cache: CacheDep,
     comment_repo: CommentRepoDep,
     user_repo: UserRepoDep,
     comment_service: CommentServiceDep,
@@ -260,7 +259,7 @@ def get_finding_model_service(
     """Get FindingModelService instance."""
     from .services.finding_model_service import FindingModelService
 
-    return FindingModelService(index, cache, comment_repo, user_repo, comment_service)
+    return FindingModelService(index, comment_repo, user_repo, comment_service)
 
 
 FindingModelServiceDep = Annotated["FindingModelService", Depends(get_finding_model_service)]

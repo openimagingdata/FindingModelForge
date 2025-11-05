@@ -2,12 +2,11 @@
 
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from findingmodel import FindingModelFull
 
-from app.cache import RedisCache
 from app.database import CommentRepo, UserRepo
 from app.models import Comment, CommentThread, User
 from app.services import NotFoundError
@@ -19,37 +18,40 @@ class TestFindingModelService:
     """Test the FindingModelService class."""
 
     @pytest.fixture
-    def mock_index(self) -> MagicMock:
-        """Mock FindingModel index with DuckDB connection."""
+    def mock_index(self, mock_finding_model: FindingModelFull) -> MagicMock:
+        """Mock FindingModel index with new Index API."""
         index = MagicMock()
-        index.get = AsyncMock()
 
-        # Mock DuckDB connection
-        mock_conn = MagicMock()
-        mock_result = MagicMock()
-        mock_result.fetchone.return_value = [3]  # Default count
-        mock_result.fetchall.return_value = [
-            ("OIDM.1001", "Abdominal Abscess", "abdominal_abscess"),
-            ("OIDM.1002", "Acute Appendicitis", "acute_appendicitis"),
-            ("OIDM.1003", "Brain Tumor", "brain_tumor"),
+        # Mock IndexEntry objects with slug_name field
+        mock_entries = [
+            type(
+                "IndexEntry",
+                (),
+                {"oifm_id": "OIFM_TEST_000001", "name": "Abdominal Abscess", "slug_name": "abdominal-abscess"},
+            )(),
+            type(
+                "IndexEntry",
+                (),
+                {"oifm_id": "OIFM_TEST_000002", "name": "Acute Appendicitis", "slug_name": "acute-appendicitis"},
+            )(),
+            type(
+                "IndexEntry", (), {"oifm_id": "OIFM_TEST_000003", "name": "Brain Tumor", "slug_name": "brain-tumor"}
+            )(),
         ]
-        mock_conn.execute.return_value = mock_result
 
-        # Mock _ensure_connection to return the connection
-        index._ensure_connection = MagicMock(return_value=mock_conn)
-        index.conn = mock_conn
+        # all() returns tuple (list[IndexEntry], int)
+        index.all = AsyncMock(return_value=(mock_entries, 3))
+
+        # search_by_slug() returns tuple (list[IndexEntry], int)
+        index.search_by_slug = AsyncMock(return_value=(mock_entries[:1], 1))
+
+        # get() returns IndexEntry or None (for slug lookup)
+        index.get = AsyncMock(return_value=mock_entries[0])
+
+        # get_full() returns FindingModelFull - use the existing fixture
+        index.get_full = AsyncMock(return_value=mock_finding_model)
 
         return index
-
-    @pytest.fixture
-    def mock_cache(self) -> MagicMock:
-        """Mock Redis cache."""
-        cache = MagicMock(spec=RedisCache)
-        cache.get_finding_models = AsyncMock()
-        cache.set_finding_models = AsyncMock()
-        cache.get_finding_model = AsyncMock()
-        cache.set_finding_model = AsyncMock()
-        return cache
 
     @pytest.fixture
     def mock_comment_repo(self) -> MagicMock:
@@ -83,7 +85,6 @@ class TestFindingModelService:
     def service(
         self,
         mock_index: MagicMock,
-        mock_cache: MagicMock,
         mock_comment_repo: MagicMock,
         mock_user_repo: MagicMock,
         mock_comment_service: MagicMock,
@@ -91,7 +92,6 @@ class TestFindingModelService:
         """FindingModelService instance with mocked dependencies."""
         return FindingModelService(
             index=mock_index,
-            cache=mock_cache,
             comment_repo=mock_comment_repo,
             user_repo=mock_user_repo,
             comment_service=mock_comment_service,
@@ -105,16 +105,6 @@ class TestFindingModelService:
             {"oifm_id": "OIDM.1002", "name": "Acute Appendicitis"},
             {"oifm_id": "OIDM.1003", "name": "Brain Tumor"},
         ]
-
-    @pytest.fixture
-    def sample_finding_model_full(self) -> MagicMock:
-        """Sample complete finding model (mocked to avoid validation issues)."""
-        mock_model = MagicMock(spec=FindingModelFull)
-        mock_model.name = "Abdominal Abscess"
-        mock_model.description = "A collection of pus in the abdominal cavity"
-        mock_model.synonyms = ["abdominal infection", "intra-abdominal abscess"]
-        mock_model.oifm_id = "OIFM_OIDM_000001"
-        return mock_model
 
     @pytest.fixture
     def sample_user(self) -> User:
@@ -134,7 +124,7 @@ class TestFindingModelService:
 
     async def test_list_models_no_search(self, service: FindingModelService, mock_index: MagicMock):
         """Test listing all models without search."""
-        # Test - should query DuckDB directly
+        # Test - should query Index.all() directly
         models, total = await service.list_models()
 
         # Assertions
@@ -145,8 +135,8 @@ class TestFindingModelService:
         assert models[1]["name"] == "Acute Appendicitis"
         assert models[2]["name"] == "Brain Tumor"
 
-        # Verify DuckDB was queried (no cache layer)
-        assert mock_index.conn.execute.called
+        # Verify Index.all() was called
+        mock_index.all.assert_called_once()
 
     async def test_list_models_with_pagination(
         self,
@@ -154,13 +144,11 @@ class TestFindingModelService:
         mock_index: MagicMock,
     ):
         """Test listing models with pagination."""
-        # Mock pagination results (page 2, 1 per page)
-        mock_result = MagicMock()
-        mock_result.fetchone.return_value = [3]  # Total count
-        mock_result.fetchall.return_value = [
-            ("OIDM.1002", "Acute Appendicitis", "acute_appendicitis"),  # Second item
-        ]
-        mock_index.conn.execute.return_value = mock_result
+        # Mock pagination results (page 2, 1 per page) - return second entry only
+        second_entry = type(
+            "IndexEntry", (), {"oifm_id": "OIFM.1002", "name": "Acute Appendicitis", "slug_name": "acute-appendicitis"}
+        )()
+        mock_index.all.return_value = ([second_entry], 3)
 
         # Test with page 2, 1 per page
         models, total = await service.list_models(page=2, per_page=1)
@@ -170,20 +158,18 @@ class TestFindingModelService:
         assert len(models) == 1
         assert models[0]["name"] == "Acute Appendicitis"
 
-        # Verify DuckDB was queried with LIMIT/OFFSET
-        assert mock_index.conn.execute.called
+        # Verify Index.all() was called with correct offset/limit
+        mock_index.all.assert_called_once_with(offset=1, limit=1)
 
     async def test_list_models_with_search(self, service: FindingModelService, mock_index: MagicMock):
         """Test listing models with search filter."""
-        # Setup: Mock DuckDB to return filtered results for search
-        mock_result = MagicMock()
-        mock_result.fetchone.return_value = [1]  # One match
-        mock_result.fetchall.return_value = [
-            ("OIDM.1001", "Abdominal Abscess", "abdominal_abscess"),
-        ]
-        mock_index.conn.execute.return_value = mock_result
+        # Setup: Mock Index.search_by_slug to return filtered results
+        abscess_entry = type(
+            "IndexEntry", (), {"oifm_id": "OIFM.1001", "name": "Abdominal Abscess", "slug_name": "abdominal-abscess"}
+        )()
+        mock_index.search_by_slug.return_value = ([abscess_entry], 1)
 
-        # Test with search (should query DuckDB with normalized search term)
+        # Test with search
         models, total = await service.list_models(search="abscess")
 
         # Assertions
@@ -191,31 +177,42 @@ class TestFindingModelService:
         assert total == 1
         assert models[0]["name"] == "Abdominal Abscess"
 
-        # Verify DuckDB was queried with search pattern
-        assert mock_index.conn.execute.called
+        # Verify Index.search_by_slug was called
+        mock_index.search_by_slug.assert_called_once_with("abscess", limit=20, offset=0)
 
-    async def test_get_model_by_slug_cached(
+    async def test_get_model_by_slug_success(
         self,
         service: FindingModelService,
-        mock_cache: MagicMock,
         mock_index: MagicMock,
-        sample_finding_model_full: MagicMock,
     ):
-        """Test getting model by slug with cache hit."""
+        """Test getting model by slug successfully."""
         # Setup
         slug = "abdominal-abscess"
-        index_entry = SimpleNamespace(filename="abdominal_abscess.fm.json", name="Abdominal Abscess")
+        index_entry = type(
+            "IndexEntry",
+            (),
+            {"oifm_id": "OIFM_TEST_000001", "name": "Abdominal Abscess", "slug_name": "abdominal-abscess"},
+        )()
         mock_index.get.return_value = index_entry
-        mock_cache.get_finding_model.return_value = sample_finding_model_full
 
-        # Test
-        model, entry = await service.get_model_by_slug(slug)
+        # Use MagicMock for FindingModelFull to avoid validation
+        finding_model_full = MagicMock(spec=FindingModelFull)
+        finding_model_full.oifm_id = "OIFM_TEST_000001"
+        finding_model_full.name = "Abdominal Abscess"
+        finding_model_full.description = "Test description"
+        mock_index.get_full.return_value = finding_model_full
+
+        # Test - now returns FindingModelFull directly, not tuple
+        model = await service.get_model_by_slug(slug)
 
         # Assertions
-        assert model == sample_finding_model_full
-        assert entry == index_entry
-        # Cache is called with the slug as-is (no normalization)
-        mock_cache.get_finding_model.assert_called_once_with(slug)
+        assert model == finding_model_full
+        assert model.name == "Abdominal Abscess"
+        assert model.oifm_id == "OIFM_TEST_000001"
+
+        # Verify calls
+        mock_index.get.assert_called_once_with(slug)
+        mock_index.get_full.assert_called_once_with("OIFM_TEST_000001")
 
     async def test_get_model_by_slug_not_found(self, service: FindingModelService, mock_index: MagicMock):
         """Test getting model by slug when not found."""
@@ -251,31 +248,6 @@ class TestFindingModelService:
 
         # Assertions
         assert result is None
-
-    async def test_get_finding_model_github_404(
-        self, service: FindingModelService, mock_cache: MagicMock, mock_index: MagicMock
-    ):
-        """Test getting model when GitHub returns 404."""
-        # Setup
-        slug = "test-model"
-        index_entry = SimpleNamespace(filename="test_model.fm.json", name="Test Model")
-        mock_index.get.return_value = index_entry
-        mock_cache.get_finding_model.return_value = None
-
-        # Mock httpx 404 response
-        mock_response = MagicMock()
-        mock_response.status_code = 404
-
-        with patch("app.services.finding_model_service.httpx.AsyncClient") as mock_client:
-            from httpx import HTTPStatusError
-
-            mock_client.return_value.__aenter__.return_value.get = AsyncMock(
-                side_effect=HTTPStatusError("Not found", request=MagicMock(), response=mock_response)
-            )
-
-            # Test
-            with pytest.raises(NotFoundError, match="Finding model file not found on GitHub"):
-                await service.get_model_by_slug(slug)
 
     @pytest.mark.asyncio
     async def test_get_comments_for_model_delegates(

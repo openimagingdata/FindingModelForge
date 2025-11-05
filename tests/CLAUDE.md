@@ -101,6 +101,20 @@ tests/
 │   └── test_*_playwright.py # Browser automation tests
 ```
 
+## Fixture Guidelines
+
+**Check `tests/conftest.py` first** - Don't duplicate existing fixtures.
+
+**Key fixtures available:**
+- `mock_finding_model` - Valid FindingModelFull from `tests/data/abdominal_abscess.fm.json`
+- `mock_github_user` - Sample GitHub user
+- `client` - TestClient with mocked dependencies
+
+**For new fixtures:**
+- Reusable fixtures → `conftest.py`
+- Test-specific fixtures → in the test file
+- Load sample data from `tests/data/*.json` files (don't construct manually)
+
 ## Testing Patterns
 
 ### 1. Unit Test Pattern

@@ -2,17 +2,13 @@
 
 from typing import Any, cast
 
-import httpx
 from findingmodel import FindingModelFull
-from findingmodel.common import normalize_name
 from findingmodel.index import IndexEntry
 
-from app.cache import RedisCache
-from app.config import logger, settings
+from app.config import logger
 from app.database import CommentRepo, UserRepo
 from app.models import Comment, CommentThread, User
 from app.services.comment_service import CommentService
-from app.utils.slug import slugify
 
 from . import NotFoundError
 
@@ -23,7 +19,6 @@ class FindingModelService:
     def __init__(
         self,
         index: Any,
-        cache: RedisCache,
         comment_repo: CommentRepo,
         user_repo: UserRepo,
         comment_service: CommentService,
@@ -32,13 +27,11 @@ class FindingModelService:
 
         Args:
             index: FindingModel DuckDB index for queries
-            cache: Redis cache for GitHub JSON caching
             comment_repo: Repository for comment operations
             user_repo: Repository for user operations
             comment_service: Service for comment business logic
         """
         self.index = index
-        self.cache = cache
         self.comment_repo = comment_repo
         self.user_repo = user_repo
         self.comment_service = comment_service
@@ -49,111 +42,62 @@ class FindingModelService:
         """Get paginated list of finding models with optional search.
 
         Args:
-            search: Optional search query (searches slug_name)
-            page: Page number (1-based)
-            per_page: Items per page
+            search: Optional search term for filtering by slug
+            page: Page number (1-indexed)
+            per_page: Results per page
 
         Returns:
-            Tuple of (models_list, total_count)
+            Tuple of (list of model dicts, total count)
         """
-        # Ensure DuckDB connection is established
-        conn = self.index._ensure_connection()
         offset = (page - 1) * per_page
 
-        # Normalize search term the same way Index does (if searching)
-        if search and search.strip():
-            normalized_search = normalize_name(search.strip())
-            # Query with LIKE on slug_name for efficient searching
-            models_query = """
-                SELECT oifm_id, name, slug_name
-                FROM finding_models
-                WHERE slug_name LIKE ?
-                ORDER BY LOWER(name)
-                LIMIT ? OFFSET ?
-            """
-            count_query = """
-                SELECT COUNT(*) as count
-                FROM finding_models
-                WHERE slug_name LIKE ?
-            """
-            search_pattern = f"%{normalized_search}%"
-
-            # Get total count
-            total_count = conn.execute(count_query, [search_pattern]).fetchone()[0]
-
-            # Get paginated results
-            rows = conn.execute(models_query, [search_pattern, per_page, offset]).fetchall()
+        if search:
+            # Server-side pagination with tuple return (models, total)
+            paginated_models, total_count = await self.index.search_by_slug(search, limit=per_page, offset=offset)
         else:
-            # No search - just paginate all models
-            models_query = """
-                SELECT oifm_id, name, slug_name
-                FROM finding_models
-                ORDER BY LOWER(name)
-                LIMIT ? OFFSET ?
-            """
-            count_query = "SELECT COUNT(*) as count FROM finding_models"
+            # List all models with pagination, tuple return (models, total)
+            paginated_models, total_count = await self.index.all(offset=offset, limit=per_page)
 
-            # Get total count
-            total_count = conn.execute(count_query).fetchone()[0]
+        # Convert IndexEntry objects to dicts for template rendering
+        model_list = []
+        for entry in paginated_models:
+            # Use slug_name field directly (verified in Phase 1.5)
+            model_list.append(
+                {
+                    "id": entry.oifm_id,
+                    "name": entry.name,
+                    "slug": entry.slug_name,
+                }
+            )
 
-            # Get paginated results
-            rows = conn.execute(models_query, [per_page, offset]).fetchall()
+        return model_list, total_count
 
-        # Convert to list of dicts
-        finding_models = [{"id": row[0], "name": row[1], "slug": slugify(row[1])} for row in rows]
-
-        return finding_models, total_count
-
-    async def get_model_by_slug(self, slug: str) -> tuple[FindingModelFull, IndexEntry]:
+    async def get_model_by_slug(self, slug: str) -> FindingModelFull:
         """Get finding model by slug.
 
         Args:
             slug: URL slug for the finding model
 
         Returns:
-            Tuple of (finding_model, index_entry)
+            Complete FindingModelFull object
 
         Raises:
             NotFoundError: If model not found
         """
-        # Get from Index (handles normalization internally)
+        # Step 1: Get IndexEntry to obtain oifm_id
         index_entry = await self.index.get(slug)
         if not index_entry:
-            raise NotFoundError(f"Finding model '{slug}' not found in index")
+            raise NotFoundError(f"Finding model '{slug}' not found")
 
-        # Check cache for GitHub JSON
-        finding_model = await self.cache.get_finding_model(slug)
-        if finding_model:
-            logger.debug(f"Cache hit for finding model '{slug}'")
-            return finding_model, index_entry
+        # Step 2: Use oifm_id with get_full() (requires OIFM ID, not slug)
+        try:
+            finding_model = cast(FindingModelFull, await self.index.get_full(index_entry.oifm_id))
+        except KeyError as e:
+            # get_full() raises KeyError if model not found (doesn't return None)
+            raise NotFoundError(f"Full model data for '{slug}' not found") from e
 
-        logger.debug(f"Cache miss for finding model '{slug}', fetching from GitHub")
-
-        # Extract filename from index entry
-        if not index_entry.filename:
-            raise NotFoundError("Finding model entry missing filename")
-
-        # Fetch from GitHub
-        github_url = f"{settings.finding_models_github_base_url}{index_entry.filename}"
-        logger.debug(f"Fetching finding model from: {github_url}")
-
-        async with httpx.AsyncClient() as client:
-            try:
-                response = await client.get(github_url)
-                response.raise_for_status()
-                finding_model = FindingModelFull.model_validate_json(response.text)
-            except httpx.HTTPStatusError as e:
-                if e.response.status_code == 404:
-                    raise NotFoundError(f"Finding model file not found on GitHub: {github_url}") from e
-                raise
-            except Exception as e:
-                raise NotFoundError(f"Failed to fetch finding model from GitHub: {str(e)}") from e
-
-        # Cache the GitHub JSON
-        await self.cache.set_finding_model(slug, finding_model)
-        logger.debug(f"Cached finding model '{slug}' for future requests")
-
-        return finding_model, index_entry
+        logger.debug(f"Retrieved finding model '{slug}' from Index")
+        return finding_model
 
     async def search_in_index(self, slug: str) -> IndexEntry | None:
         """Search for a model in the index by slug.

@@ -114,7 +114,8 @@ def test_finding_model_comment_rate_limit_returns_429(
     # Mock the finding model service
     mock_service = MagicMock()
     # Need to mock get_model_by_slug which is called first in the router
-    mock_service.get_model_by_slug = AsyncMock(return_value=(mock_finding_model, {}))
+    # NEW: get_model_by_slug returns FindingModelFull directly, not tuple
+    mock_service.get_model_by_slug = AsyncMock(return_value=mock_finding_model)
     # Mock add_comment_to_model to raise rate limit exception (from CommentService)
     mock_service.add_comment_to_model = AsyncMock(
         side_effect=HTTPException(status_code=429, detail="Rate limit exceeded. Maximum 3 comments per minute.")
@@ -192,7 +193,8 @@ def test_old_comments_not_counted_in_rate_limit(
     # Mock successful comment addition and get updated thread
     mock_service = MagicMock()
     # Need to mock get_model_by_slug which is called first in the router
-    mock_service.get_model_by_slug = AsyncMock(return_value=(mock_finding_model, {}))
+    # NEW: get_model_by_slug returns FindingModelFull directly, not tuple
+    mock_service.get_model_by_slug = AsyncMock(return_value=mock_finding_model)
 
     mock_comment = Comment(
         id="new_comment",
@@ -249,7 +251,8 @@ def test_comment_index_updated_after_successful_comment(
     # Mock successful comment addition and thread retrieval
     mock_service = MagicMock()
     # Need to mock get_model_by_slug which is called first in the router
-    mock_service.get_model_by_slug = AsyncMock(return_value=(mock_finding_model, {}))
+    # NEW: get_model_by_slug returns FindingModelFull directly, not tuple
+    mock_service.get_model_by_slug = AsyncMock(return_value=mock_finding_model)
 
     mock_comment = Comment(
         id="new_comment",
@@ -304,7 +307,8 @@ def test_finding_model_rate_limit_with_parent_comment(
     """Test rate limiting works for reply comments too."""
     mock_service = MagicMock()
     # Need to mock get_model_by_slug which is called first in the router
-    mock_service.get_model_by_slug = AsyncMock(return_value=(mock_finding_model, {}))
+    # NEW: get_model_by_slug returns FindingModelFull directly, not tuple
+    mock_service.get_model_by_slug = AsyncMock(return_value=mock_finding_model)
     # Mock add_comment_to_model to raise rate limit exception (from CommentService)
     mock_service.add_comment_to_model = AsyncMock(
         side_effect=HTTPException(status_code=429, detail="Rate limit exceeded. Maximum 3 comments per minute.")
@@ -448,7 +452,8 @@ def test_rate_limit_boundary_condition(client: TestClient, mock_finding_model) -
 
     mock_service = MagicMock()
     # Need to mock get_model_by_slug which is called first in the router
-    mock_service.get_model_by_slug = AsyncMock(return_value=(mock_finding_model, {}))
+    # NEW: get_model_by_slug returns FindingModelFull directly, not tuple
+    mock_service.get_model_by_slug = AsyncMock(return_value=mock_finding_model)
     mock_service.add_comment_to_model = AsyncMock(
         side_effect=HTTPException(429, "Rate limit exceeded. Maximum 3 comments per minute.")
     )

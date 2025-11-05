@@ -9,7 +9,6 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from starlette.testclient import TestClient
 
-from app.cache import RedisCache
 from app.database import CommentRepo, Database, DraftRepo, UserRepo
 from app.dependencies import (
     CreationServiceDep,
@@ -32,14 +31,12 @@ class TestServiceDependencyInjection:
         """Test that get_finding_model_service creates a FindingModelService."""
         # Mock dependencies
         mock_index = MagicMock()
-        mock_cache = MagicMock(spec=RedisCache)
         mock_user_repo = MagicMock(spec=UserRepo)
 
         # Call the dependency function
         mock_comment_service = MagicMock(spec=CommentService)
         service = get_finding_model_service(
             mock_index,
-            mock_cache,
             MagicMock(spec=CommentRepo),
             mock_user_repo,
             mock_comment_service,
@@ -48,7 +45,6 @@ class TestServiceDependencyInjection:
         # Verify service is created correctly
         assert isinstance(service, FindingModelService)
         assert service.index is mock_index
-        assert service.cache is mock_cache
         assert service.user_repo is mock_user_repo
         assert service.comment_service is mock_comment_service
 
@@ -252,7 +248,6 @@ class TestCircularImportPrevention:
 
     def test_services_can_be_instantiated_independently(self):
         """Test that services can be created without FastAPI context."""
-        from app.cache import RedisCache
         from app.database import CommentRepo, Database, DraftRepo, UserRepo
         from app.services.comment_service import CommentService
         from app.services.creation_service import CreationService
@@ -261,7 +256,6 @@ class TestCircularImportPrevention:
 
         # Mock dependencies
         mock_index = MagicMock()
-        mock_cache = MagicMock(spec=RedisCache)
         mock_database = MagicMock(spec=Database)
         mock_draft_repo = MagicMock(spec=DraftRepo)
         mock_comment_repo = MagicMock(spec=CommentRepo)
@@ -273,10 +267,9 @@ class TestCircularImportPrevention:
             draft_repo=mock_draft_repo,
         )
 
-        # Should be able to create services directly
+        # Should be able to create services directly (no cache parameter)
         finding_service = FindingModelService(
             mock_index,
-            mock_cache,
             mock_comment_repo,
             mock_user_repo,
             comment_service,
