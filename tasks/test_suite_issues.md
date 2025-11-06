@@ -124,15 +124,58 @@ These issues mean:
 3. **Slow feedback**: Long timeouts hide performance issues
 4. **Production risk**: The submission workflow that real users depend on is not covered by automated tests
 
-### Recommendations
+### Implementation Progress
 
-1. ✅ **Fix the HTMX OOB error** (Issue 1 above) - COMPLETE
-2. **Remove conditional logic**: Tests should fail loudly when expected elements are missing
-3. **Reduce timeouts for mocked operations**: Use shorter timeouts (e.g., 5 seconds) for operations that use mock data
+1. ✅ **Fix the HTMX OOB error** (Issue 1 above) - COMPLETE (November 6, 2025)
+2. ✅ **Create HTMX-aware test utilities** - COMPLETE (November 6, 2025)
+   - Removed `wait_for_ai_completion_and_swap()` with 60-second timeout
+   - Added `wait_for_htmx_settled()`, `click_and_wait_for_htmx()`, `click_button_and_wait_for_element()`
+   - All use 5-second timeouts for mocked operations
+   - Fixed selector ambiguity issues (see below)
+3. **Remove conditional logic**: Tests should fail loudly when expected elements are missing
 4. **Complete the end-to-end test**: Update `test_complete_creation_workflow` to test "Make Public" action
 5. **Add explicit assertions**: Replace conditional checks with explicit assertions about what should exist on the page
 6. **Verify success message**: Assert that success alert appears and contains correct text
 7. **Verify no console errors**: Check that `htmx:oobErrorNoTarget` does not appear in console
+
+### Phase 2 Completion: HTMX-Aware Test Utilities (November 6, 2025)
+
+**Status**: ✅ COMPLETE
+
+**Changes Made:**
+
+1. **`tests/ui/utils.py`** - Replaced anti-pattern with Playwright best practices:
+   - Removed `wait_for_ai_completion_and_swap()` (60-second timeout, complex JavaScript)
+   - Added `wait_for_htmx_settled(page, timeout=5000)` - Wait for HTMX operations
+   - Added `click_and_wait_for_htmx(page, selector, timeout=5000)` - Click + wait pattern
+   - Added `click_button_and_wait_for_element(page, button_text, expected_selector, timeout=5000)` - Assert-based waiting
+
+2. **`tests/ui/test_creation_workflow.py`** - Updated 10 usages to new patterns:
+   - Lines 61-65, 83-85, 145-147, 167-169, 190-192, 211-213, 236-238, 265-267, 293, 314
+   - All now use Playwright's built-in `expect().to_be_visible()` with proper HTMX settling
+
+3. **`tests/CLAUDE.md`** - Updated documentation with new patterns
+
+**Selector Ambiguity Bug Discovered:**
+
+Phase 2 changes exposed a hidden bug: The selector `button:has-text('Make Public')` matches **TWO buttons**:
+1. Trigger button (opens confirmation modal) - `data-modal-target` attribute
+2. Confirmation button (inside hidden modal) - `hx-post` attribute
+
+**Why this was hidden:** The old `wait_for_ai_completion_and_swap()` used custom JavaScript that inadvertently only checked visible buttons. Playwright's strict mode correctly enforces one-element-per-selector.
+
+**Fix Applied:** Added `.first` to selectors at lines 293 and 314 to select the trigger button (first in DOM order).
+
+**Verification:**
+- ✅ All 8 creation workflow tests pass (76 seconds)
+- ✅ `test_create_to_edit_cycle` specifically tested and passing
+- ✅ No HTMX errors in console
+- ✅ Mocked operations complete instantly (< 1 second)
+
+**Files Modified:**
+- `tests/ui/utils.py` - New HTMX-aware helpers
+- `tests/ui/test_creation_workflow.py` - 12 selector fixes (10 pattern updates + 2 `.first` additions)
+- `tests/CLAUDE.md` - Updated documentation
 
 ### Test Files Requiring Attention
 - `tests/ui/test_creation_workflow.py` - Main workflow tests with incomplete coverage

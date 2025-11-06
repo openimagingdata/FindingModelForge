@@ -27,7 +27,8 @@ The finding model creation workflow operates via **HTMX content swaps ONLY**. Th
 ```python
 # ✅ CORRECT: HTMX-aware testing
 await page.locator("button:has-text('Check for Similar')").click()
-await wait_for_ai_completion_and_swap(page, "Check", "#step-container textarea")
+await wait_for_htmx_settled(page)
+await expect(page.locator("#main-content textarea")).to_be_visible(timeout=5000)
 
 # ❌ WRONG: Browser navigation testing (will fail!)
 await page.locator("button:has-text('Check for Similar')").click()
@@ -36,9 +37,11 @@ await page.wait_for_url("**/drafts/**")  # This will NEVER happen!
 
 ### Essential HTMX Test Functions:
 
-- `wait_for_htmx_swap(page, expected_selector)` - Wait for HTMX content swap
-- `wait_for_ai_completion_and_swap(page, button_prefix, expected_element)` - AI operations
-- `wait_for_htmx_to_settle(page)` - Basic HTMX completion
+- `wait_for_htmx_settled(page, timeout=5000)` - Wait for HTMX to complete all swaps (uses Playwright best practices)
+- `wait_for_htmx_swap(page, expected_selector)` - Wait for HTMX content swap and expected element
+- `wait_for_htmx_to_settle(page)` - Legacy function, prefer `wait_for_htmx_settled()`
+- `click_and_wait_for_htmx(page, selector)` - Click element and wait for HTMX to settle
+- `click_button_and_wait_for_element(page, button_text, expected_selector)` - Click button and assert element appears
 
 ### Common Testing Mistakes:
 

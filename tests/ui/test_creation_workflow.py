@@ -20,7 +20,7 @@ from .utils import (
     navigate_to_create_page,
     seed_draft,
     verify_no_console_errors,
-    wait_for_ai_completion_and_swap,
+    wait_for_htmx_settled,
     wait_for_htmx_swap,
     wait_for_htmx_to_settle,
 )
@@ -58,27 +58,19 @@ class TestBasicCreationFlow:
         await name_input.fill(finding_name)
 
         # Step 1 → Step 2: Generate Description (AI operation)
-        generate_btn = page.locator("#main-content button:has-text('Generate Description')")
-        await generate_btn.click()
+        await page.locator("#main-content button:has-text('Generate Description')").click()
 
-        # Wait for AI to complete and HTMX to swap step 2 content
-        await wait_for_ai_completion_and_swap(
-            page,
-            "Generat",  # Button text prefix to detect completion
-            "textarea#description",  # Step 2 has description textarea (will be prefixed with #main-content)
-        )
+        # Wait for HTMX to swap step 2 content
+        await wait_for_htmx_settled(page)
+        await expect(page.locator("#main-content textarea#description")).to_be_visible(timeout=5000)
 
         # Step 2 → Step 3/Draft: Check for Similar (AI operation)
-        similar_btn = page.locator("#main-content button:has-text('Check for Similar')")
-        await similar_btn.click()
+        await page.locator("#main-content button:has-text('Check for Similar')").click()
 
-        # Wait for AI to complete and HTMX to swap new content
-        print("DEBUG: Waiting for AI similarity check to complete...")
-        await wait_for_ai_completion_and_swap(
-            page,
-            "Check",  # Button text prefix
-            "textarea[name='attributes_markdown']",  # Draft edit form has attributes textarea (will be prefixed)
-        )
+        # Wait for HTMX to swap to draft edit form
+        print("DEBUG: Waiting for similarity check and swap to draft edit form...")
+        await wait_for_htmx_settled(page)
+        await expect(page.locator("#main-content textarea[name='attributes_markdown']")).to_be_visible(timeout=5000)
 
         # Our mock always returns no similar models, so we expect draft edit form
         print("DEBUG: Should now have draft edit form in #main-content")
@@ -93,12 +85,9 @@ class TestBasicCreationFlow:
         print("DEBUG: Clicking 'Update & Preview' to generate model")
         await update_btn.click()
 
-        # Wait for AI model generation and HTMX swap to view mode (with success alert)
-        await wait_for_ai_completion_and_swap(
-            page,
-            "Updat",  # Button text prefix for "Updating..."
-            "#success-alert",  # Success alert appears after update (will be prefixed)
-        )
+        # Wait for HTMX swap to view mode (with success alert)
+        await wait_for_htmx_settled(page)
+        await expect(page.locator("#main-content #success-alert")).to_be_visible(timeout=5000)
 
         # Check for mode toggle buttons (should appear after generation)
         mode_toggle_buttons = page.locator("#draft-mode-toggle-header button")
@@ -181,7 +170,8 @@ class TestSynonymManagement:
         # Step 1: Enter name and generate description
         await page.locator("input[name='name']").fill(finding_name)
         await page.locator("button:has-text('Generate Description')").click()
-        await wait_for_ai_completion_and_swap(page, "Generat", "textarea#description")
+        await wait_for_htmx_settled(page)
+        await expect(page.locator("textarea#description")).to_be_visible(timeout=5000)
 
         # Step 2: Add synonyms
         await expect(page.locator("input[placeholder*='synonym']")).to_be_visible(timeout=5000)
@@ -200,9 +190,9 @@ class TestSynonymManagement:
             await expect(page.locator(badge_selector).first).to_be_visible()
 
         # Continue to similarity check (this will redirect to draft edit form)
-        continue_btn = page.locator("button:has-text('Check for Similar')")
-        await continue_btn.click()
-        await wait_for_ai_completion_and_swap(page, "Check", "textarea[name='attributes_markdown']")
+        await page.locator("button:has-text('Check for Similar')").click()
+        await wait_for_htmx_settled(page)
+        await expect(page.locator("textarea[name='attributes_markdown']")).to_be_visible(timeout=5000)
 
         # Should now be on draft edit form with attributes textarea
         await expect(page.locator("textarea[name='attributes_markdown']")).to_be_visible(timeout=10000)
@@ -241,7 +231,8 @@ class TestSynonymManagement:
         # Get to step 2
         await page.locator("input[name='name']").fill(finding_name)
         await page.locator("button:has-text('Generate Description')").click()
-        await wait_for_ai_completion_and_swap(page, "Generat", "textarea#description")
+        await wait_for_htmx_settled(page)
+        await expect(page.locator("textarea#description")).to_be_visible(timeout=5000)
 
         # Add a synonym
         test_synonym = "removable-synonym"
@@ -285,18 +276,21 @@ class TestCreateToEditWorkflow:
         await page.locator("#main-content button:has-text('Generate Description')").click()
 
         # Wait for HTMX swap to step 2
-        await wait_for_ai_completion_and_swap(page, "Generat", "textarea#description")
+        await wait_for_htmx_settled(page)
+        await expect(page.locator("textarea#description")).to_be_visible(timeout=5000)
 
         # Continue to similarity check (triggers HTMX swap to draft content)
         await page.locator("#main-content button:has-text('Check for Similar')").click()
-        await wait_for_ai_completion_and_swap(page, "Check", "textarea[name='attributes_markdown']")
+        await wait_for_htmx_settled(page)
+        await expect(page.locator("textarea[name='attributes_markdown']")).to_be_visible(timeout=5000)
 
         # Should now have draft edit form content in #main-content
         await expect(page.locator("#main-content textarea[name='attributes_markdown']")).to_be_visible()
 
         # Generate model (HTMX swap to preview mode with Make Public button)
         await page.locator("#main-content button:has-text('Update & Preview')").click()
-        await wait_for_ai_completion_and_swap(page, "Updat", "button:has-text('Make Public')")
+        await wait_for_htmx_settled(page)
+        await expect(page.locator("button:has-text('Make Public')").first).to_be_visible(timeout=5000)
 
         # Should now have draft preview content in #main-content with mode toggle buttons
         edit_mode_btn = page.locator("button#edit-mode-btn")
@@ -316,7 +310,8 @@ class TestCreateToEditWorkflow:
 
             # Generate again (HTMX swap back to preview)
             await page.locator("#main-content button:has-text('Update & Preview')").click()
-            await wait_for_ai_completion_and_swap(page, "Updat", "button:has-text('Make Public')")
+            await wait_for_htmx_settled(page)
+            await expect(page.locator("button:has-text('Make Public')").first).to_be_visible(timeout=5000)
 
             # Verify we're back in view/preview mode (Make Public button should be visible)
             await expect(page.locator("#main-content button:has-text('Make Public')").first).to_be_visible()

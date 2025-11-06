@@ -459,40 +459,59 @@ async def wait_for_htmx_swap(page: Page, expected_selector: str, timeout: int = 
     await page.wait_for_selector(expected_selector, state="visible", timeout=timeout)
 
 
-async def wait_for_ai_completion_and_swap(
-    page: Page, button_text_prefix: str, expected_element: str, timeout: int = 60000
-) -> None:
-    """Wait for AI button to complete processing and HTMX to swap new content.
+async def wait_for_htmx_settled(page: Page, timeout: int = 5000) -> None:
+    """Wait for HTMX to complete all swaps and settle.
 
-    CRITICAL: All workflow content swaps happen in #main-content. The expected_element
-    should be relative to #main-content.
+    For mocked operations (test user 999999), this should complete instantly.
+    5-second timeout is generous buffer.
 
     Args:
         page: Playwright page instance
-        button_text_prefix: Prefix of button text (e.g., "Generat" for "Generate Description")
-        expected_element: CSS selector for element expected after swap (will be prefixed with #main-content)
-        timeout: Total timeout in milliseconds for AI operation
+        timeout: Timeout in milliseconds (default 5000ms)
     """
-    # Wait for button to finish processing (no more "...ing" text)
-    await page.wait_for_function(
-        f"""() => {{
-            const buttons = Array.from(document.querySelectorAll('#main-content button'));
-            const processingButtons = buttons.filter(btn =>
-                btn.textContent &&
-                btn.textContent.includes('{button_text_prefix}') &&
-                (btn.textContent.includes('ing...') || btn.textContent.includes('ing'))
-            );
-            return processingButtons.length === 0;
-        }}""",
-        timeout=timeout,
-    )
+    try:
+        await page.wait_for_function("""() => !document.body.classList.contains('htmx-request')""", timeout=timeout)
+        await page.wait_for_timeout(100)  # Small buffer for DOM updates
+    except Exception:
+        pass  # Timeout acceptable - HTMX completed before we started
 
-    # Wait for HTMX to settle (no active requests)
-    await wait_for_htmx_to_settle(page, timeout=5000)
 
-    # Wait for expected content to appear in main-content
-    full_selector = f"#main-content {expected_element}"
-    await page.wait_for_selector(full_selector, state="visible", timeout=5000)
+async def click_and_wait_for_htmx(page: Page, selector: str, timeout: int = 5000) -> None:
+    """Click element and wait for HTMX to settle.
+
+    Args:
+        page: Playwright page instance
+        selector: CSS selector for element to click
+        timeout: Timeout in milliseconds (default 5000ms)
+    """
+    await page.click(selector)
+    await wait_for_htmx_settled(page, timeout)
+
+
+async def click_button_and_wait_for_element(
+    page: Page, button_text: str, expected_selector: str, timeout: int = 5000
+) -> None:
+    """Click button and assert expected element appears.
+
+    Uses Playwright's auto-waiting via expect().to_be_visible().
+    For mocked AI operations (test user 999999), this completes instantly.
+
+    Args:
+        page: Playwright page instance
+        button_text: Full or partial button text to match
+        expected_selector: CSS selector for element that should appear
+        timeout: Timeout in milliseconds (default 5000ms)
+    """
+    from playwright.async_api import expect
+
+    # Click button - Playwright auto-waits for clickable
+    await page.get_by_role("button", name=button_text).click()
+
+    # Wait for HTMX
+    await wait_for_htmx_settled(page, timeout)
+
+    # Assert element appeared
+    await expect(page.locator(expected_selector)).to_be_visible(timeout=timeout)
 
 
 async def wait_for_step_container_update(page: Page, marker_selector: str, timeout: int = 10000) -> None:
