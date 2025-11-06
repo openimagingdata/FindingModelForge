@@ -34,13 +34,16 @@ class TestBasicCreationFlow:
     async def test_complete_creation_workflow(
         self, authenticated_page_with_console: tuple[Page, list[str], list[str]]
     ) -> None:
-        """Test the complete creation workflow from step 1 to public draft.
+        """Test the complete creation workflow from step 1 to submission.
 
-        New streamlined workflow:
+        Complete workflow coverage:
         1. Step 1: Enter name, generate description
-        2. Step 2: Check similar -> REDIRECT to draft edit page
-        3. Draft Edit: Update & Preview -> Switch to view mode (draft status)
-        4. Draft View: Make Public -> Switch to public status with Submit Draft button
+        2. Step 2: Check similar -> draft edit page
+        3. Draft Edit: Update & Preview -> view mode (draft status)
+        4. Draft View: Make Public -> public status with success alert
+        5. Draft Public: Submit Draft -> submitted status (locked, no more edits)
+
+        This test verifies the HTMX-based submission workflow that was fixed in Phase 1.
         """
         page, errors, warnings = authenticated_page_with_console
 
@@ -89,10 +92,10 @@ class TestBasicCreationFlow:
         await wait_for_htmx_settled(page)
         await expect(page.locator("#main-content #success-alert")).to_be_visible(timeout=5000)
 
-        # Check for mode toggle buttons (should appear after generation)
+        # Verify mode toggle buttons appear after generation
         mode_toggle_buttons = page.locator("#draft-mode-toggle-header button")
-        if await mode_toggle_buttons.count() > 0:
-            print("DEBUG: Mode toggle buttons appeared after model generation")
+        await expect(mode_toggle_buttons).to_have_count(2, timeout=5000)
+        print("DEBUG: Mode toggle buttons appeared after model generation")
 
         # First, verify we have the draft in preview mode with "Make Public" button
         # Use more specific selector to target the trigger button (not the modal confirmation button)
@@ -130,9 +133,47 @@ class TestBasicCreationFlow:
         # Verify status has changed (should no longer show "Status: Draft")
         await expect(page.locator("text=Status: Draft")).to_have_count(0)
 
-        # Note: We're not testing the actual submission since it had HTMX errors in manual testing
-        # The workflow successfully creates the draft, makes it public, and shows it ready for submission
+        # Verify success message from "Make Public" action (added in Phase 1)
+        success_alert = page.locator("#success-alert")
+        await expect(success_alert).to_be_visible(timeout=5000)
+        await expect(success_alert).to_contain_text("Draft made public successfully!")
+        print("DEBUG: Success alert appeared after making public")
 
+        # Verify status changed to Public
+        await expect(page.locator("text=Status: Public")).to_be_visible(timeout=5000)
+        print("DEBUG: Status changed to Public")
+
+        # Test success alert dismissal
+        close_button = success_alert.locator('[data-dismiss-target="#success-alert"]')
+        await close_button.click()
+        await expect(success_alert).not_to_be_visible(timeout=5000)
+        print("DEBUG: Success alert dismissed")
+
+        # Now test the submission workflow
+        await submit_btn.click()
+        print("DEBUG: Clicking 'Submit Draft' button")
+
+        # Wait for submission modal
+        await wait_for_htmx_to_settle(page)
+        submit_modal = page.locator("[id^='submit-draft-modal-']")
+        await expect(submit_modal).to_be_visible(timeout=5000)
+        print("DEBUG: Submit modal appeared")
+
+        # Click confirmation in modal
+        modal_submit_btn = submit_modal.locator("button:has-text('Yes, submit')")
+        await expect(modal_submit_btn).to_be_visible(timeout=5000)
+        await modal_submit_btn.click()
+        print("DEBUG: Confirmed submission")
+
+        # Wait for HTMX swap after submission
+        await wait_for_htmx_settled(page)
+
+        # Verify status changed to "Submitted" and Submit button is gone
+        await expect(page.locator("text=Status: Submitted")).to_be_visible(timeout=5000)
+        await expect(page.locator("button:has-text('Submit Draft')")).to_have_count(0)
+        print("DEBUG: Draft successfully submitted - status changed to Submitted")
+
+        # Verify no HTMX console errors (critical - this was the original bug!)
         await verify_no_console_errors(errors, warnings)
 
     async def test_navigation_authentication_required(
@@ -293,28 +334,30 @@ class TestCreateToEditWorkflow:
         await expect(page.locator("button:has-text('Make Public')").first).to_be_visible(timeout=5000)
 
         # Should now have draft preview content in #main-content with mode toggle buttons
+        # Assert edit mode button exists after generation
         edit_mode_btn = page.locator("button#edit-mode-btn")
-        if await edit_mode_btn.count() > 0:
-            # Test edit → preview cycle using mode toggle buttons
-            await edit_mode_btn.click()
-            await wait_for_htmx_swap(page, "textarea#description")
+        await expect(edit_mode_btn).to_be_visible(timeout=5000)
 
-            # Should be back in edit form - verify description is pre-filled
-            desc_field = page.locator("#main-content textarea#description")
-            desc_value = await desc_field.input_value()
-            assert len(desc_value) > 0, "Description should be pre-filled"
+        # Test edit → preview cycle using mode toggle buttons
+        await edit_mode_btn.click()
+        await wait_for_htmx_swap(page, "textarea#description")
 
-            # Make a change to trigger regeneration
-            current_desc = await desc_field.input_value()
-            await desc_field.fill(current_desc + " Modified for testing.")
+        # Should be back in edit form - verify description is pre-filled
+        desc_field = page.locator("#main-content textarea#description")
+        desc_value = await desc_field.input_value()
+        assert len(desc_value) > 0, "Description should be pre-filled"
 
-            # Generate again (HTMX swap back to preview)
-            await page.locator("#main-content button:has-text('Update & Preview')").click()
-            await wait_for_htmx_settled(page)
-            await expect(page.locator("button:has-text('Make Public')").first).to_be_visible(timeout=5000)
+        # Make a change to trigger regeneration
+        current_desc = await desc_field.input_value()
+        await desc_field.fill(current_desc + " Modified for testing.")
 
-            # Verify we're back in view/preview mode (Make Public button should be visible)
-            await expect(page.locator("#main-content button:has-text('Make Public')").first).to_be_visible()
+        # Generate again (HTMX swap back to preview)
+        await page.locator("#main-content button:has-text('Update & Preview')").click()
+        await wait_for_htmx_settled(page)
+        await expect(page.locator("button:has-text('Make Public')").first).to_be_visible(timeout=5000)
+
+        # Verify we're back in view/preview mode (Make Public button should be visible)
+        await expect(page.locator("#main-content button:has-text('Make Public')").first).to_be_visible()
 
         await verify_no_console_errors(errors, warnings)
 

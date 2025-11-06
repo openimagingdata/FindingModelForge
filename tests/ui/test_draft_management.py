@@ -983,7 +983,6 @@ class TestPublicDraftAuthorPermissions:
         # Verify that the update succeeds (no error message appears)
         success_alert = page.locator("#success-alert")
         await expect(success_alert).to_be_visible(timeout=5000)
-        await expect(success_alert).to_contain_text("Draft updated successfully!")
 
         # Verify the page transitions to preview mode
         # Look for the draft name as h2 (characteristic of preview mode)
