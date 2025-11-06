@@ -88,8 +88,8 @@ async def make_draft_public(
         with contextlib.suppress(Exception):
             await cache.delete("public_drafts_list")
 
-        # Redirect to the draft page
-        return RedirectResponse(url=f"/drafts/{draft_id}", status_code=303)
+        # Redirect to the draft page with query parameter to indicate creation context and success message
+        return RedirectResponse(url=f"/drafts/{draft_id}?from=creation&success=made_public", status_code=303)
     except Exception as e:
         logger.error(f"Error making draft public {draft_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Error making draft public: {str(e)}") from e

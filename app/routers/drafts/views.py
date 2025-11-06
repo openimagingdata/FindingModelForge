@@ -150,15 +150,24 @@ async def unified_draft_page(
         if hx_request:
             # Check if this request comes from the public drafts table or creation workflow
             from_public = request.query_params.get("from") == "public"
-            current_url = request.headers.get("HX-Current-URL", "")
-            from_creation = "create-finding-model" in current_url
+            from_creation = request.query_params.get("from") == "creation"
+            show_success = request.query_params.get("success") == "made_public"
 
             # Render appropriate content based on mode
             if mode == "edit":
                 main_content = render_draft_edit_content(request, current_user, draft, templates)
             else:  # view mode
                 main_content = render_draft_preview_content(
-                    request, current_user, draft, finding_model, thread, author_name, can_edit, can_delete, templates
+                    request,
+                    current_user,
+                    draft,
+                    finding_model,
+                    thread,
+                    author_name,
+                    can_edit,
+                    can_delete,
+                    templates,
+                    show_success_message=show_success,
                 )
 
             # Determine if OOB swaps should be included

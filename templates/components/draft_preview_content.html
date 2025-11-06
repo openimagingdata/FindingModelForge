@@ -8,7 +8,11 @@
     </svg>
     <span class="sr-only">Success</span>
     <div class="ms-3 text-sm font-medium">
-        <strong>Draft updated successfully!</strong> Your finding model "{{ draft.name }}" has been updated and is now in preview mode.
+        {% if draft.status == 'public' %}
+            <strong>Draft made public successfully!</strong> Your finding model "{{ draft.name }}" is now visible to other users for review and comments.
+        {% else %}
+            <strong>Draft updated successfully!</strong> Your finding model "{{ draft.name }}" has been updated and is now in preview mode.
+        {% endif %}
     </div>
     <button type="button" class="ms-auto -mx-1.5 -my-1.5 bg-green-50 text-green-500 rounded-lg focus:ring-2 focus:ring-green-400 p-1.5 hover:bg-green-200 inline-flex items-center justify-center h-8 w-8 dark:bg-gray-800 dark:text-green-400 dark:hover:bg-gray-700" data-dismiss-target="#success-alert" aria-label="Close">
         <span class="sr-only">Close</span>
