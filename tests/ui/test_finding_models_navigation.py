@@ -8,6 +8,7 @@ from playwright.async_api import Page, expect
 from tests.ui.utils import (
     collect_console_errors,
     verify_no_console_errors,
+    wait_for_htmx_settled,
 )
 
 pytestmark = [pytest.mark.integration, pytest.mark.slow, pytest.mark.playwright]
@@ -16,7 +17,7 @@ pytestmark = [pytest.mark.integration, pytest.mark.slow, pytest.mark.playwright]
 async def navigate_to_finding_models_list(page: Page) -> None:
     """Navigate to the finding models list page."""
     await page.goto("http://localhost:8000/finding-models")
-    await page.wait_for_load_state("networkidle")
+    # Playwright's expect() auto-waits for elements - no need for networkidle
 
 
 class TestFindingModelsListPage:
@@ -69,7 +70,7 @@ class TestIndexCodeDisplay:
 
         # Navigate to abdominal abscess model (has index codes)
         await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
-        await page.wait_for_load_state("networkidle")
+        # Playwright's expect() auto-waits for elements - no need for networkidle
 
         # Check for "Codes" heading at model level
         codes_heading = page.locator("h4").filter(has_text="Codes").first
@@ -98,7 +99,7 @@ class TestIndexCodeDisplay:
         errors, warnings = collect_console_errors(page)
 
         await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
-        await page.wait_for_load_state("networkidle")
+        # Playwright's expect() auto-waits for elements - no need for networkidle
 
         # Should have multiple "Codes" headings (model + attributes)
         codes_headings = page.locator("h4").filter(has_text="Codes")
@@ -129,7 +130,7 @@ class TestIndexCodeDisplay:
         errors, warnings = collect_console_errors(page)
 
         await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
-        await page.wait_for_load_state("networkidle")
+        # Playwright's expect() auto-waits for elements - no need for networkidle
 
         # Check that value buttons have popover attributes
         value_buttons = page.locator('button[data-popover-trigger="hover"]')
@@ -172,7 +173,7 @@ class TestIndexCodeDisplay:
         errors, warnings = collect_console_errors(page)
 
         await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
-        await page.wait_for_load_state("networkidle")
+        # Playwright's expect() auto-waits for elements - no need for networkidle
 
         # Test different value buttons
         test_values = ["present", "indeterminate", "unchanged"]
@@ -210,7 +211,7 @@ class TestIndexCodeDisplay:
         errors, warnings = collect_console_errors(page)
 
         await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
-        await page.wait_for_load_state("networkidle")
+        # Playwright's expect() auto-waits for elements - no need for networkidle
 
         # Get the first badge and check internal structure
         first_badge = page.locator("span.bg-indigo-100, span.bg-indigo-900").first
@@ -243,7 +244,7 @@ class TestIndexCodeDisplay:
 
         # Navigate to finding models list (shouldn't have index code sections)
         await page.goto("http://localhost:8000/finding-models")
-        await page.wait_for_load_state("networkidle")
+        # Playwright's expect() auto-waits for elements - no need for networkidle
 
         # Should not have "Codes" headings on the listing page
         codes_headings = page.locator("h4").filter(has_text="Codes")
@@ -267,7 +268,7 @@ class TestIndexCodeDisplay:
         errors, warnings = collect_console_errors(page)
 
         await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
-        await page.wait_for_load_state("networkidle")
+        # Playwright's expect() auto-waits for elements - no need for networkidle
 
         # Check popover ARIA attributes
         value_button = page.get_by_role("button", name="absent")
@@ -481,7 +482,7 @@ class TestFindingModelsDetailNavigation:
 
         # Try to access a model directly (using common slug pattern)
         await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
-        await page.wait_for_load_state("networkidle")
+        # Playwright's expect() auto-waits for elements - no need for networkidle
 
         # Give some time for the model to load from GitHub
         await page.wait_for_timeout(1000)
@@ -502,10 +503,9 @@ class TestFindingModelsDetailNavigation:
             await expect(breadcrumb).to_contain_text("Finding Models")
             await expect(breadcrumb).to_contain_text("abdominal abscess")
 
-            # Should have model content
+            # Should have model content - MUST be visible
             model_heading = page.locator("h2:has-text('abdominal abscess')")
-            if await model_heading.count() > 0:
-                await expect(model_heading).to_be_visible()
+            await expect(model_heading).to_be_visible(timeout=10000)  # Longer timeout for GitHub API
 
         await verify_no_console_errors(
             errors,
@@ -523,25 +523,25 @@ class TestFindingModelsDetailNavigation:
 
         # Start on detail page
         await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
-        await page.wait_for_load_state("networkidle")
+        # Playwright's expect() auto-waits for elements - no need for networkidle
 
         if page.url.endswith("/abdominal-abscess"):
-            # Click "Finding Models" breadcrumb link
+            # Click "Finding Models" breadcrumb link - MUST exist
             breadcrumb_link = page.locator("nav[aria-label='Breadcrumb'] a").filter(has_text="Finding Models")
-            if await breadcrumb_link.count() > 0:
-                await breadcrumb_link.click()
-                await page.wait_for_timeout(500)  # HTMX navigation
+            await expect(breadcrumb_link).to_be_visible(timeout=5000)
+            await breadcrumb_link.click()
+            await wait_for_htmx_settled(page)
 
-                # Should navigate back to list
-                assert "/finding-models" in page.url
-                assert "/abdominal-abscess" not in page.url
+            # Should navigate back to list
+            assert "/finding-models" in page.url
+            assert "/abdominal-abscess" not in page.url
 
-                # Title should revert
-                await expect(page).to_have_title("Finding Models - Finding Model Forge")
+            # Title should revert
+            await expect(page).to_have_title("Finding Models - Finding Model Forge")
 
-                # Should show list content
-                table = page.locator("table").first
-                await expect(table).to_be_visible()
+            # Should show list content
+            table = page.locator("table").first
+            await expect(table).to_be_visible()
 
         await verify_no_console_errors(
             errors,
@@ -558,15 +558,24 @@ class TestFindingModelsDetailNavigation:
         errors, warnings = collect_console_errors(page)
 
         await page.goto("http://localhost:8000/finding-models/non-existent-model-slug")
-        await page.wait_for_load_state("networkidle")
+        # Playwright's expect() auto-waits for elements - no need for networkidle
 
-        # Should show 404 or error message
-        # Implementation details depend on how 404s are handled
+        # Should show 404 handling - verify it doesn't show broken page
+        # Current implementation: stays on /non-existent-model-slug but shows list view
         if page.url.endswith("/non-existent-model-slug"):
-            # If page loads, might show error message
-            error_message = page.locator("text=/not found/i, text=/404/i").first
-            if await error_message.is_visible():
-                await expect(error_message).to_be_visible()
+            # Server renders list view as fallback - MUST show list table
+            table = page.locator("table").first
+            await expect(table).to_be_visible(timeout=5000)
+
+            # Should show "Finding Models" heading (list view)
+            heading = page.locator("h1:has-text('Finding Models')")
+            await expect(heading).to_be_visible()
+
+            # Note: error_message is set in context but not currently displayed in template
+            # This is tracked as a UI improvement opportunity
+        else:
+            # Redirected away from non-existent slug - verify we're somewhere safe
+            assert "/finding-models" in page.url or "/404" in page.url or page.url == "/"
 
         await verify_no_console_errors(
             errors,
@@ -574,7 +583,8 @@ class TestFindingModelsDetailNavigation:
             allowed_patterns=[
                 "Failed to load resource",
                 "favicon.ico",
-                "404",  # Expected error
+                "404",  # Expected error for this test
+                "not found",  # Expected error in logs
             ],
         )
 
@@ -681,7 +691,7 @@ class TestFindingModelsHistoryNavigation:
 
         # Start at homepage
         await page.goto("http://localhost:8000/")
-        await page.wait_for_load_state("networkidle")
+        # Playwright's expect() auto-waits for elements - no need for networkidle
         initial_title = await page.title()
 
         # Navigate to finding models
@@ -813,7 +823,7 @@ class TestFindingModelsDynamicFeatures:
         errors, warnings = collect_console_errors(page)
 
         await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
-        await page.wait_for_load_state("networkidle")
+        # Playwright's expect() auto-waits for elements - no need for networkidle
         await page.wait_for_timeout(1000)  # Wait for model to load
 
         # Check if we're on detail page or redirected to list

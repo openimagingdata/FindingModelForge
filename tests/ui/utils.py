@@ -27,40 +27,40 @@ async def authenticate_user(page: Page) -> None:
 
 
 async def generate_valid_generated_json(name: str) -> str:
-    """Create a valid FindingModel JSON string using the findingmodel library.
+    """Create a valid FindingModel JSON string using real test data.
+
+    Uses the abdominal_abscess.fm.json template and customizes it with the provided name.
+    This avoids calling the AI API which was making tests extremely slow (10-30s per call).
 
     Args:
         name: The finding model name
 
     Returns:
-        Valid JSON string for a FindingModel
+        Valid JSON string for a FindingModel based on real test data
     """
-    from findingmodel import FindingInfo
-    from findingmodel.tools import (
-        add_ids_to_model,
-        add_standard_codes_to_model,
-        create_model_from_markdown,
-    )
+    import json
+    from pathlib import Path
 
-    description = f"A test finding model for {name}."
-    attributes_md = f"""
-### presence
+    # Load real test data
+    test_data_path = Path(__file__).parent.parent / "data" / "abdominal_abscess.fm.json"
+    with open(test_data_path) as f:
+        template = json.load(f)
 
-Presence of {name}
+    # Customize with the test name
+    template["name"] = name
+    template["description"] = f"A test finding model for {name}."
+    template["synonyms"] = ["test", "ui-test"]
 
-- absent: Not visible
-- present: Visible
-- indeterminate: Cannot be determined
-"""
+    # Update attribute descriptions to reference the custom name
+    for attr in template.get("attributes", []):
+        if "description" in attr:
+            # Replace "abdominal abscess" with the custom name in descriptions
+            attr["description"] = attr["description"].replace("abdominal abscess", name)
+        for value in attr.get("values", []):
+            if "description" in value:
+                value["description"] = value["description"].replace("Abdominal abscess", name.capitalize())
 
-    md = f"# {name}\\n\\n## Description\\n{description}\\n\\n{attributes_md}\\n"
-    info = FindingInfo(name=name, description=description, synonyms=["test"])  # type: ignore[call-arg]
-
-    fm = await create_model_from_markdown(info, markdown_text=md)
-    # Add IDs and standard codes to satisfy display logic
-    fm = add_ids_to_model(fm, source="OIDM")
-    add_standard_codes_to_model(fm)
-    return fm.model_dump_json(exclude_none=True)
+    return json.dumps(template, indent=2)
 
 
 async def seed_draft(
@@ -428,7 +428,8 @@ async def navigate_to_profile_page(page: Page) -> None:
         page: Playwright page instance
     """
     await page.goto("http://localhost:8000/profile")
-    await page.wait_for_load_state("networkidle")
+    # Don't wait for networkidle - it adds 500ms+ of unnecessary waiting
+    # Playwright's auto-waiting will handle element visibility
 
 
 async def wait_for_htmx_to_settle(page: Page, timeout: int = 5000) -> None:

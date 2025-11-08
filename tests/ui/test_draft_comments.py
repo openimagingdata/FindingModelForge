@@ -51,11 +51,13 @@ class TestDraftComments:
 
         # 2. Navigate to draft page
         await page.goto(f"http://localhost:8000/drafts/{draft_id}")
-        await page.wait_for_load_state("networkidle")
+        # Playwright auto-waits for elements in expect() - no networkidle needed
 
         # 3. Verify comment section is visible (comment section ID: comment-thread-draft-{draft_id})
         comment_section = page.locator(f"#comment-thread-draft-{draft_id}")
         await expect(comment_section).to_be_visible(timeout=5000)
+        # Wait for HTMX to fully initialize the comment form
+        await wait_for_htmx_to_settle(page)
 
         # 4. Add a comment with unique timestamp
         comment_timestamp = str(int(time.time()))
@@ -102,7 +104,7 @@ class TestDraftComments:
 
         # 2. Navigate to draft page
         await page.goto(f"http://localhost:8000/drafts/{draft_id}")
-        await page.wait_for_load_state("networkidle")
+        # Playwright auto-waits for elements in expect() - no networkidle needed
 
         # 3. Should redirect to edit mode or not show comments
         comment_section = page.locator(f"#comment-thread-draft-{draft_id}")
@@ -137,7 +139,7 @@ class TestDraftComments:
 
         # 2. Add a comment with unique identifier
         await page.goto(f"http://localhost:8000/drafts/{draft_id}")
-        await page.wait_for_load_state("networkidle")
+        # Playwright auto-waits for elements in expect() - no networkidle needed
 
         comment_timestamp = str(int(time.time()))
         test_comment = f"Test persistence comment {comment_timestamp}"
@@ -156,11 +158,11 @@ class TestDraftComments:
 
         # 3. Navigate away to home page
         await page.goto("http://localhost:8000/")
-        await page.wait_for_load_state("networkidle")
+        # Playwright auto-waits for elements in expect() - no networkidle needed
 
         # 4. Navigate back to draft
         await page.goto(f"http://localhost:8000/drafts/{draft_id}")
-        await page.wait_for_load_state("networkidle")
+        # Playwright auto-waits for elements in expect() - no networkidle needed
 
         # 5. Verify the comment is still visible
         persisted_comment = page.locator(f"text={test_comment}")
@@ -198,7 +200,7 @@ class TestDraftComments:
 
         # 3. Navigate to draft page
         await page.goto(f"http://localhost:8000/drafts/{draft_id}")
-        await page.wait_for_load_state("networkidle")
+        # Playwright auto-waits for elements in expect() - no networkidle needed
 
         # 4. Wait for comment section to load
         comment_section = page.locator(f"#comment-thread-draft-{draft_id}")
@@ -284,7 +286,7 @@ class TestDraftComments:
 
         # 2. Navigate to draft and add own comment
         await page.goto(f"http://localhost:8000/drafts/{draft_id}")
-        await page.wait_for_load_state("networkidle")
+        # Playwright auto-waits for elements in expect() - no networkidle needed
 
         comment_timestamp = str(int(time.time()))
         test_comment = f"Own draft comment {comment_timestamp} - no report button expected"
@@ -344,7 +346,7 @@ class TestDraftComments:
 
         # 3. Navigate to draft page
         await page.goto(f"http://localhost:8000/drafts/{draft_id}")
-        await page.wait_for_load_state("networkidle")
+        # Playwright auto-waits for elements in expect() - no networkidle needed
 
         # 4. Wait for comment section to load
         comment_section = page.locator(f"#comment-thread-draft-{draft_id}")
@@ -463,7 +465,7 @@ class TestDraftComments:
         # 2. Navigate as anonymous user (new page context without auth)
         # This simulates what would happen for anonymous users
         await page.goto(f"http://localhost:8000/drafts/{draft_id}")
-        await page.wait_for_load_state("networkidle")
+        # Playwright auto-waits for elements in expect() - no networkidle needed
 
         # If the draft is accessible to anonymous users and has comments,
         # there should be no report buttons visible

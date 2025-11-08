@@ -81,7 +81,6 @@ class TestDraftCards:
         # Click View on submitted card
         submitted_card = page.locator(f".draft-card:has-text('{submitted_name}')")
         await submitted_card.locator("a[title='View'], button[title='View']").first.click()
-        await page.wait_for_load_state("networkidle")
 
         # Should show JSON accordion and IDs for submitted drafts
         await expect(page.locator("#finding-model-json")).to_be_visible(timeout=5000)
@@ -109,16 +108,14 @@ class TestDraftCards:
         await navigate_to_profile_page(page)
         await expect(page.locator("#drafts-grid")).to_be_visible(timeout=5000)
 
-        # Check if View button is present (depends on has_generated)
+        # View button MUST be visible for drafts with generated_json
         draft_card = page.locator(f".draft-card:has-text('{draft_name}')")
-        view_button_count = await draft_card.locator("a[title='View'], button[title='View']").count()
+        view_button = draft_card.locator("a[title='View'], button[title='View']")
+        await expect(view_button).to_be_visible(timeout=5000)
+        await view_button.first.click()
 
-        if view_button_count > 0:
-            await draft_card.locator("a[title='View'], button[title='View']").first.click()
-            await page.wait_for_load_state("networkidle")
-
-            # JSON accordion should be absent for drafts (regardless of generated_json)
-            await expect(page.locator("#finding-model-json")).to_have_count(0)
+        # JSON accordion should be absent for drafts (regardless of generated_json)
+        await expect(page.locator("#finding-model-json")).to_have_count(0)
 
         await verify_no_console_errors(errors, warnings)
 
@@ -137,7 +134,6 @@ class TestDraftCards:
         # Click Edit on draft card
         draft_card = page.locator(f".draft-card:has-text('{draft_name}')")
         await draft_card.locator("a[title='Edit'], button[title='Edit']").first.click()
-        await page.wait_for_load_state("networkidle")
 
         # Should be on unified draft edit page
         await expect(page.locator("h1:has-text('Edit Finding Model Draft')")).to_be_visible(timeout=5000)
@@ -258,7 +254,6 @@ class TestProfileNavigation:
         # Navigate to edit
         draft_card = page.locator(f".draft-card:has-text('{draft_name}')")
         await draft_card.locator("a[title='Edit'], button[title='Edit']").first.click()
-        await page.wait_for_load_state("networkidle")
 
         # Verify we're on edit page
         await expect(page.locator("h1:has-text('Edit Finding Model Draft')")).to_be_visible(timeout=5000)

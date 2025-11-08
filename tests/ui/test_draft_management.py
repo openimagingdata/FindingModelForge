@@ -196,68 +196,10 @@ class TestFormValidation:
 class TestModelReuse:
     """Test model reuse vs regeneration logic."""
 
-    async def test_model_reuse_when_no_changes(
-        self, authenticated_page_with_console: tuple[Page, list[str], list[str]]
-    ) -> None:
-        """Test that model is reused when no changes are made."""
-        page, errors, warnings = authenticated_page_with_console
-
-        draft_name = "UI Test Model Reuse"
-        gen_json = await generate_valid_generated_json(draft_name)
-        draft_id = await seed_draft(
-            user_id=TEST_USER_ID,
-            name=draft_name,
-            generated_json=gen_json,
-            description="Stable description for reuse test.",
-            synonyms=["stable"],
-            attributes_markdown="### presence\\n- absent: Not visible\\n- present: Visible\\n",
-        )
-
-        await page.goto(f"http://localhost:8000/drafts/{draft_id}?mode=edit")
-
-        # Set up response listener to capture x-model-reused header
-        reuse_header: dict[str, str] = {}
-
-        def on_response(response) -> None:  # type: ignore[no-untyped-def]
-            try:
-                if "/update-and-redirect" in response.url and response.request.method == "POST":
-                    val = response.headers.get("x-model-reused")
-                    if val is not None:
-                        reuse_header["x-model-reused"] = val
-            except Exception:
-                pass
-
-        page.on("response", on_response)  # type: ignore[arg-type]
-
-        # Force the button to be enabled by making a minimal change then reverting
-        desc_field = page.locator("textarea#description")
-        current_desc = await desc_field.input_value()
-        await desc_field.fill(current_desc + " temp")
-        await desc_field.fill(current_desc)  # Revert to original
-
-        # Now try to submit - this should trigger reuse since content is unchanged
-        button = page.locator("button:has-text('Update & Preview')")
-
-        # The button might still be disabled due to Alpine.js validation
-        # Let's force enable it by making a tiny change that won't affect reuse logic
-        await desc_field.fill(current_desc + " ")  # Add just a space
-        await desc_field.fill(current_desc)  # Remove the space
-
-        if await button.is_enabled():
-            await button.click()
-            await wait_for_htmx_swap(page, "#success-alert")
-
-            # Should see success message
-            await expect(page.locator("#success-alert")).to_be_visible(timeout=5000)
-
-            # Check that model was reused
-            # Note: The actual reuse logic may be complex, so we'll accept both outcomes
-            # The important thing is that we can test the header
-            if "x-model-reused" in reuse_header:
-                # If we got the header, verify it's either "1" (reused) or "0" (regenerated)
-                assert reuse_header["x-model-reused"] in ["0", "1"]
-
-        await verify_no_console_errors(errors, warnings)
+    # Note: Testing "model reuse when no changes" is not possible via UI tests because
+    # the Alpine.js validation correctly prevents form submission when there are no changes.
+    # This is correct application behavior - users should not be able to submit unchanged forms.
+    # The model reuse logic itself should be tested via backend unit tests.
 
     async def test_model_regeneration_when_changed(
         self, authenticated_page_with_console: tuple[Page, list[str], list[str]]
@@ -1055,7 +997,6 @@ class TestPublicDraftsMenuVerification:
 
         # Navigate to any page to check the navigation menu
         await page.goto("http://localhost:8000/drafts")
-        await page.wait_for_load_state("networkidle")
 
         # Check that navigation menu shows "Drafts" as the link text (not "Public Drafts")
         drafts_nav_link = page.locator("nav a:has-text('Drafts')").first
@@ -1080,7 +1021,6 @@ class TestPublicDraftsMenuVerification:
         page, errors, warnings = authenticated_page_with_console
 
         await page.goto("http://localhost:8000/drafts")
-        await page.wait_for_load_state("networkidle")
 
         # Check page title
         await expect(page).to_have_title("Public Drafts - Finding Model Forge")
