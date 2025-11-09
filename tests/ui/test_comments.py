@@ -31,6 +31,12 @@ class TestAuthenticatedComments:
         """Test empty state shows encouraging message for authenticated users."""
         page, errors, warnings = authenticated_page_with_console
 
+        # Clean up any existing comments first to guarantee empty state
+        client = AsyncIOMotorClient(settings.mongodb_uri)
+        db = client[settings.mongodb_db]
+        await db["comment_threads"].delete_many({"reference_id": "OIFM_GMTS_004244"})
+        client.close()
+
         # Navigate to a finding model without comments
         await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
         # Playwright auto-waits for elements - no need for networkidle
@@ -39,15 +45,14 @@ class TestAuthenticatedComments:
         comment_section = page.locator('[id^="comment-thread-finding_model-"]')
         await expect(comment_section).to_be_visible(timeout=5000)
 
-        # Check for empty state message for authenticated users
+        # MUST see empty state message for authenticated users
         empty_state = page.locator("text=Be the first to share your thoughts!")
-        if await empty_state.count() > 0:
-            await expect(empty_state).to_be_visible()
+        await expect(empty_state).to_be_visible(timeout=5000)
 
-            # Verify comment form is visible for authenticated users
-            comment_textarea = page.locator('textarea[name="content"]')
-            await expect(comment_textarea).to_be_visible()
-            await expect(comment_textarea).to_have_attribute("placeholder", "Add a comment...")
+        # Verify comment form is visible for authenticated users
+        comment_textarea = page.locator('textarea[name="content"]')
+        await expect(comment_textarea).to_be_visible()
+        await expect(comment_textarea).to_have_attribute("placeholder", "Add a comment...")
 
         await verify_no_console_errors(errors, warnings)
 
@@ -219,8 +224,20 @@ class TestAuthenticatedComments:
         await reply_form.fill(test_reply)
         await wait_for_htmx_to_settle(page)
 
-        # Submit button should be enabled after typing (this is what matters)
+        # Submit button should be enabled after typing
         await expect(reply_submit).not_to_be_disabled()
+
+        # SUBMIT the reply and verify it appears
+        await reply_submit.click()
+        await wait_for_htmx_to_settle(page)
+
+        # Verify the reply appears in the thread (scope to comment section to avoid matching textarea)
+        comment_section = page.locator("#comment-thread-finding_model-abdominal-abscess")
+        posted_reply = comment_section.locator("article div.mt-3.ml-6").filter(has_text=test_reply).first
+        await expect(posted_reply).to_be_visible(timeout=10000)
+
+        # Verify reply is nested (should be in a ml-6 class container for indentation)
+        await expect(posted_reply.locator("p")).to_contain_text(test_reply)
 
         await verify_no_console_errors(errors, warnings)
 
@@ -627,6 +644,15 @@ class TestAnonymousUsers:
         """Test anonymous users can view comments but cannot interact."""
         page, errors, warnings = page_with_console_tracking
 
+        # Seed a comment to guarantee existence for anonymous viewing
+        await seed_comment(
+            reference_type="finding_model",
+            reference_id="OIFM_GMTS_004244",  # Use OIFM ID for abdominal-abscess
+            user_id=111111,
+            user_name="test-anon-viewer",
+            content="Test comment for anonymous viewing",
+        )
+
         # Navigate without authentication
         await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
         # Playwright auto-waits for elements - no need for networkidle
@@ -635,10 +661,9 @@ class TestAnonymousUsers:
         comment_section = page.locator('[id^="comment-thread-finding_model-"]')
         await expect(comment_section).to_be_visible(timeout=5000)
 
-        # Should see existing comment content
-        existing_comment = page.locator("text=Test comment")
-        if await existing_comment.count() > 0:
-            await expect(existing_comment.first).to_be_visible()
+        # MUST see the seeded comment content
+        existing_comment = page.locator("text=Test comment for anonymous viewing")
+        await expect(existing_comment).to_be_visible(timeout=5000)
 
         # Should NOT see Reply buttons (only shown to authenticated users)
         reply_buttons = page.locator("button:has-text('Reply')")
@@ -760,33 +785,36 @@ class TestCommentDisplay:
         await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
         # Playwright auto-waits for elements - no need for networkidle
 
+        # WAIT for seeded comment to appear FIRST (required by task)
+        await expect(page.locator("text=Testing comment structure display")).to_be_visible(timeout=5000)
+
         # Verify comment header
         comment_header = page.locator("h3:has-text('Comments')")
         await expect(comment_header).to_be_visible(timeout=5000)
 
-        # Verify comment count badge if comments exist
+        # Verify comment count badge
         comment_count = page.locator("text=/\\d+ comments?/")
-        if await comment_count.count() > 0:
-            await expect(comment_count).to_be_visible()
+        await expect(comment_count).to_be_visible()
 
-        # Check individual comment structure if comments exist
+        # Check individual comment structure (NO conditionals - direct assertions)
         first_comment = page.locator("article").first
-        if await first_comment.count() > 0:
-            # Should have user avatar (either img or initials div)
-            avatar = first_comment.locator("img, div:has(> span)")
-            await expect(avatar.first).to_be_visible()
+        await expect(first_comment).to_be_visible()
 
-            # Should have username - look for any username span
-            username = first_comment.locator("span.font-medium.text-sm").first
-            await expect(username).to_be_visible()
+        # Should have user avatar (either img or initials div)
+        avatar = first_comment.locator("img, div:has(> span)")
+        await expect(avatar.first).to_be_visible()
 
-            # Should have timestamp (format: "Mon DD" for any month)
-            timestamp = first_comment.locator("text=/[A-Z][a-z]{2} \\d{1,2}/")
-            await expect(timestamp.first).to_be_visible()
+        # Should have username - look for any username span
+        username = first_comment.locator("span.font-medium.text-sm").first
+        await expect(username).to_be_visible()
 
-            # Should have Reply button for authenticated users
-            reply_button = first_comment.locator("button:has-text('Reply')")
-            await expect(reply_button.first).to_be_visible()
+        # Should have timestamp (format: "Mon DD" for any month)
+        timestamp = first_comment.locator("text=/[A-Z][a-z]{2} \\d{1,2}/")
+        await expect(timestamp.first).to_be_visible()
+
+        # Should have Reply button for authenticated users
+        reply_button = first_comment.locator("button:has-text('Reply')")
+        await expect(reply_button.first).to_be_visible()
 
         await verify_no_console_errors(errors, warnings)
 
@@ -824,15 +852,23 @@ class TestCommentDisplay:
         await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
         # Playwright auto-waits for elements - no need for networkidle
 
-        # Look for replies (they should be visually nested/indented)
-        replies_section = page.locator('[class*="ml-6"]')  # Reply sections have left margin
-        if await replies_section.count() > 0:
-            # Replies should have smaller avatars and be nested
-            reply_avatar = replies_section.locator("img, div").first
-            await expect(reply_avatar).to_be_visible()
+        # WAIT for both seeded comments to appear FIRST (required by task)
+        await expect(page.locator("text=Parent comment for reply display test")).to_be_visible(timeout=5000)
+        await expect(page.locator("text=This is a nested reply for display test")).to_be_visible(timeout=5000)
 
-            # Should have reply content and metadata
-            reply_content = replies_section.locator("p").first
-            await expect(reply_content).to_be_visible()
+        # Look for replies (they should be visually nested/indented)
+        # NO conditionals - direct assertions (required by task)
+        # Scope to parent article to avoid matching navigation elements
+        parent_article = page.locator("article").filter(has_text="Parent comment for reply display test")
+        replies_section = parent_article.locator("div.mt-3.ml-6.space-y-2")
+        await expect(replies_section).to_be_visible()
+
+        # Replies should have smaller avatars and be nested
+        reply_avatar = replies_section.locator("img, div").first
+        await expect(reply_avatar).to_be_visible()
+
+        # Should have reply content and metadata
+        reply_content = replies_section.locator("p").first
+        await expect(reply_content).to_be_visible()
 
         await verify_no_console_errors(errors, warnings)

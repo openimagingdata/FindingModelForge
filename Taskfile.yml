@@ -239,6 +239,15 @@ tasks:
       - echo "✅ Draft management tests passed!"
     silent: true
 
+  test-ui-comments:
+    desc: "Run only comment system UI tests"
+    cmds:
+      - echo "💬 Running comment system tests..."
+      - echo "💡 Make sure the development server is running on localhost:8000"
+      - uv run pytest tests/ui/test_comments.py -v --no-cov
+      - echo "✅ Comment tests passed!"
+    silent: true
+
   # Legacy commands for backward compatibility
   test-playwright:
     desc: "Run all UI tests (alias for test-ui)"

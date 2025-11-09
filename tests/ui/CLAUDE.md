@@ -155,7 +155,7 @@ else:
     assert "/finding-models" in page.url
 ```
 
-**Impact:** Fixed 5 Schrödinger's Tests that were passing without testing, preventing silent failures.
+**Impact:** Fixed 10 Schrödinger's Tests that were passing without testing, preventing silent failures (5 from Sprint 1, 5 from Sprint 2).
 
 ### ❌ 2. Arbitrary Timeouts and networkidle Waits
 
@@ -282,6 +282,12 @@ else:
 - ✅ Fixed 5 Schrödinger's Tests → prevented silent failures
 - ✅ Deleted 1 impossible test → eliminated server errors
 - ✅ Overall: UI test suite 5+ min → 2.5 min
+
+**Sprint 2 Results:**
+- ✅ Fixed 5 additional Schrödinger's Tests in test_comments.py
+- ✅ Completed 3 incomplete workflows (reply submission, thread structure, nested replies)
+- ✅ Established database setup pattern: seed/cleanup → navigate → wait for content → test WITHOUT conditionals
+- ✅ All 17/17 comment tests passing with proper selector specificity
 
 **See also:** [tests/CLAUDE.md](../CLAUDE.md) for general testing philosophy and cross-cutting patterns.
 

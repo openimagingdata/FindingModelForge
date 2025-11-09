@@ -2,11 +2,11 @@
 
 ## UI Test Suite Performance and Quality Improvements (November 2025)
 
-### Status: 🟢 In Progress (Sprints 0, 1, 4 complete; Sprints 2-3, 5 pending)
+### Status: 🟢 In Progress (Sprints 0, 1, 2, 4 complete; Sprints 3, 5 pending)
 
 **Project**: Systematic improvement of UI test suite addressing performance, anti-patterns, and test quality.
 
-**Completed Work (Sprints 0, 1, 4):**
+**Completed Work (Sprints 0, 1, 2, 4):**
 
 #### Sprint 0: Performance Cleanup
 - Removed 41 `networkidle` waits from UI tests
@@ -18,6 +18,14 @@
 - Fixed fragile assertions relying on AI-generated content
 - Ensured all tests have proper assertions that fail when expectations not met
 
+#### Sprint 2: Workflow Gaps (November 9, 2025)
+- Fixed 5 Schrödinger's Tests total (2 original + 3 from deep code review)
+- Fixed 3 incomplete workflows that only tested setup, not actual functionality
+- Added database cleanup/seeding to guarantee test conditions
+- Removed ALL conditional logic from assertions
+- Fixed selector specificity issues (strict mode violations)
+- All 17 comment tests passing with proper workflow verification
+
 #### Sprint 4: Documentation
 - Added comprehensive "Testing Philosophy: No Schrödinger's Tests" section to tests/CLAUDE.md
 - Created detailed "UI Testing Anti-Patterns to Avoid" section in tests/ui/CLAUDE.md
@@ -28,13 +36,14 @@
 - ✅ UI test suite: 5+ min → 2.5 min (2x speedup, 50% faster)
 - ✅ Profile tests: 75s → 9s (8x faster)
 - ✅ Draft management tests: 408s → 40s (10x faster)
-- ✅ Eliminated 5 Schrödinger's Tests (prevented silent failures)
+- ✅ Eliminated 10 Schrödinger's Tests (3 in Sprint 1, 2 in Sprint 0, 5 in Sprint 2)
 - ✅ All server errors eliminated or properly validated
 - ✅ Comprehensive anti-pattern documentation with cross-references
+- ✅ All tests now deterministic with proper database setup/cleanup
+- ✅ Pattern established: seed data → wait for appearance → test WITHOUT conditionals
 
-**Remaining Work (Sprints 2-3, 5):**
-- Sprint 2: Remove remaining networkidle waits from test_comments.py, test_draft_comments.py
-- Sprint 3: Verify all tests use proper waiting patterns
+**Remaining Work (Sprints 3, 5):**
+- Sprint 3: Verify all tests use proper waiting patterns (HTMX utility migration)
 - Sprint 5: Performance verification and final optimization
 
 **Documentation:**
