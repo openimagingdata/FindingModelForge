@@ -1,5 +1,49 @@
 # Current Development Status
 
+## UI Test Suite Performance and Quality Improvements (November 2025)
+
+### Status: 🟢 In Progress (Sprints 0, 1, 4 complete; Sprints 2-3, 5 pending)
+
+**Project**: Systematic improvement of UI test suite addressing performance, anti-patterns, and test quality.
+
+**Completed Work (Sprints 0, 1, 4):**
+
+#### Sprint 0: Performance Cleanup
+- Removed 41 `networkidle` waits from UI tests
+- Eliminated 18+ real AI API calls, replaced with test data templates
+- Created `generate_valid_generated_json()` utility for fast, deterministic test data
+
+#### Sprint 1: Anti-Pattern Fixes
+- Fixed 3 Schrödinger's Tests (tests with conditional logic that could pass without testing)
+- Fixed fragile assertions relying on AI-generated content
+- Ensured all tests have proper assertions that fail when expectations not met
+
+#### Sprint 4: Documentation
+- Added comprehensive "Testing Philosophy: No Schrödinger's Tests" section to tests/CLAUDE.md
+- Created detailed "UI Testing Anti-Patterns to Avoid" section in tests/ui/CLAUDE.md
+- Documented 5 major anti-patterns with real examples from codebase
+- Established proper domain separation: general patterns in tests/CLAUDE.md, UI-specific in tests/ui/CLAUDE.md
+
+**Key Results:**
+- ✅ UI test suite: 5+ min → 2.5 min (2x speedup, 50% faster)
+- ✅ Profile tests: 75s → 9s (8x faster)
+- ✅ Draft management tests: 408s → 40s (10x faster)
+- ✅ Eliminated 5 Schrödinger's Tests (prevented silent failures)
+- ✅ All server errors eliminated or properly validated
+- ✅ Comprehensive anti-pattern documentation with cross-references
+
+**Remaining Work (Sprints 2-3, 5):**
+- Sprint 2: Remove remaining networkidle waits from test_comments.py, test_draft_comments.py
+- Sprint 3: Verify all tests use proper waiting patterns
+- Sprint 5: Performance verification and final optimization
+
+**Documentation:**
+- Detailed plan: `tasks/ui_test_improvements.md`
+- General testing patterns: `tests/CLAUDE.md`
+- UI-specific patterns: `tests/ui/CLAUDE.md`
+
+---
+
 ## Contributor Repository Refactor (October 24, 2025)
 
 ### Status: ✅ COMPLETE - Production Ready

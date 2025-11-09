@@ -38,6 +38,20 @@ async def get_finding_model(
 - Use Jinja2 macros for reusable components
 - Alpine.js for reactivity, not custom event handling
 
+## Testing Patterns
+
+**Critical principle**: No Schrödinger's Tests - tests that can pass without testing anything
+
+**Key patterns**:
+- Playwright tests: Use HTMX-aware waiting, avoid networkidle waits
+- Mock at service/repository boundaries, not implementation details
+- Use test data templates, never real AI API calls
+- Validate expected errors explicitly
+
+**See comprehensive testing guides**:
+- `tests/CLAUDE.md` - General testing philosophy and patterns
+- `tests/ui/CLAUDE.md` - UI-specific anti-patterns and Playwright patterns
+
 ## Code Quality Tools
 
 - **Ruff**: Formatting and linting (replaces Black, isort, flake8)

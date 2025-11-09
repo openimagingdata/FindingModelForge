@@ -9,6 +9,36 @@ Tests are organized into **unit tests** and **integration tests**:
 - **Unit tests**: Fast, isolated tests with mocked dependencies (~0.4s for 71 tests)
 - **Integration tests**: Tests involving external systems (MongoDB, Redis, GitHub API) (~0.15s for 35 tests)
 
+## Testing Philosophy: No Schrödinger's Tests
+
+**Principle:** A test that CAN pass without testing anything is worse than no test.
+
+**Why?** It gives false confidence. You think you're testing something, but you're not.
+
+### Example of Schrödinger's Test:
+
+```python
+# ❌ WRONG - Test might not test anything
+def test_feature_works():
+    if feature_exists():  # Test passes whether feature exists or not!
+        assert feature_works()
+```
+
+### The Fix:
+
+Tests should fail if they can't perform their intended verification:
+
+```python
+# ✅ CORRECT - Test fails if it can't verify
+def test_feature_works():
+    assert feature_exists(), "Feature must exist to test it"
+    assert feature_works()
+```
+
+**Key Insight:** If your test has conditional logic, ask yourself: "Can this test pass without testing what it's supposed to test?" If yes, it's a Schrödinger's Test and needs fixing.
+
+**See also:** [`tests/ui/CLAUDE.md`](ui/CLAUDE.md) for UI-specific examples of this anti-pattern in Playwright tests.
+
 ## ⚠️ CRITICAL: HTMX Testing Patterns for Creation Workflow
 
 **ULTRA-IMPORTANT FOR CREATION WORKFLOW TESTS:**
@@ -561,6 +591,49 @@ def mock_session():
         current_step=1
     )
 ```
+
+## Common Test Anti-Patterns to Avoid
+
+### ❌ Missing Validation of Expected Errors
+
+If your test causes server errors, either fix the test so it doesn't cause errors, OR explicitly validate the error is expected:
+
+```python
+# ❌ WRONG - Test passes but server logs errors
+response = client.get("/finding-models/non-existent")
+assert response.status_code == 200  # Silently falls back to list view
+
+# ✅ CORRECT - Validate the 404 behavior
+response = client.get("/finding-models/non-existent")
+assert response.status_code == 404
+assert "not found" in response.text.lower()
+```
+
+### ❌ Mocking at the Wrong Layer
+
+Don't mock low-level implementation details when you should mock at service boundaries:
+
+```python
+# ❌ WRONG - Mocking database internals
+@patch('motor.motor_asyncio.AsyncIOMotorCollection.find_one')
+async def test_get_user(mock_find):
+    # Brittle, coupled to Motor's internals
+    pass
+
+# ✅ CORRECT - Mock at repository/service layer
+async def test_get_user(mock_database):
+    mock_database.users.find_one.return_value = test_user
+    # Tests business logic, not database driver
+    pass
+```
+
+### For UI-Specific Anti-Patterns
+
+See [`tests/ui/CLAUDE.md`](ui/CLAUDE.md) for comprehensive UI testing anti-patterns including:
+- Conditional logic in Playwright tests (Schrödinger's Tests)
+- Arbitrary timeouts and networkidle waits
+- Real AI API calls in tests
+- Testing impossible scenarios
 
 ## Testing Best Practices
 

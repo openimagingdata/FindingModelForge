@@ -1,5 +1,17 @@
 # UI Test Reliability Implementation Plan
 
+**Status**: 🔴 Not Started (superseded by performance/quality improvements in ui_test_improvements.md)
+**Last Updated**: November 9, 2025
+
+## Note on Related Work
+
+This plan addresses test **reliability and isolation** issues. A separate effort (documented in `ui_test_improvements.md`) has addressed test **performance and quality** issues:
+- ✅ Sprint 0: Removed 41 networkidle waits (2x speedup)
+- ✅ Sprint 1: Fixed 5 Schrödinger's Tests (anti-patterns)
+- ✅ Sprint 4: Comprehensive anti-pattern documentation in tests/CLAUDE.md and tests/ui/CLAUDE.md
+
+This reliability plan remains relevant for future work on test isolation and cleanup.
+
 ## Problem Statement
 
 Our UI tests (Playwright) are currently unreliable due to:
@@ -219,9 +231,13 @@ async def test_report_comment(authenticated_page, test_finding_models):
 
 ### Phase 4: Documentation and Verification (Priority: MEDIUM)
 
+**Status**: 🟡 Partially Complete (anti-pattern documentation done, setup documentation pending)
+
 #### 4.1 Add test setup documentation
 
-Create `/tests/ui/CLAUDE.md`:
+**UPDATE (November 2025)**: `/tests/ui/CLAUDE.md` has been created with comprehensive anti-pattern documentation as part of Sprint 4 (ui_test_improvements.md). Still needed: test setup and cleanup documentation from original plan below.
+
+Create additional setup documentation in `/tests/ui/CLAUDE.md`:
 
 ````markdown
 # UI Test Setup
@@ -311,13 +327,15 @@ async def test_cleanup_removes_all_test_data():
 
 ## Success Criteria
 
+**Current Status (November 2025):**
+- [x] Documentation partially complete (anti-patterns documented in Sprint 4)
 - [ ] All 17 UI tests pass consistently
 - [ ] Tests pass on first run with clean database
 - [ ] Tests pass on subsequent runs without manual cleanup
 - [ ] Tests handle missing finding models gracefully
 - [ ] No hardcoded OIFM IDs in test files
 - [ ] Cleanup verified to remove all test data
-- [ ] Documentation complete and accurate
+- [ ] Setup/cleanup documentation complete
 
 ## Risk Mitigation
 
