@@ -346,6 +346,10 @@ async def verify_model_display(page: Page, *, has_ids: bool = False, has_json: b
 
     # Check for model display elements (flexible for different page types)
     # Look for either creation completion or draft view headers
+    # ACCEPTABLE DEFENSIVE CHECK: This helper handles two legitimate page types by design:
+    # 1. Creation workflow completion page (shows "Your Finding Model is Ready!")
+    # 2. Draft preview page (shows draft name as header)
+    # This is NOT a Schrödinger's Test - both paths verify a header is visible
     model_ready_header = page.locator("h2:has-text('Your Finding Model is Ready!')")
     draft_view_header = page.locator("h1, h2").filter(has_text=re.compile(r"UI Test|Test|Finding Model"))
 
@@ -432,17 +436,6 @@ async def navigate_to_profile_page(page: Page) -> None:
     # Playwright's auto-waiting will handle element visibility
 
 
-async def wait_for_htmx_to_settle(page: Page, timeout: int = 5000) -> None:
-    """Wait for HTMX requests to complete and DOM to settle.
-
-    This replaces arbitrary wait_for_timeout() calls with proper HTMX detection.
-    """
-    # Wait for any active HTMX requests to complete
-    await page.wait_for_function("() => !document.body.classList.contains('htmx-request')", timeout=timeout)
-    # Additional small wait for DOM updates
-    await page.wait_for_timeout(100)
-
-
 async def wait_for_htmx_swap(page: Page, expected_selector: str, timeout: int = 10000) -> None:
     """Wait for HTMX swap to complete and expected content to appear.
 
@@ -454,7 +447,7 @@ async def wait_for_htmx_swap(page: Page, expected_selector: str, timeout: int = 
         timeout: Timeout in milliseconds
     """
     # Wait for HTMX to finish
-    await wait_for_htmx_to_settle(page, timeout=timeout)
+    await wait_for_htmx_settled(page, timeout=timeout)
 
     # Wait for expected content
     await page.wait_for_selector(expected_selector, state="visible", timeout=timeout)
@@ -559,7 +552,7 @@ async def wait_for_draft_redirect(page: Page, timeout: int = 15000) -> str | Non
     """
     try:
         # Wait for HTMX to finish processing
-        await wait_for_htmx_to_settle(page, timeout=timeout)
+        await wait_for_htmx_settled(page, timeout=timeout)
 
         # Check if we were redirected to a draft page
         current_url = page.url
@@ -589,7 +582,10 @@ async def wait_for_mode_switch(page: Page, expected_mode: str, timeout: int = 10
         await page.wait_for_selector("button:has-text('Update & Preview')", state="visible", timeout=timeout)
     else:  # view mode
         # Wait for model display elements to appear
-        # Could be either creation workflow completion or draft preview
+        # ACCEPTABLE DEFENSIVE CHECK: Handles two legitimate page types by design:
+        # 1. Creation workflow completion (has specific "Ready" message)
+        # 2. Draft preview (has h2 with draft name)
+        # Both paths wait for a visible element - not a Schrödinger's Test
         model_ready = page.locator("h2:has-text('Your Finding Model is Ready!')")
 
         if await model_ready.count() > 0:
@@ -615,7 +611,7 @@ async def wait_for_step_container_content(page: Page, expected_content_selector:
         timeout: Timeout in milliseconds
     """
     # First wait for HTMX to settle
-    await wait_for_htmx_to_settle(page, timeout=timeout)
+    await wait_for_htmx_settled(page, timeout=timeout)
 
     # Then wait for the specific content within main content container
     full_selector = f"#main-content {expected_content_selector}"

@@ -22,7 +22,6 @@ from .utils import (
     verify_no_console_errors,
     wait_for_htmx_settled,
     wait_for_htmx_swap,
-    wait_for_htmx_to_settle,
 )
 
 pytestmark = [pytest.mark.integration, pytest.mark.slow, pytest.mark.playwright]
@@ -113,7 +112,7 @@ class TestBasicCreationFlow:
         print("DEBUG: Clicking 'Make Public' button")
 
         # Wait for confirmation modal to appear (it appears as a div element at runtime)
-        await wait_for_htmx_to_settle(page)  # Wait for modal to fully render
+        await wait_for_htmx_settled(page)  # Wait for modal to fully render
         modal = page.locator("[id^='make-public-modal-']")
         await expect(modal).to_be_visible(timeout=5000)
         print("DEBUG: Modal appeared")
@@ -154,7 +153,7 @@ class TestBasicCreationFlow:
         print("DEBUG: Clicking 'Submit Draft' button")
 
         # Wait for submission modal
-        await wait_for_htmx_to_settle(page)
+        await wait_for_htmx_settled(page)
         submit_modal = page.locator("[id^='submit-draft-modal-']")
         await expect(submit_modal).to_be_visible(timeout=5000)
         print("DEBUG: Submit modal appeared")

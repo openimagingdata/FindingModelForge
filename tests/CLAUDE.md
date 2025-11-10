@@ -69,7 +69,6 @@ await page.wait_for_url("**/drafts/**")  # This will NEVER happen!
 
 - `wait_for_htmx_settled(page, timeout=5000)` - Wait for HTMX to complete all swaps (uses Playwright best practices)
 - `wait_for_htmx_swap(page, expected_selector)` - Wait for HTMX content swap and expected element
-- `wait_for_htmx_to_settle(page)` - Legacy function, prefer `wait_for_htmx_settled()`
 - `click_and_wait_for_htmx(page, selector)` - Click element and wait for HTMX to settle
 - `click_button_and_wait_for_element(page, button_text, expected_selector)` - Click button and assert element appears
 

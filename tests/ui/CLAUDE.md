@@ -101,7 +101,7 @@ PLAYWRIGHT_HEADLESS=false uv run pytest tests/ui/test_profile.py::TestDraftCards
 - `generate_valid_generated_json()`: Create valid FindingModel JSON **(CRITICAL - see note below)**
 - `verify_model_display()`: Verify model display elements
 - `verify_no_console_errors()`: Check for frontend errors
-- `wait_for_htmx_to_settle()`: Wait for HTMX operations to complete
+- `wait_for_htmx_settled()`: Wait for HTMX operations to complete (replaces old `wait_for_htmx_to_settle()`)
 
 **⚠️ IMPORTANT**: When creating test drafts that need to display finding models (especially for comment functionality),
 you MUST use `generate_valid_generated_json()` to create valid FindingModelFull JSON. Simple JSON objects will NOT pass

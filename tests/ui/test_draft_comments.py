@@ -19,7 +19,7 @@ from tests.ui.utils import (
     seed_comment,
     seed_draft,
     verify_no_console_errors,
-    wait_for_htmx_to_settle,
+    wait_for_htmx_settled,
 )
 
 pytestmark = [pytest.mark.integration, pytest.mark.slow, pytest.mark.playwright]
@@ -57,7 +57,7 @@ class TestDraftComments:
         comment_section = page.locator(f"#comment-thread-draft-{draft_id}")
         await expect(comment_section).to_be_visible(timeout=5000)
         # Wait for HTMX to fully initialize the comment form
-        await wait_for_htmx_to_settle(page)
+        await wait_for_htmx_settled(page)
 
         # 4. Add a comment with unique timestamp
         comment_timestamp = str(int(time.time()))
@@ -65,9 +65,9 @@ class TestDraftComments:
 
         comment_textarea = page.locator('textarea[name="content"]').last
         await comment_textarea.click()
-        await wait_for_htmx_to_settle(page)
+        await wait_for_htmx_settled(page)
         await comment_textarea.fill(test_comment)
-        await wait_for_htmx_to_settle(page)
+        await wait_for_htmx_settled(page)
 
         # Submit the comment
         post_button = page.locator("button:has-text('Post')").last
@@ -146,9 +146,9 @@ class TestDraftComments:
 
         comment_textarea = page.locator('textarea[name="content"]').last
         await comment_textarea.click()
-        await wait_for_htmx_to_settle(page)
+        await wait_for_htmx_settled(page)
         await comment_textarea.fill(test_comment)
-        await wait_for_htmx_to_settle(page)
+        await wait_for_htmx_settled(page)
 
         post_button = page.locator("button:has-text('Post')").last
         await post_button.click()
@@ -237,7 +237,7 @@ class TestDraftComments:
         await report_button.click()
 
         # 6. Wait for HTMX to settle and verify response
-        await wait_for_htmx_to_settle(page)
+        await wait_for_htmx_settled(page)
 
         # Verify HTMX request was made with success response
         if responses:
@@ -293,9 +293,9 @@ class TestDraftComments:
 
         comment_textarea = page.locator('textarea[name="content"]').last
         await comment_textarea.click()
-        await wait_for_htmx_to_settle(page)
+        await wait_for_htmx_settled(page)
         await comment_textarea.fill(test_comment)
-        await wait_for_htmx_to_settle(page)
+        await wait_for_htmx_settled(page)
 
         post_button = page.locator("button:has-text('Post')").last
         await expect(post_button).not_to_be_disabled()
@@ -383,7 +383,7 @@ class TestDraftComments:
 
         # 6. Report the comment first time (should succeed)
         await report_button.click()
-        await wait_for_htmx_to_settle(page)
+        await wait_for_htmx_settled(page)
 
         # Verify first report succeeded
         if responses and responses[0] == "200":
@@ -415,7 +415,7 @@ class TestDraftComments:
             responses.clear()
 
             await report_button.click()
-            await wait_for_htmx_to_settle(page)
+            await wait_for_htmx_settled(page)
 
             # Should get 400 error for already reported
             if responses:
