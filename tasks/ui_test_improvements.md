@@ -503,8 +503,8 @@ await expect(existing_comment).to_be_visible(timeout=5000)
 
 ## Sprint 3: MEDIUM Priority - HTMX Utility Migration 📝
 
-**Status:** 🔴 Pending
-**Estimated Time:** 2-3 hours
+**Status:** ✅ COMPLETE (November 9, 2025)
+**Actual Time:** 2 hours (including iteration cycle for selector fix)
 
 These tasks improve test reliability and maintainability by using purpose-built HTMX utilities.
 
@@ -602,12 +602,41 @@ await expect(page.locator(f"text={test_comment}")).to_be_visible(timeout=5000)
 
 ---
 
+### Sprint 3 Completion Summary
+
+**Implementation:**
+- **Task 3.1**: Replaced 20 arbitrary timeouts with `wait_for_htmx_settled()` in test_finding_models_navigation.py
+- **Task 3.2**: Added HTMX settling after 2 modal confirmations in test_profile.py
+- **Task 3.3**: Migrated 7 HTMX actions (6 to `click_and_wait_for_htmx()`, 1 direct click with settling)
+- **Additional**: Standardized 14 function calls (`wait_for_htmx_to_settle` → `wait_for_htmx_settled`)
+
+**Total Changes**: 43 improvements across 3 test files
+
+**Files Modified:**
+- `tests/ui/test_finding_models_navigation.py` - 20 timeout replacements
+- `tests/ui/test_profile.py` - 2 modal confirmation fixes
+- `tests/ui/test_comments.py` - 7 HTMX action migrations + 14 standardizations
+
+**Selector Fix (Iteration 1):**
+- Fixed selector ambiguity in `test_cannot_report_own_comment` (line 567)
+- Changed from `click_and_wait_for_htmx(page, "button:has-text('Post')")` to direct locator click
+- Reason: Avoid ambiguity when multiple buttons match string selector
+
+**Preserved:**
+- 7 intentional debounce timeout tests (600-700ms for search input debounce validation)
+
+**Impact:**
+- **85/85 UI tests passing** (100% pass rate)
+- **More reliable waiting** - HTMX-aware instead of arbitrary timeouts
+- **Consistent patterns** - Utility functions used throughout
+- **No performance regression** - Tests run in ~175 seconds (same as before)
+
 ### Sprint 3 Verification Steps
 
-- [ ] No arbitrary timeouts remain (grep verification)
-- [ ] Tests are not slower after changes
-- [ ] HTMX operations complete properly
-- [ ] Full UI test suite passes
+- ✅ No arbitrary timeouts remain (except intentional debounce tests)
+- ✅ Tests are not slower after changes
+- ✅ HTMX operations complete properly
+- ✅ Full UI test suite passes (85/85)
 
 ---
 

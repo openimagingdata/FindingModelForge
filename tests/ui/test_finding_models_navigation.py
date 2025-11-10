@@ -379,7 +379,7 @@ class TestIndexCodeDisplay:
             # If there's a Next button, try clicking it
             if await next_button.is_visible() and not await next_button.is_disabled():
                 await next_button.click()
-                await page.wait_for_timeout(500)  # Wait for HTMX
+                await wait_for_htmx_settled(page)
 
                 # URL should update with page parameter
                 assert "page=2" in page.url
@@ -449,7 +449,7 @@ class TestFindingModelsDetailNavigation:
 
                 # Click row for HTMX navigation
                 await table_row.click()
-                await page.wait_for_timeout(1000)
+                await wait_for_htmx_settled(page)
 
                 # Should be on detail page (URL change)
                 assert "/finding-models/" in page.url
@@ -484,8 +484,8 @@ class TestFindingModelsDetailNavigation:
         await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
         # Playwright's expect() auto-waits for elements - no need for networkidle
 
-        # Give some time for the model to load from GitHub
-        await page.wait_for_timeout(1000)
+        # Wait for HTMX to load model from GitHub
+        await wait_for_htmx_settled(page)
 
         # Check what page we ended up on
         current_url = page.url
@@ -604,14 +604,14 @@ class TestFindingModelsHistoryNavigation:
 
         if await table_row.is_visible():
             await table_row.click()
-            await page.wait_for_timeout(1000)
+            await wait_for_htmx_settled(page)
 
             # Should be on detail page
             assert "/finding-models/" in page.url
 
             # Use browser back button
             await page.go_back()
-            await page.wait_for_timeout(500)
+            await wait_for_htmx_settled(page)
 
             # Should be back on list page
             import re
@@ -656,15 +656,15 @@ class TestFindingModelsHistoryNavigation:
 
                 # Navigate to detail
                 await table_row.click()
-                await page.wait_for_timeout(1000)
+                await wait_for_htmx_settled(page)
 
                 # Go back
                 await page.go_back()
-                await page.wait_for_timeout(500)
+                await wait_for_htmx_settled(page)
 
                 # Go forward
                 await page.go_forward()
-                await page.wait_for_timeout(500)
+                await wait_for_htmx_settled(page)
 
                 # Should be back on detail page
                 assert "/finding-models/" in page.url
@@ -705,19 +705,19 @@ class TestFindingModelsHistoryNavigation:
             if await model_name_cell.is_visible():
                 model_name = await model_name_cell.inner_text()
                 await table_row.click()
-                await page.wait_for_timeout(1000)
+                await wait_for_htmx_settled(page)
 
                 # Detail page title
                 await expect(page).to_have_title(f"{model_name} - Finding Model Forge")
 
                 # Back to list
                 await page.go_back()
-                await page.wait_for_timeout(500)
+                await wait_for_htmx_settled(page)
                 await expect(page).to_have_title("Finding Models - Finding Model Forge")
 
                 # Back to home
                 await page.go_back()
-                await page.wait_for_timeout(500)
+                await wait_for_htmx_settled(page)
                 await expect(page).to_have_title(initial_title)
 
         await verify_no_console_errors(
@@ -747,7 +747,7 @@ class TestFindingModelsHistoryNavigation:
             if await model_name_cell.is_visible():
                 model_name = await model_name_cell.inner_text()
                 await table_row.click()
-                await page.wait_for_timeout(1000)
+                await wait_for_htmx_settled(page)
 
                 # Detail breadcrumb
                 await expect(breadcrumb).to_contain_text("Home")
@@ -756,7 +756,7 @@ class TestFindingModelsHistoryNavigation:
 
                 # Back to list
                 await page.go_back()
-                await page.wait_for_timeout(500)
+                await wait_for_htmx_settled(page)
 
                 # List breadcrumb restored
                 await expect(breadcrumb).to_contain_text("Home")
@@ -824,7 +824,7 @@ class TestFindingModelsDynamicFeatures:
 
         await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
         # Playwright's expect() auto-waits for elements - no need for networkidle
-        await page.wait_for_timeout(1000)  # Wait for model to load
+        await wait_for_htmx_settled(page)
 
         # Check if we're on detail page or redirected to list
         current_title = await page.title()
@@ -861,10 +861,10 @@ class TestFindingModelsDynamicFeatures:
         table_row = page.locator("table tbody tr").first
         if await table_row.is_visible():
             await table_row.click()
-            await page.wait_for_timeout(1000)
+            await wait_for_htmx_settled(page)
 
             await page.go_back()
-            await page.wait_for_timeout(500)
+            await wait_for_htmx_settled(page)
 
             # Search state should be preserved
             assert "search=abscess" in page.url
@@ -896,7 +896,7 @@ class TestFindingModelsDynamicFeatures:
         table_row = page.locator("table tbody tr").first
         if await table_row.is_visible():
             await table_row.click()
-            await page.wait_for_timeout(1000)
+            await wait_for_htmx_settled(page)
 
             # Should not have applyStyles errors
             style_errors = [err for err in errors if "applyStyles" in err]

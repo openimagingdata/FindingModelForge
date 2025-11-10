@@ -2,11 +2,11 @@
 
 ## UI Test Suite Performance and Quality Improvements (November 2025)
 
-### Status: 🟢 In Progress (Sprints 0, 1, 2, 4 complete; Sprints 3, 5 pending)
+### Status: 🟢 In Progress (Sprints 0, 1, 2, 3, 4 complete; Sprint 5 pending)
 
 **Project**: Systematic improvement of UI test suite addressing performance, anti-patterns, and test quality.
 
-**Completed Work (Sprints 0, 1, 2, 4):**
+**Completed Work (Sprints 0, 1, 2, 3, 4):**
 
 #### Sprint 0: Performance Cleanup
 - Removed 41 `networkidle` waits from UI tests
@@ -26,6 +26,15 @@
 - Fixed selector specificity issues (strict mode violations)
 - All 17 comment tests passing with proper workflow verification
 
+#### Sprint 3: HTMX Utility Migration (November 9, 2025)
+- Replaced 20 arbitrary timeouts with `wait_for_htmx_settled()` for HTMX-aware waiting
+- Added HTMX settling after 2 modal confirmations (prevents race conditions)
+- Migrated 7 HTMX actions to utility functions (6 to `click_and_wait_for_htmx()`, 1 direct click)
+- Standardized 14 function calls (`wait_for_htmx_to_settle` → `wait_for_htmx_settled`)
+- Fixed selector ambiguity in test_cannot_report_own_comment
+- Preserved 7 intentional debounce timeout tests (correct timing validation)
+- All 85/85 UI tests passing with consistent HTMX patterns
+
 #### Sprint 4: Documentation
 - Added comprehensive "Testing Philosophy: No Schrödinger's Tests" section to tests/CLAUDE.md
 - Created detailed "UI Testing Anti-Patterns to Avoid" section in tests/ui/CLAUDE.md
@@ -41,9 +50,10 @@
 - ✅ Comprehensive anti-pattern documentation with cross-references
 - ✅ All tests now deterministic with proper database setup/cleanup
 - ✅ Pattern established: seed data → wait for appearance → test WITHOUT conditionals
+- ✅ Consistent HTMX utility usage: 43 improvements across 3 files
+- ✅ 85/85 UI tests passing (100% pass rate)
 
-**Remaining Work (Sprints 3, 5):**
-- Sprint 3: Verify all tests use proper waiting patterns (HTMX utility migration)
+**Remaining Work (Sprint 5):**
 - Sprint 5: Performance verification and final optimization
 
 **Documentation:**

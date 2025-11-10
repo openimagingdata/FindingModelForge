@@ -17,7 +17,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from playwright.async_api import Page, expect
 
 from app.config import settings
-from tests.ui.utils import seed_comment, verify_no_console_errors, wait_for_htmx_to_settle
+from tests.ui.utils import click_and_wait_for_htmx, seed_comment, verify_no_console_errors, wait_for_htmx_settled
 
 pytestmark = [pytest.mark.integration, pytest.mark.slow, pytest.mark.playwright]
 
@@ -77,7 +77,7 @@ class TestAuthenticatedComments:
         await comment_textarea.click()
 
         # Wait for Alpine.js to update the interface
-        await wait_for_htmx_to_settle(page)
+        await wait_for_htmx_settled(page)
 
         # After focus/expansion, should show character counter and buttons
         char_counter = page.locator("text=/\\d+\\/2000 characters/").last
@@ -95,7 +95,7 @@ class TestAuthenticatedComments:
         await comment_textarea.fill(test_text)
 
         # Wait for Alpine.js to update character count
-        await wait_for_htmx_to_settle(page)
+        await wait_for_htmx_settled(page)
 
         # Verify character count updates (84 characters in our test text)
         await expect(char_counter).to_contain_text(f"{len(test_text)}/2000")
@@ -116,12 +116,12 @@ class TestAuthenticatedComments:
 
         comment_textarea = page.locator('textarea[name="content"]').last
         await comment_textarea.click()
-        await wait_for_htmx_to_settle(page)
+        await wait_for_htmx_settled(page)
 
         # Fill exactly 2000 characters (maxlength limit)
         long_text = "x" * 2000
         await comment_textarea.fill(long_text)
-        await wait_for_htmx_to_settle(page)  # Wait for Alpine.js
+        await wait_for_htmx_settled(page)  # Wait for Alpine.js
 
         # Check character counter shows at limit
         char_counter = page.locator("text=/\\d+\\/2000 characters/").last
@@ -152,17 +152,17 @@ class TestAuthenticatedComments:
         comment_textarea = page.locator('textarea[name="content"]').last
 
         await comment_textarea.click()
-        await wait_for_htmx_to_settle(page)
+        await wait_for_htmx_settled(page)
         await comment_textarea.fill(test_comment)
-        await wait_for_htmx_to_settle(page)
+        await wait_for_htmx_settled(page)
 
         # Submit the form
         post_button = page.locator("button:has-text('Post')").last
         await expect(post_button).not_to_be_disabled()
-        await post_button.click()
+        await click_and_wait_for_htmx(page, "button:has-text('Post')")
 
         # Wait for HTMX to complete the request and update the DOM
-        await page.wait_for_selector(f"text={test_comment}", timeout=10000)
+        await expect(page.locator(f"text={test_comment}").first).to_be_visible(timeout=5000)
 
         # Verify the comment appears in the thread (use .first to handle any duplicates)
         new_comment = page.locator(f"text={test_comment}")
@@ -198,7 +198,7 @@ class TestAuthenticatedComments:
 
         # Click Reply button to show the reply form
         await first_reply_button.click()
-        await wait_for_htmx_to_settle(page)  # Wait for Alpine.js x-show transition
+        await wait_for_htmx_settled(page)  # Wait for Alpine.js x-show transition
 
         # Verify reply form appears
         reply_form = page.locator('textarea[placeholder="Write your reply..."]').first
@@ -222,14 +222,13 @@ class TestAuthenticatedComments:
         # Type a reply
         test_reply = "This is a test reply to verify the reply functionality works."
         await reply_form.fill(test_reply)
-        await wait_for_htmx_to_settle(page)
+        await wait_for_htmx_settled(page)
 
         # Submit button should be enabled after typing
         await expect(reply_submit).not_to_be_disabled()
 
         # SUBMIT the reply and verify it appears
-        await reply_submit.click()
-        await wait_for_htmx_to_settle(page)
+        await click_and_wait_for_htmx(page, "button:has-text('Post Reply')")
 
         # Verify the reply appears in the thread (scope to comment section to avoid matching textarea)
         comment_section = page.locator("#comment-thread-finding_model-abdominal-abscess")
@@ -251,17 +250,17 @@ class TestAuthenticatedComments:
         # Click Reply button
         first_reply_button = page.locator("button:has-text('Reply')").first
         await first_reply_button.click()
-        await wait_for_htmx_to_settle(page)
+        await wait_for_htmx_settled(page)
 
         # Type some content
         reply_form = page.locator('textarea[placeholder="Write your reply..."]').first
         await reply_form.fill("Some reply content")
-        await wait_for_htmx_to_settle(page)
+        await wait_for_htmx_settled(page)
 
         # Click Cancel
         cancel_button = page.locator("button:has-text('Cancel')").first
         await cancel_button.click()
-        await wait_for_htmx_to_settle(page)
+        await wait_for_htmx_settled(page)
 
         # Form should be hidden
         await expect(reply_form).not_to_be_visible()
@@ -325,11 +324,10 @@ class TestAuthenticatedComments:
 
         page.on("response", track_response)
 
-        # 6. Click report button
-        await report_button.click()
+        # 6. Click report button and wait for HTMX
+        await click_and_wait_for_htmx(page, 'button[title="Report inappropriate content"]')
 
-        # 7. Wait for HTMX to settle and check response
-        await wait_for_htmx_to_settle(page)
+        # 7. Check response
 
         # Verify HTMX request was made with success response
         if responses:
@@ -398,7 +396,7 @@ class TestAuthenticatedComments:
 
         # 4. Click reply button and add a reply as test user
         await reply_button.click()
-        await wait_for_htmx_to_settle(page)
+        await wait_for_htmx_settled(page)
 
         # Fill out reply form
         timestamp = str(int(time.time()))
@@ -406,15 +404,15 @@ class TestAuthenticatedComments:
         reply_form = page.locator('textarea[placeholder="Write your reply..."]').first
         await expect(reply_form).to_be_visible()
         await reply_form.fill(test_reply)
-        await wait_for_htmx_to_settle(page)
+        await wait_for_htmx_settled(page)
 
         # Submit reply
         reply_submit = page.locator("button:has-text('Post Reply')").first
         await expect(reply_submit).not_to_be_disabled()
-        await reply_submit.click()
+        await click_and_wait_for_htmx(page, "button:has-text('Post Reply')")
 
         # Wait for reply to appear
-        await page.wait_for_selector(f"text={test_reply}", timeout=10000)
+        await expect(page.locator(f"text={test_reply}").first).to_be_visible(timeout=5000)
 
         # 5. Verify there's NO report button for our own reply (can't report own comments)
         # Target the reply section specifically (replies are in ml-6 divs, not the entire article)
@@ -489,8 +487,7 @@ class TestAuthenticatedComments:
         page.on("response", track_response)
 
         # 5. Report the comment first time (should succeed)
-        await report_button.click()
-        await wait_for_htmx_to_settle(page)
+        await click_and_wait_for_htmx(page, 'button[title="Report inappropriate content"]')
 
         # Verify first report succeeded
         if responses and responses[0] == "200":
@@ -521,8 +518,7 @@ class TestAuthenticatedComments:
             # Clear previous responses
             responses.clear()
 
-            await report_button.click()
-            await wait_for_htmx_to_settle(page)
+            await click_and_wait_for_htmx(page, 'button[title="Report inappropriate content"]')
 
             # Check response for second report attempt
             if responses:
@@ -562,16 +558,17 @@ class TestAuthenticatedComments:
         # 2. Add comment as authenticated user
         comment_textarea = page.locator('textarea[name="content"]').last
         await comment_textarea.click()
-        await wait_for_htmx_to_settle(page)
+        await wait_for_htmx_settled(page)
         await comment_textarea.fill(test_comment)
-        await wait_for_htmx_to_settle(page)
+        await wait_for_htmx_settled(page)
 
         post_button = page.locator("button:has-text('Post')").last
         await expect(post_button).not_to_be_disabled()
         await post_button.click()
+        await wait_for_htmx_settled(page)
 
         # 3. Wait for comment to appear
-        await page.wait_for_selector(f"text={test_comment}", timeout=10000)
+        await expect(page.locator(f"text={test_comment}").first).to_be_visible(timeout=5000)
 
         # 4. Verify NO report button appears on own comment
         # Look for the specific comment content and verify no report button nearby

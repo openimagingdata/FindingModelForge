@@ -20,6 +20,7 @@ from .utils import (
     seed_draft,
     seed_drafts,
     verify_no_console_errors,
+    wait_for_htmx_settled,
 )
 
 pytestmark = [pytest.mark.integration, pytest.mark.slow, pytest.mark.playwright]
@@ -174,6 +175,7 @@ class TestDeleteModal:
 
         # Confirm deletion
         await modal.locator("button:has-text('Yes, delete')").click()
+        await wait_for_htmx_settled(page)  # Wait for HTMX OOB swap
 
         # After HTMX swap, the card should be removed
         await expect(page.locator(f"#draft-card-{draft_id}")).to_have_count(0)
@@ -211,6 +213,7 @@ class TestEmptyState:
         modal = page.locator(f"#delete-draft-modal-{draft_id}")
         await expect(modal).to_be_visible(timeout=5000)
         await modal.locator("button:has-text('Yes, delete')").click()
+        await wait_for_htmx_settled(page)  # Wait for HTMX OOB swap
 
         # Card should be removed and placeholder should show
         await expect(page.locator(f"#draft-card-{draft_id}")).to_have_count(0)
