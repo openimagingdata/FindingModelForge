@@ -62,11 +62,12 @@ Common development commands:
 ```sh
 task setup          # Install deps + create .env + build assets
 task test            # Run tests with coverage (144 tests passing, 100% success rate)
-task test-unit       # Fast unit tests only (unit tests)
-task test-ui         # Playwright UI tests only (UI tests)
+task test-unit       # Fast unit tests only (~0.4s for 71 tests)
+task test-ui         # Playwright UI tests only (~2.5min for 85 tests, 2x faster than before)
 task lint            # Lint and fix code issues
 task format          # Format code
 task check           # Quality checks (CI-friendly)
+task pre-commit      # Run all pre-commit checks (lint, format, test)
 task build-frontend  # Build CSS and JS assets
 ```
 
@@ -99,6 +100,15 @@ task build-frontend  # Build CSS and JS assets
   [pydantic-settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/)
 - Async/await patterns for I/O operations
 - Comprehensive error handling and logging
+
+### Testing Standards
+
+- **100% test success rate** - 144 tests passing (71 unit + 73 integration)
+- **High-performance test suite** - UI tests complete in 2.5 minutes (2x faster via optimization)
+- **HTMX-aware testing patterns** - Purpose-built utilities for framework-specific testing
+- **No Schrödinger's Tests** - Tests must fail when they can't verify their intended behavior
+- **Realistic test data** - Production data templates instead of AI API calls
+- **Priority-based organization** - Critical paths → State transitions → Edge cases → Access control
 
 ### Draft Management System
 

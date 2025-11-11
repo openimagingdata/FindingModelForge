@@ -122,13 +122,16 @@ FindingModelForge/
 
 ### 4. Testing Philosophy
 
-- **100% test success rate** (144 tests passing: unit tests + UI tests)
+- **100% test success rate** (144 tests passing: 71 unit tests + 73 integration/UI tests)
+- **High-performance test suite**: UI tests complete in 2.5 minutes (2x speedup from optimization)
+- **No Schrödinger's Tests**: Tests must fail when they can't verify their intended behavior
 - **Comprehensive coverage**: Unit tests for backend logic, Playwright tests for UI workflows
 - **Priority-based organization**: Critical paths → State transitions → Edge cases → Access control
-- **Realistic test data**: Valid ObjectIds, proper session mocking, comprehensive assertions
+- **Realistic test data**: Production data templates (`abdominal_abscess.fm.json`) instead of AI API calls
+- **HTMX-aware testing**: Purpose-built utilities (`wait_for_htmx_settled()`, `click_and_wait_for_htmx()`)
+- **Database-driven tests**: Proper cleanup/seeding for deterministic behavior
 - **Playwright MCP integration**: Browser automation for debugging and verification
-- **HTMX-aware testing**: Proper content swap detection and dynamic title testing
-- **Router testing patterns**: See [`tests/CLAUDE.md`](tests/CLAUDE.md) for examples
+- **Router testing patterns**: See [`tests/CLAUDE.md`](tests/CLAUDE.md) and [`tests/ui/CLAUDE.md`](tests/ui/CLAUDE.md) for examples
 
 ### 5. Security Best Practices
 
@@ -160,6 +163,20 @@ task test       # Full test suite
 3. **Test**: `task test-unit` (fast) or `task test` (comprehensive)
 4. **Check UI**: Ensure Flowbite patterns followed
 5. **Pre-commit Checks**: `task pre-commit` to make sure everything is square (includes lintings, tests, etc)
+
+### Running UI Tests (for Claude Code)
+
+UI tests require a running dev server. Claude Code can run these autonomously:
+
+```bash
+# Start dev server in background
+task dev  # Use run_in_background: true in Bash tool
+
+# Run UI tests in foreground
+task test-ui  # Will connect to localhost:8000
+```
+
+**Important**: Always use background bash for `task dev` when running UI tests programmatically.
 
 ### Common Tasks
 

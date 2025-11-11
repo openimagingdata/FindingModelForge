@@ -8,53 +8,45 @@ None currently.
 
 ## Technical Debt
 
-### Humanize Filter for Dates
-**Priority**: Medium | **Effort**: 2-3 hours
+### Apply Humanize Filter to Timestamps
+**Priority**: Medium | **Effort**: 1 hour
 
-Templates reference `| humanize` filter that doesn't exist. Causes errors when rendering dates.
+The `humanize` filter exists and is registered, but most templates use `.strftime()` instead of the more user-friendly humanize filter.
 
-**Files affected**: `templates/components/comment_thread.html`, others
+**Current state**: Only `draft_preview_content.html:104` uses `| humanize`
+
+**Files needing updates**:
+- `templates/components/comment_thread.html:58` - Comment timestamps (line 58, 164)
+- `templates/components/drafts/save_result.html:6` - Draft save timestamp
+- `templates/components/drafts/submit_result.html:6` - Draft submit timestamp
+
+**Expected result**: All timestamps show "2 hours ago" instead of "Nov 10" or "2025-11-10 15:30"
 
 **Solution**:
-1. `uv add humanize`
-2. Add filter to `app/templates.py`
-3. Apply consistently across date displays
+Replace `{{ timestamp.strftime(...) }}` with `{{ timestamp | humanize }}`
 
 ---
-
-### Repository Pattern Violation
-**Priority**: Low | **Effort**: 1 hour
-
-`add_to_comment_index()` directly calls `user_repo.collection.update_one()` instead of using repository method.
-
-**Solution**: Add `add_comment_index_entry()` method to UserRepo
-
----
-
-## Deferred Features
 
 ### Comment Report Admin Interface
 **Priority**: Low | **Effort**: 4-6 hours
 
-Backend has `report_comment()` but no router integration or admin interface.
+Backend reporting is complete and functional, but there's no admin interface to review flagged comments.
+
+**What exists**:
+- ✅ `CommentService.report_comment()` - Backend method
+- ✅ Router endpoints for reporting comments (drafts and finding models)
+- ✅ Database tracking of `reported_by` and `reported_count`
+
+**What's missing**:
+- ❌ Admin router/endpoints to view reports
+- ❌ Admin UI to review flagged comments
+- ❌ Admin actions (dismiss report, remove comment, etc.)
 
 **Solution**:
-1. Add report endpoints to routers
-2. Create admin interface for reviewing reports
-3. Add tests for reporting flow
-
----
-
-### Future Comment Enhancements
-**Priority**: Low | **Effort**: Large
-
-Potential features:
-- Pagination for threads with > 100 comments
-- Rich text/markdown editor
-- Email notifications for replies
-- Sort order toggle
-- Comment editing with history
-- Voting/reactions
+1. Create `app/routers/admin.py` with report viewing endpoints
+2. Add admin authentication/authorization checks
+3. Create admin UI template for reviewing reports
+4. Add tests for admin workflows
 
 ---
 
@@ -64,7 +56,7 @@ Potential features:
 1. Use concise title and description
 2. Include priority (Low/Medium/High) and effort estimate
 3. Document current state and proposed solution
-4. Reference relevant files
+4. Reference relevant files with line numbers
 
 **Closing issues:**
 1. Move entry to `tasks/done/completed_fixes.md`
