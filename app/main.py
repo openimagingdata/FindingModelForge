@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from findingmodel import settings as fm_settings
 
 from .cache import CacheConfig, RedisCache
 from .config import logger, settings
@@ -21,6 +22,7 @@ from .routers import (
     test_auth,
     users,
 )
+from .utils.startup import validate_duckdb_file
 
 
 @asynccontextmanager
@@ -49,6 +51,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     logger.info("Redis cache initialized and healthy")
     app.state.cache = cache
+
+    # Validate DuckDB files if paths are configured in findingmodel
+    if fm_settings.duckdb_index_path or fm_settings.duckdb_anatomic_path:
+        logger.info("Validating FindingModel DuckDB files...")
+        validate_duckdb_file(fm_settings.duckdb_index_path, "DUCKDB_INDEX_PATH", "Index DB")
+        validate_duckdb_file(fm_settings.duckdb_anatomic_path, "DUCKDB_ANATOMIC_PATH", "Anatomic DB")
+        logger.info("DuckDB files validated successfully")
+    else:
+        logger.warning("DuckDB paths not configured - findingmodel will use default locations")
 
     # Create and connect to MongoDB
     database = Database()

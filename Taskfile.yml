@@ -5,6 +5,16 @@ version: "3"
 vars:
   CONTAINER_NAME: ghcr.io/openimagingdata/findingmodelforge
   DATE_TAG: "{{now | date \"20060102\"}}"
+  # Platform-specific data directory (override with FINDINGMODEL_DATA_DIR env var)
+  DATA_DIR:
+    sh: |
+      if [ -n "$FINDINGMODEL_DATA_DIR" ]; then
+        echo "$FINDINGMODEL_DATA_DIR"
+      elif [ "$(uname)" = "Darwin" ]; then
+        echo "$HOME/Library/Application Support/findingmodel"
+      else
+        echo "$HOME/.local/share/findingmodel"
+      fi
 
 tasks:
   default:
@@ -278,14 +288,41 @@ tasks:
     silent: true
 
   run-container:
-    desc: "Run the app in a Docker container"
+    desc: "Run the app in a Docker container (requires pre-built DuckDB files)"
     cmds:
-      - echo "🐳 Running FindingModelForge container..."
-      - docker run --name findingmodelforge --platform linux/amd64 -d --env-file .env.container -p 8000:8000 --rm {{.CONTAINER_NAME}}:latest
-      - echo "🌐 Container running on http://localhost:8000"
-      - echo "💡 Use 'docker logs findingmodelforge' to see logs"
-      - echo "💡 Use 'docker stop findingmodelforge' to stop"
-      - echo "✅ Container automatically handles proxy headers (X-Forwarded-Proto, etc.)"
+      - echo "Running FindingModelForge container..."
+      - echo "Using data directory {{.DATA_DIR}}"
+      - |
+        # Validate required DuckDB files exist
+        if [ ! -f "{{.DATA_DIR}}/finding_models.duckdb" ]; then
+          echo "ERROR: Required file not found: {{.DATA_DIR}}/finding_models.duckdb"
+          echo "Download or build the finding models database first"
+          exit 1
+        fi
+        if [ ! -f "{{.DATA_DIR}}/anatomic_locations.duckdb" ]; then
+          echo "ERROR: Required file not found: {{.DATA_DIR}}/anatomic_locations.duckdb"
+          echo "Download or build the anatomic locations database first"
+          exit 1
+        fi
+        echo "DuckDB files validated"
+      - |
+        docker run --name findingmodelforge --platform linux/amd64 -d \
+          --env-file .env.container \
+          -p 8000:8000 \
+          -v "{{.DATA_DIR}}:/mnt/findingmodel:ro" \
+          --rm \
+          {{.CONTAINER_NAME}}:latest
+      - echo "Container running on http://localhost:8000"
+      - echo "DuckDB databases mounted from {{.DATA_DIR}}"
+      - echo "Use 'docker logs -f findingmodelforge' to follow logs"
+      - echo "Use 'task stop-container' to stop"
+    silent: true
+
+  stop-container:
+    desc: "Stop the running container"
+    cmds:
+      - docker stop findingmodelforge
+      - echo "Container stopped and removed"
     silent: true
 
   # Utility tasks
