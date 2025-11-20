@@ -1,0 +1,82 @@
+services:
+    proxy:
+        image: traefik:v3.3.6
+        command:
+            - "--api.insecure=false"
+            - "--providers.docker"
+            - "--providers.docker.exposedbydefault=false"
+            - "--entrypoints.websecure.address=:443"
+            - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+            - "--certificatesresolvers.myresolver.acme.email=tarik@alkasab.org" # Replace with your email
+            - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+            - "--entrypoints.web.address=:80"
+            - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+            - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+        ports:
+            - 80:80
+            - 443:443
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
+            - letsencrypt:/letsencrypt
+        restart: always
+
+    hello-world:
+        image: nginx:alpine
+        volumes:
+            - ./hello_html:/usr/share/nginx/html:ro
+        labels:
+            - "traefik.enable=true"
+            - "traefik.http.services.hello-world.loadbalancer.server.port=80"
+            - "traefik.http.routers.hello-world.rule=Host(`hello.oidm.org`)"
+            - "traefik.http.routers.hello-world.entrypoints=websecure"
+            - "traefik.http.routers.hello-world.tls.certresolver=myresolver"
+        restart: always
+
+    redis:
+        image: redis:7.2-alpine
+        ports:
+        - "6379:6379"
+        volumes:
+        - redis_data:/data
+        command: ["redis-server", "--appendonly", "yes"]
+        healthcheck:
+            test: ["CMD", "redis-cli", "ping"]
+            interval: 10s
+            timeout: 5s
+            retries: 3
+
+    fmf-prod:
+        image: ghcr.io/openimagingdata/findingmodelforge:prod
+        environment:
+        - AUTH_REDIRECT_URI=http://fmf.oidm.org/callback
+        env_file: .env.prod
+        labels:
+        - "traefik.enable=true"
+        - "traefik.http.services.fmf-prod.loadbalancer.server.port=8000"
+        - "traefik.http.routers.fmf-prod.rule=Host(`fmf.oidm.org`)"
+        - "traefik.http.routers.fmf-prod.entrypoints=websecure"
+        - "traefik.http.routers.fmf-prod.tls.certresolver=myresolver"
+        restart: always
+        depends_on:
+            - redis
+
+    fmf-stage:
+        image: ghcr.io/openimagingdata/findingmodelforge:latest
+        environment:
+        - AUTH_REDIRECT_URI=http://fmf-stage.oidm.org/auth/callback
+        env_file: .env.stage
+        volumes:
+        - ./data:/mnt/findingmodel:ro
+        labels:
+        - "traefik.enable=true"
+        - "traefik.http.services.fmf-stage.loadbalancer.server.port=8000"
+        - "traefik.http.routers.fmf-stage.rule=Host(`fmf-stage.oidm.org`)"
+        - "traefik.http.routers.fmf-stage.entrypoints=websecure"
+        - "traefik.http.routers.fmf-stage.tls.certresolver=myresolver"
+        restart: always
+        depends_on:
+            - redis
+
+volumes:
+    letsencrypt:
+    redis_data:
