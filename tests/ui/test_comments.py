@@ -66,8 +66,11 @@ class TestAuthenticatedComments:
         await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
         # Playwright auto-waits for elements - no need for networkidle
 
-        # Find the main comment textarea
-        comment_textarea = page.locator('textarea[name="content"]').last
+        # Scope to the comment thread container to avoid finding suggestion modal elements
+        comment_thread = page.locator('[id^="comment-thread-"]')
+
+        # Find the main comment textarea within comment thread
+        comment_textarea = comment_thread.locator('textarea[name="content"]').last
         await expect(comment_textarea).to_be_visible(timeout=5000)
 
         # Check initial state (should be collapsed to 1 row)
@@ -79,14 +82,14 @@ class TestAuthenticatedComments:
         # Wait for Alpine.js to update the interface
         await wait_for_htmx_settled(page)
 
-        # After focus/expansion, should show character counter and buttons
-        char_counter = page.locator("text=/\\d+\\/2000 characters/").last
+        # After focus/expansion, should show character counter and buttons (within comment thread)
+        char_counter = comment_thread.locator("text=/\\d+\\/2000 characters/")
         await expect(char_counter).to_be_visible()
 
-        cancel_button = page.locator("button:has-text('Cancel')").last
+        cancel_button = comment_thread.locator("button:has-text('Cancel')")
         await expect(cancel_button).to_be_visible()
 
-        post_button = page.locator("button:has-text('Post')").last
+        post_button = comment_thread.locator("button:has-text('Post')")
         await expect(post_button).to_be_visible()
         await expect(post_button).to_be_disabled()  # Should be disabled when empty
 

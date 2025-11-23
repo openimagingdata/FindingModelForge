@@ -3,7 +3,7 @@ from enum import Enum
 from typing import Any, Literal
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class UserBase(BaseModel):
@@ -215,3 +215,22 @@ class FindingModelDraft(BaseModel):
     action_log: list[LogEntry] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}
+
+
+class SuggestionCreate(BaseModel):
+    """Create suggestion model for form input validation."""
+
+    content: str = Field(..., min_length=1, max_length=300)
+    submitter_email: EmailStr | None = None
+
+
+class Suggestion(BaseModel):
+    """Suggestion model for storing user feedback."""
+
+    id: str = Field(alias="_id")
+    content: str
+    user_id: int | None = None
+    submitter_email: str | None = None
+    created_at: datetime
+
+    model_config = ConfigDict(populate_by_name=True)

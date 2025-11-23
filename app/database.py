@@ -38,6 +38,7 @@ class Database:
         self.user_repo: UserRepo | None = None
         self.draft_repo: DraftRepo | None = None
         self.comment_repo: CommentRepo | None = None
+        self.suggestion_repo: SuggestionRepo | None = None
         self.finding_index: Index | None = None
         self.people_repo: PeopleRepo | None = None
         self.org_repo: OrganizationRepo | None = None
@@ -49,6 +50,7 @@ class Database:
         self.user_repo = UserRepo(self.db)
         self.draft_repo = DraftRepo(self.db)
         self.comment_repo = CommentRepo(self.db)
+        self.suggestion_repo = SuggestionRepo(self.db)
 
         # Initialize finding index (DuckDB-based, read-only)
         # db_path=None uses default location from findingmodel package
@@ -64,6 +66,10 @@ class Database:
         comment_threads = self.db.comment_threads
         await comment_threads.create_index([("reference_type", 1), ("reference_id", 1)], unique=True)
         await comment_threads.create_index([("reported_count", -1)])
+
+        # Create indices for suggestions collection
+        suggestions = self.db.suggestions
+        await suggestions.create_index([("created_at", -1)])
 
     async def ensure_person_for_user(self, user: "User") -> Person:
         """Create or get a Person for a User.
@@ -664,3 +670,29 @@ class CommentRepo:
         doc = dict(doc)
         doc["id"] = str(doc.pop("_id"))
         return CommentThread.model_validate(doc)
+
+
+class SuggestionRepo:
+    """Suggestion repository for MongoDB operations."""
+
+    def __init__(self, db: AsyncIOMotorDatabase[Any]) -> None:
+        self.db = db
+        self.collection = db.suggestions
+
+    async def create(
+        self,
+        content: str,
+        user_id: int | None = None,
+        submitter_email: str | None = None,
+    ) -> str:
+        """Create suggestion. Returns ID."""
+        from datetime import UTC, datetime
+
+        doc = {
+            "content": content,
+            "user_id": user_id,
+            "submitter_email": submitter_email,
+            "created_at": datetime.now(UTC),
+        }
+        result = await self.collection.insert_one(doc)
+        return str(result.inserted_id)

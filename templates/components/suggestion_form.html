@@ -1,0 +1,70 @@
+{# Suggestion Form Component - Flowbite form with HTMX + Alpine.js #}
+
+<form hx-post="/suggestions"
+      hx-target="#alert-container"
+      hx-swap="innerHTML"
+      hx-on::after-request="setTimeout(() => { document.querySelector('[data-modal-hide=suggestion-modal]').click(); }, 100);"
+      @submit="setTimeout(() => { content = ''; }, 200);"
+      x-data="{
+          content: '',
+          get contentLength() { return this.content.length; },
+          get canSubmit() { return this.content.trim().length >= 1 && this.content.length <= 300; }
+      }"
+      class="space-y-4">
+
+    <h3 class="mb-4 text-xl font-semibold text-gray-900 dark:text-white">Suggest a Finding Model</h3>
+
+    <div>
+        <label for="suggestion-content" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+            What finding model would you like to see?
+            <span class="text-red-500">*</span>
+        </label>
+        <input type="text"
+               id="suggestion-content"
+               name="content"
+               x-model="content"
+               maxlength="300"
+               required
+               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+               placeholder="e.g., Pulmonary embolism, Brain tumor classification">
+    </div>
+
+    {% if not user %}
+    {# Anonymous user - show email field #}
+    <div>
+        <label for="suggestion-email" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+            Your email (optional)
+        </label>
+        <input type="email"
+               id="suggestion-email"
+               name="submitter_email"
+               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+               placeholder="you@example.com">
+        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+            We'll notify you when your suggestion is reviewed (optional)
+        </p>
+    </div>
+    {% else %}
+    {# Authenticated user - show identity #}
+    <div class="p-4 text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-blue-900 dark:text-blue-300">
+        <p>
+            Submitting as <strong>{{ user.name or user.login }}</strong>{% if user.email %} — we'll notify you at <strong>{{ user.email }}</strong>{% endif %}
+        </p>
+    </div>
+    {% endif %}
+
+    <div class="flex items-center justify-end gap-3 pt-2">
+        <button type="button"
+                data-modal-hide="suggestion-modal"
+                class="py-2.5 px-5 text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-primary-700 focus:z-10 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700">
+            Cancel
+        </button>
+        <button type="submit"
+                :disabled="!canSubmit"
+                :class="canSubmit ?
+                    'py-2.5 px-5 text-sm font-medium rounded-lg border focus:ring-4 focus:outline-none text-white bg-blue-700 border-blue-700 hover:bg-blue-800 hover:border-blue-800 focus:ring-blue-300 dark:bg-blue-500 dark:border-blue-500 dark:hover:bg-blue-600 dark:hover:border-blue-600 dark:focus:ring-blue-800' :
+                    'py-2.5 px-5 text-sm font-medium rounded-lg border bg-gray-500 border-gray-600 text-gray-300 cursor-not-allowed dark:bg-gray-700 dark:border-gray-600 dark:text-gray-500'">
+            Submit Suggestion
+        </button>
+    </div>
+</form>

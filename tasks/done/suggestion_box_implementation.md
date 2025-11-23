@@ -1,7 +1,8 @@
 # Suggestion Box Feature - Implementation Plan
 
-**Status**: Ready for implementation
-**Date**: 2025-11-20
+**Status**: ✅ COMPLETED
+**Implementation Date**: 2025-11-20 to 2025-11-23
+**Last Updated**: 2025-11-23
 
 ## What We're Building
 
@@ -17,11 +18,14 @@ A simple suggestion feature where any user (authenticated or anonymous) can subm
 
 ## Key Decisions
 
-### UX
+### UX (As Implemented)
 - **Single-line input** (not textarea) - quick suggestion, not detailed proposal
-- **300 char limit** (not 2000) - keeps it brief
+- **300 char limit** (not 2000) - keeps it brief, enforced via `maxlength` attribute
+- **No character counter** - `maxlength` provides sufficient feedback, counter removed as unnecessary clutter
+- **Auto-focus on open** - suggestion input automatically focused when modal opens (via MutationObserver)
+- **Tab cycling** - focus trapped within modal when open, cycles between inputs and buttons
 - **Form clears on close** - no persistence, simple interaction
-- **Alert inline** (not toast) - user sees confirmation on current page
+- **Toast notification** - success/error appears in fixed top-right position with fade-in animation
 - **No navigation** - stay where you are
 
 ### Data Model (YAGNI - store minimum)
@@ -121,11 +125,12 @@ Key logic:
 
 ### Frontend
 
-**5. base.html** - Add two things:
+**5. base.html** - Add two things (AS IMPLEMENTED):
 
-After navbar, add alert container:
+Toast notification container (fixed position top-right):
 ```html
-<div id="alert-container" class="container mx-auto px-4 pt-4"></div>
+<!-- Toast Notification Container - Fixed top-right, works on any page -->
+<div id="alert-container" class="fixed top-28 right-8 z-50 w-full max-w-xs"></div>
 ```
 
 Before `</body>`, add global modal:
@@ -138,20 +143,21 @@ Before `</body>`, add global modal:
 </div>
 ```
 
-**6. suggestion_form.html** - Form with HTMX + Alpine.js:
+**6. suggestion_form.html** - Form with HTMX + Alpine.js (AS IMPLEMENTED):
 ```html
 <form hx-post="/suggestions"
       hx-target="#alert-container"
       hx-swap="innerHTML"
+      hx-on::after-request="setTimeout(() => { document.querySelector('[data-modal-hide=suggestion-modal]').click(); }, 100);"
+      @submit="setTimeout(() => { content = ''; }, 200);"
       x-data="{
           content: '',
           get contentLength() { return this.content.length; },
           get canSubmit() { return this.content.trim().length >= 1 && this.content.length <= 300; }
       }">
 
-  <!-- Single-line input with character counter -->
-  <input type="text" name="content" x-model="content" maxlength="300" required>
-  <p><span x-text="contentLength"></span>/300 characters</p>
+  <!-- Single-line input (NO character counter - maxlength provides feedback) -->
+  <input type="text" id="suggestion-content" name="content" x-model="content" maxlength="300" required>
 
   <!-- Conditional email field -->
   {% if not user %}
@@ -162,12 +168,18 @@ Before `</body>`, add global modal:
     </p>
   {% endif %}
 
-  <!-- Submit button with modal close -->
-  <button type="submit" :disabled="!canSubmit" data-modal-hide="suggestion-modal">
+  <!-- Submit button (HTMX closes modal via hx-on::after-request) -->
+  <button type="submit" :disabled="!canSubmit">
     Submit Suggestion
   </button>
 </form>
 ```
+
+**Key differences from plan:**
+- **No character counter display** - removed as unnecessary clutter
+- **Modal close via HTMX** - `hx-on::after-request` triggers close
+- **Form clear on submit** - Alpine.js `@submit` handler resets content
+- **Input ID added** - `id="suggestion-content"` for focus management
 
 **7. suggestion_alert.html** - Flowbite dismissible alert:
 ```html
@@ -193,27 +205,79 @@ Before `</body>`, add global modal:
 </a>
 ```
 
-**9. index.html** - Add outline button to hero CTA section:
+**9. index.html** - Add outline button to hero CTA section (AS IMPLEMENTED):
 ```html
 <button type="button"
         data-modal-target="suggestion-modal"
         data-modal-toggle="suggestion-modal"
-        class="... border-2 border-primary-600 text-primary-600 ...">
+        class="... border-primary-600 text-primary-600 ...">
   <svg><!-- lightbulb icon --></svg>
-  Suggest a Finding Model
+  Suggest
 </button>
+```
+
+**10. main.js** - Add focus management and animations (NOT IN ORIGINAL PLAN):
+
+Lines 285-297 - Toast fade-in animation:
+```javascript
+// Add fade-in animation to toast notifications in alert-container
+if (content.id === 'alert-container' || content.closest('#alert-container')) {
+  const alertElement = content.id === 'alert-container' ? content.firstElementChild : content
+  if (alertElement) {
+    alertElement.style.opacity = '0'
+    alertElement.style.transform = 'translateY(-10px)'
+    setTimeout(() => {
+      alertElement.style.transition = 'opacity 0.3s ease, transform 0.3s ease'
+      alertElement.style.opacity = '1'
+      alertElement.style.transform = 'translateY(0)'
+    }, 10)
+  }
+}
+```
+
+Lines 300-347 - Modal focus management:
+```javascript
+// Suggestion modal focus management and accessibility
+document.addEventListener('DOMContentLoaded', function() {
+  const suggestionModalElement = document.getElementById('suggestion-modal')
+  const suggestionInput = document.getElementById('suggestion-content')
+
+  // MutationObserver to detect when modal opens (class changes from hidden)
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+        const isVisible = !suggestionModalElement.classList.contains('hidden')
+        if (isVisible) {
+          setTimeout(() => { suggestionInput.focus() }, 150)
+        }
+      }
+    })
+  })
+
+  observer.observe(suggestionModalElement, {
+    attributes: true,
+    attributeFilter: ['class']
+  })
+
+  // Focus trapping for tab navigation
+  suggestionModalElement.addEventListener('keydown', function(e) {
+    if (!suggestionModalElement.classList.contains('hidden') && e.key === 'Tab') {
+      // Tab cycling logic...
+    }
+  })
+})
 ```
 
 ### Testing
 
-**10. tests/unit/test_suggestion_repo.py** - Repository tests:
+**11. tests/test_suggestions.py** - Repository and endpoint tests:
 - Test `create()` with authenticated user (verify user_id populated, email from session)
 - Test `create()` with anonymous user + email (verify user_id=None, email from form)
 - Test `create()` with anonymous user without email (verify both None)
 - Verify document has exactly 4 fields: content, user_id, submitter_email, created_at
 - Verify no extra fields (no status, notes, etc.)
 
-**11. tests/test_suggestions.py** - Endpoint integration tests:
+**12. tests/ui/test_suggestion_box.py** - UI workflow tests (AS IMPLEMENTED):
 - Test POST as authenticated user (user_id + email populated from session)
 - Test POST as anonymous with email (user_id=None, email from form)
 - Test POST as anonymous without email (both None)
@@ -222,7 +286,6 @@ Before `</body>`, add global modal:
 - Test alert HTML structure (verify success/error context passed correctly)
 - Verify suggestion stored in database with correct field values
 
-**12. tests/ui/test_suggestion_box.py** - UI workflow tests:
 - Test "Suggest" link visible in navbar on home page
 - Test "Suggest" link visible in navbar on other pages (e.g., /finding-models)
 - Test hero button visible on home page
@@ -230,9 +293,9 @@ Before `</body>`, add global modal:
 - Test clicking hero button opens modal
 - Test form shows email input for anonymous users
 - Test form shows user info (no email input) for authenticated users
-- Test character counter updates as user types
+- Test `maxlength="300"` attribute enforced (NOT character counter - removed)
 - Test submit button disabled when content empty
-- Test submit button disabled when content > 300 chars
+- Test submit button enabled when content at 300 chars boundary
 - Test modal closes after submit
 - Test user stays on current page (no navigation)
 - Test alert appears in #alert-container
@@ -328,13 +391,84 @@ Add these when we need them, not before.
 
 **Total implementation**: ~250 lines of code across 12 files
 
+## Implementation Summary
+
+### Backend (✅ Complete)
+- **Repository**: `SuggestionRepo` in `app/database.py` (lines 674-697)
+  - Writes to `suggestions` collection in MongoDB
+  - Stores exactly 4 fields: `content`, `user_id`, `submitter_email`, `created_at`
+- **Endpoint**: `POST /suggestions` in `app/routers/home.py` (lines 29-96)
+  - Handles both authenticated and anonymous users
+  - Email validation with Pydantic `EmailStr`
+  - Returns rendered alert template
+- **Dependency**: `SuggestionRepoDep` in `app/dependencies.py`
+
+### Frontend (✅ Complete)
+- **Modal**: Global `#suggestion-modal` in `templates/base.html`
+  - Uses Flowbite modal with `data-modal-toggle` triggers
+  - Includes `templates/components/suggestion_form.html`
+- **Form**: Alpine.js reactive validation
+  - Single-line input with `maxlength="300"`
+  - Character counter **removed** (maxlength sufficient)
+  - Conditional email field (anonymous only)
+  - Submit button disabled when invalid
+- **Alert**: Fixed position toast in `#alert-container` (top-right)
+  - Flowbite dismissible alert component
+  - Fade-in animation via `src/js/main.js` (lines 285-297)
+- **Triggers**:
+  - Navbar link: "Suggest" in `templates/components/navbar.html`
+  - Hero button: "Suggest" in `templates/index.html` (home page only)
+
+### JavaScript Enhancements (✅ Complete)
+**File**: `src/js/main.js` (lines 300-347)
+- **Auto-focus**: MutationObserver detects modal open, focuses suggestion input after 150ms
+- **Focus trapping**: Tab key cycles within modal (inputs → buttons → back to inputs)
+- **Non-invasive**: Preserves Flowbite's data-attribute functionality
+- **Pattern**: MutationObserver watches `class` changes on `#suggestion-modal`
+
+### Testing (✅ Complete)
+- **Unit tests**: `tests/test_suggestions.py` - Repository and endpoint tests ✅
+  - `TestSuggestionRepo` - 5 tests passing
+  - `TestSuggestionEndpoint` - Basic endpoint tests
+- **UI tests**: `tests/ui/test_suggestion_box.py` - Workflow tests ✅
+  - Updated to verify `maxlength` attribute instead of character counter
+  - Hero button selector updated to `"Suggest"` (not `"Suggest a Finding Model"`)
+  - All tests properly scoped and updated
+
+### Fixed Issues
+1. **Character counter tests**: Updated to check `maxlength="300"` attribute and input length validation
+2. **Hero button selector**: Changed from `"Suggest a Finding Model"` to `"Suggest"`
+3. **Comment test conflict**: Fixed `test_comments.py` to scope selectors to comment thread (avoid finding suggestion modal's Cancel button)
+
+### Database Verification
+```bash
+mongosh findingmodels --eval "db.suggestions.find().pretty()"
+```
+Current status: 82 test suggestions stored successfully
+
 ## Success Criteria
 
-- [ ] Any user can submit suggestion from any page
-- [ ] Authenticated users don't need to enter email
-- [ ] Anonymous users can optionally provide email
-- [ ] Modal closes and form clears after submit
-- [ ] Success/error alert appears on current page
-- [ ] User stays on current page (no navigation)
-- [ ] All tests pass (unit + integration + UI)
-- [ ] Database stores exactly 4 fields, no more
+- [x] Any user can submit suggestion from any page
+- [x] Authenticated users don't need to enter email
+- [x] Anonymous users can optionally provide email
+- [x] Modal closes and form clears after submit
+- [x] Success/error alert appears on current page (toast notification)
+- [x] User stays on current page (no navigation)
+- [x] Database stores exactly 4 fields, no more
+- [x] Auto-focus on modal open
+- [x] Tab cycling within modal
+- [x] Smooth animations for modal and toast
+- [x] All tests updated and passing
+
+## Optional Next Steps
+
+1. **Clean up test data**:
+   ```bash
+   mongosh findingmodels --eval "db.suggestions.deleteMany({})"
+   ```
+
+3. **Optional: Add admin interface** (future enhancement):
+   - View all suggestions with filtering/sorting
+   - Mark as reviewed/implemented/rejected
+   - Add notes/comments on suggestions
+   - Email notifications to submitters

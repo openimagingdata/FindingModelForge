@@ -19,7 +19,7 @@ from findingmodel.contributor import Organization
 from pydantic import BaseModel
 
 from .cache import RedisCache
-from .database import CommentRepo, Database, DraftRepo, UserRepo
+from .database import CommentRepo, Database, DraftRepo, SuggestionRepo, UserRepo
 from .services.comment_service import CommentService
 
 
@@ -59,6 +59,16 @@ def get_comment_repo(database: DatabaseDep) -> CommentRepo:
 
 
 CommentRepoDep = Annotated[CommentRepo, Depends(get_comment_repo)]
+
+
+def get_suggestion_repo(database: DatabaseDep) -> SuggestionRepo:
+    """Get SuggestionRepo instance from the database."""
+    if database.suggestion_repo is None:
+        raise RuntimeError("Database not initialized or SuggestionRepo not available")
+    return database.suggestion_repo
+
+
+SuggestionRepoDep = Annotated[SuggestionRepo, Depends(get_suggestion_repo)]
 
 
 def get_comment_service(
