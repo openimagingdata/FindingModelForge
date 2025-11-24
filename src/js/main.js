@@ -281,73 +281,7 @@ htmx.onLoad(function(content) {
       console.warn('Error initializing Alpine.js after HTMX load:', error)
     }
   }
-
-  // Add fade-in animation to toast notifications in alert-container
-  if (content.id === 'alert-container' || content.closest('#alert-container')) {
-    const alertElement = content.id === 'alert-container' ? content.firstElementChild : content
-    if (alertElement) {
-      alertElement.style.opacity = '0'
-      alertElement.style.transform = 'translateY(-10px)'
-      setTimeout(() => {
-        alertElement.style.transition = 'opacity 0.3s ease, transform 0.3s ease'
-        alertElement.style.opacity = '1'
-        alertElement.style.transform = 'translateY(0)'
-      }, 10)
-    }
-  }
 })
-
-// Suggestion modal focus management and accessibility
-document.addEventListener('DOMContentLoaded', function() {
-  const suggestionModalElement = document.getElementById('suggestion-modal')
-  const suggestionInput = document.getElementById('suggestion-content')
-
-  if (!suggestionModalElement || !suggestionInput) return
-
-  // Use MutationObserver to detect when modal opens (class changes from hidden)
-  const observer = new MutationObserver((mutations) => {
-    mutations.forEach((mutation) => {
-      if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-        const isVisible = !suggestionModalElement.classList.contains('hidden')
-        if (isVisible) {
-          // Modal opened - focus the input
-          setTimeout(() => {
-            suggestionInput.focus()
-          }, 150)
-        }
-      }
-    })
-  })
-
-  // Start observing class changes
-  observer.observe(suggestionModalElement, {
-    attributes: true,
-    attributeFilter: ['class']
-  })
-
-  // Focus trapping for tab navigation
-  suggestionModalElement.addEventListener('keydown', function(e) {
-    // Only trap focus when modal is visible
-    if (!suggestionModalElement.classList.contains('hidden') && e.key === 'Tab') {
-      const focusableElements = suggestionModalElement.querySelectorAll(
-        'input:not([disabled]), button:not([disabled]):not([tabindex="-1"]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-      )
-      const firstElement = focusableElements[0]
-      const lastElement = focusableElements[focusableElements.length - 1]
-
-      if (e.shiftKey && document.activeElement === firstElement) {
-        e.preventDefault()
-        lastElement.focus()
-      } else if (!e.shiftKey && document.activeElement === lastElement) {
-        e.preventDefault()
-        firstElement.focus()
-      }
-    }
-  })
-})
-
-
-
 
 // Initialize Alpine
 Alpine.start()

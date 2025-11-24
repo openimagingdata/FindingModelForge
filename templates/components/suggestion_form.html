@@ -7,7 +7,6 @@
       @submit="setTimeout(() => { content = ''; }, 200);"
       x-data="{
           content: '',
-          get contentLength() { return this.content.length; },
           get canSubmit() { return this.content.trim().length >= 1 && this.content.length <= 300; }
       }"
       class="space-y-4">

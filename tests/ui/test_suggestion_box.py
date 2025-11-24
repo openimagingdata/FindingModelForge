@@ -312,12 +312,12 @@ class TestSuggestionBoxSubmissionFlow:
         # Should NOT navigate to different page
         assert "/suggestions" not in page.url, "Should not navigate to suggestions page"
 
-    async def test_alert_has_close_button_with_correct_attributes(self, page: Page) -> None:
-        """Test that alert has a close button with correct Flowbite data attributes.
+    async def test_alert_has_close_button_with_alpine_interaction(self, page: Page) -> None:
+        """Test that alert has a close button with Alpine.js @click handler.
 
-        Note: Flowbite's dismissal functionality for dynamically inserted content may require
-        manual initialization with initFlowbite(). This test verifies the button has the
-        correct attributes and is clickable, which demonstrates the UI implementation is correct.
+        Note: Alert now uses Alpine.js x-transition for animations and @click for dismissal
+        instead of Flowbite data attributes. This test verifies the button exists and
+        works correctly with Alpine.js.
         """
         await page.goto("http://localhost:8000/")
         await page.wait_for_load_state("domcontentloaded")
@@ -338,20 +338,24 @@ class TestSuggestionBoxSubmissionFlow:
         # Wait for HTMX to complete
         await wait_for_htmx_settled(page)
 
-        # Alert should be visible in alert container
+        # Alert should be visible in alert container (with Alpine.js animation)
         alert = page.locator("#alert-container #suggestion-alert")
         await expect(alert).to_be_visible(timeout=5000)
 
-        # Verify the close button exists with correct Flowbite attributes
-        close_button = alert.locator('button[data-dismiss-target="#suggestion-alert"]')
+        # Verify the close button exists (now uses Alpine.js @click)
+        close_button = alert.locator('button[aria-label="Close"]')
         await expect(close_button).to_be_visible(timeout=5000)
 
         # Verify button has correct aria-label
         aria_label = await close_button.get_attribute("aria-label")
         assert aria_label == "Close", "Close button should have aria-label='Close'"
 
-        # Verify button is clickable (demonstrates UI implementation)
+        # Verify button is clickable (demonstrates Alpine.js implementation works)
         await expect(close_button).to_be_enabled(timeout=5000)
+
+        # Click the close button and verify alert disappears (Alpine.js x-show)
+        await close_button.click()
+        await expect(alert).to_be_hidden(timeout=2000)
 
 
 class TestSuggestionBoxStateManagement:
