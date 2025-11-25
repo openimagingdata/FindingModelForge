@@ -7,13 +7,11 @@ This creates a collaborative review workflow similar to pull requests in code de
 
 ## User Story
 
-**As a** finding model author
-**I want to** make my draft publicly visible for review and feedback
-**So that** I can improve my model based on peer input before final submission
+**As a** finding model author **I want to** make my draft publicly visible for review and feedback **So that** I can
+improve my model based on peer input before final submission
 
-**As a** finding model reviewer
-**I want to** view and comment on public drafts
-**So that** I can provide feedback and help improve models before they're finalized
+**As a** finding model reviewer **I want to** view and comment on public drafts **So that** I can provide feedback and
+help improve models before they're finalized
 
 ## Current State vs Proposed State
 

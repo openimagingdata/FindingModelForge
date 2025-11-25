@@ -1,12 +1,13 @@
 # Suggestion Box Feature - Final Implementation Record
 
-**Status**: ✅ COMPLETED
-**Implementation Date**: 2025-11-20 to 2025-11-23
-**Last Updated**: 2025-11-25 (post-implementation review)
+**Status**: ✅ COMPLETED **Implementation Date**: 2025-11-20 to 2025-11-23 **Last Updated**: 2025-11-25
+(post-implementation review)
 
 ## What We Built
 
-A simple suggestion feature where any user (authenticated or anonymous) can submit finding model ideas. Accessible via navbar link (all pages) and hero button (home page only). Opens modal, user types suggestion + optional email, submits, modal closes, alert appears on current page.
+A simple suggestion feature where any user (authenticated or anonymous) can submit finding model ideas. Accessible via
+navbar link (all pages) and hero button (home page only). Opens modal, user types suggestion + optional email, submits,
+modal closes, alert appears on current page.
 
 ## User Flow
 
@@ -19,6 +20,7 @@ A simple suggestion feature where any user (authenticated or anonymous) can subm
 ## Key Design Decisions
 
 ### UX Decisions
+
 - **Single-line input** (not textarea) - quick suggestion, not detailed proposal
 - **300 char limit** - enforced via `maxlength` attribute (browser prevents over-typing)
 - **No character counter** - `maxlength` provides sufficient feedback, counter was unnecessary clutter
@@ -28,6 +30,7 @@ A simple suggestion feature where any user (authenticated or anonymous) can subm
 - **No navigation** - user stays on whatever page they're on
 
 ### Data Model (YAGNI Applied)
+
 ```
 suggestions collection:
 - content (str, max 300 chars)
@@ -36,10 +39,11 @@ suggestions collection:
 - created_at (datetime)
 ```
 
-**Not storing**: status, notes, processed_at, processed_by, submitter_name
-**Rationale**: Add admin fields later when we build the admin interface. For now, just collect suggestions.
+**Not storing**: status, notes, processed_at, processed_by, submitter_name **Rationale**: Add admin fields later when we
+build the admin interface. For now, just collect suggestions.
 
 ### Tech Stack Usage
+
 - **HTMX**: Form posts to `/suggestions`, targets `#alert-container`, swaps innerHTML
 - **Flowbite**: Modal with `data-modal-toggle` triggers, standard styling
 - **Alpine.js**: Form validation, toast animation (x-transition), auto-focus via MutationObserver
@@ -110,7 +114,8 @@ async def submit_suggestion(
     # Return rendered alert template with success/error message
 ```
 
-**Note**: Pydantic models (`SuggestionCreate`, `Suggestion`) were not created - the repo works directly with dicts, which is simpler for this use case.
+**Note**: Pydantic models (`SuggestionCreate`, `Suggestion`) were not created - the repo works directly with dicts,
+which is simpler for this use case.
 
 ### Frontend
 
@@ -124,76 +129,82 @@ async def submit_suggestion(
 #### 5. Modal with Alpine.js Auto-Focus: `templates/base.html` (lines 66-82)
 
 ```html
-<div id="suggestion-modal"
-     tabindex="-1"
-     aria-hidden="true"
-     class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 ..."
-     x-data="{ isOpen: false }"
-     x-init="$watch('isOpen', value => { if (value) $nextTick(() => document.getElementById('suggestion-content')?.focus()) });
-             new MutationObserver(() => { isOpen = !$el.classList.contains('hidden') }).observe($el, { attributes: true, attributeFilter: ['class'] })">
-    <!-- Modal content -->
-    <div class="p-4 md:p-5">
-        {% include 'components/suggestion_form.html' %}
-    </div>
+<div
+  id="suggestion-modal"
+  tabindex="-1"
+  aria-hidden="true"
+  class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 ..."
+  x-data="{ isOpen: false }"
+  x-init="$watch('isOpen', value => { if (value) $nextTick(() => document.getElementById('suggestion-content')?.focus()) });
+             new MutationObserver(() => { isOpen = !$el.classList.contains('hidden') }).observe($el, { attributes: true, attributeFilter: ['class'] })"
+>
+  <!-- Modal content -->
+  <div class="p-4 md:p-5">{% include 'components/suggestion_form.html' %}</div>
 </div>
 ```
 
-**Key pattern**: Uses Alpine.js `$watch` + MutationObserver to detect when Flowbite opens the modal (class change), then auto-focuses the input. This keeps the focus logic co-located with the modal element rather than in a separate JS file.
+**Key pattern**: Uses Alpine.js `$watch` + MutationObserver to detect when Flowbite opens the modal (class change), then
+auto-focuses the input. This keeps the focus logic co-located with the modal element rather than in a separate JS file.
 
 #### 6. Form: `templates/components/suggestion_form.html`
 
 ```html
-<form hx-post="/suggestions"
-      hx-target="#alert-container"
-      hx-swap="innerHTML"
-      hx-on::after-request="setTimeout(() => { document.querySelector('[data-modal-hide=suggestion-modal]').click(); }, 100);"
-      @submit="setTimeout(() => { content = ''; }, 200);"
-      x-data="{
+<form
+  hx-post="/suggestions"
+  hx-target="#alert-container"
+  hx-swap="innerHTML"
+  hx-on::after-request="setTimeout(() => { document.querySelector('[data-modal-hide=suggestion-modal]').click(); }, 100);"
+  @submit="setTimeout(() => { content = ''; }, 200);"
+  x-data="{
           content: '',
           get canSubmit() { return this.content.trim().length >= 1 && this.content.length <= 300; }
       }"
-      class="space-y-4">
+  class="space-y-4"
+>
+  <!-- Single-line input with maxlength (NO character counter) -->
+  <input
+    type="text"
+    id="suggestion-content"
+    name="content"
+    x-model="content"
+    maxlength="300"
+    required
+    class="...flowbite classes..."
+    placeholder="e.g., Pulmonary embolism, Brain tumor classification"
+  />
 
-    <!-- Single-line input with maxlength (NO character counter) -->
-    <input type="text"
-           id="suggestion-content"
-           name="content"
-           x-model="content"
-           maxlength="300"
-           required
-           class="...flowbite classes..."
-           placeholder="e.g., Pulmonary embolism, Brain tumor classification">
+  <!-- Conditional email field (anonymous only) -->
+  {% if not user %}
+  <input type="email" name="submitter_email" placeholder="you@example.com" />
+  {% else %}
+  <div class="...info box...">
+    Submitting as <strong>{{ user.name or user.login }}</strong> {% if user.email %} — we'll notify you at
+    <strong>{{ user.email }}</strong>{% endif %}
+  </div>
+  {% endif %}
 
-    <!-- Conditional email field (anonymous only) -->
-    {% if not user %}
-    <input type="email" name="submitter_email" placeholder="you@example.com">
-    {% else %}
-    <div class="...info box...">
-        Submitting as <strong>{{ user.name or user.login }}</strong>
-        {% if user.email %} — we'll notify you at <strong>{{ user.email }}</strong>{% endif %}
-    </div>
-    {% endif %}
-
-    <!-- Buttons -->
-    <button type="button" data-modal-hide="suggestion-modal">Cancel</button>
-    <button type="submit" :disabled="!canSubmit">Submit Suggestion</button>
+  <!-- Buttons -->
+  <button type="button" data-modal-hide="suggestion-modal">Cancel</button>
+  <button type="submit" :disabled="!canSubmit">Submit Suggestion</button>
 </form>
 ```
 
 #### 7. Toast Alert: `templates/components/suggestion_alert.html`
 
 ```html
-<div id="suggestion-alert"
-     x-data="{ show: false }"
-     x-init="setTimeout(() => show = true, 10)"
-     x-show="show"
-     x-transition:enter="transition ease-out duration-300"
-     x-transition:enter-start="opacity-0 transform -translate-y-2"
-     x-transition:enter-end="opacity-100 transform translate-y-0"
-     class="flex items-center w-full p-4 text-green-800 bg-green-50 rounded-lg shadow-lg ..."
-     role="alert">
-    <!-- Icon, message, close button -->
-    <button @click="show = false" aria-label="Close">×</button>
+<div
+  id="suggestion-alert"
+  x-data="{ show: false }"
+  x-init="setTimeout(() => show = true, 10)"
+  x-show="show"
+  x-transition:enter="transition ease-out duration-300"
+  x-transition:enter-start="opacity-0 transform -translate-y-2"
+  x-transition:enter-end="opacity-100 transform translate-y-0"
+  class="flex items-center w-full p-4 text-green-800 bg-green-50 rounded-lg shadow-lg ..."
+  role="alert"
+>
+  <!-- Icon, message, close button -->
+  <button @click="show = false" aria-label="Close">×</button>
 </div>
 ```
 
@@ -202,10 +213,9 @@ async def submit_suggestion(
 #### 8. Navbar Link: `templates/components/navbar.html`
 
 ```html
-<a href="#" data-modal-target="suggestion-modal" data-modal-toggle="suggestion-modal"
-   class="...">
-    <svg><!-- lightbulb icon --></svg>
-    Suggest
+<a href="#" data-modal-target="suggestion-modal" data-modal-toggle="suggestion-modal" class="...">
+  <svg><!-- lightbulb icon --></svg>
+  Suggest
 </a>
 ```
 
@@ -214,12 +224,14 @@ Present in both desktop nav and mobile menu.
 #### 9. Hero Button: `templates/index.html` (line 30-35)
 
 ```html
-<button type="button"
-        data-modal-target="suggestion-modal"
-        data-modal-toggle="suggestion-modal"
-        class="...outline button styles...">
-    <svg><!-- lightbulb icon --></svg>
-    Suggest
+<button
+  type="button"
+  data-modal-target="suggestion-modal"
+  data-modal-toggle="suggestion-modal"
+  class="...outline button styles..."
+>
+  <svg><!-- lightbulb icon --></svg>
+  Suggest
 </button>
 ```
 
@@ -228,6 +240,7 @@ Present in both desktop nav and mobile menu.
 #### 10. Unit/Integration Tests: `tests/test_suggestions.py`
 
 **TestSuggestionEndpoint** (with mocked dependencies):
+
 - `test_submit_as_authenticated_user` - verifies user_id + email from session
 - `test_submit_as_anonymous_with_email` - verifies user_id=None, email from form
 - `test_submit_as_anonymous_without_email` - verifies both None
@@ -238,6 +251,7 @@ Present in both desktop nav and mobile menu.
 - `test_email_validation_rejects_invalid_formats` - various invalid emails
 
 **TestSuggestionRepo** (with mocked DB):
+
 - `test_create_authenticated_user` - verifies field structure
 - `test_create_anonymous_with_email`
 - `test_create_anonymous_without_email`
@@ -245,6 +259,7 @@ Present in both desktop nav and mobile menu.
 - `test_created_at_timestamp` - UTC datetime verification
 
 **TestSuggestionRepoIntegration** (with real MongoDB):
+
 - `test_create_suggestion_in_database`
 - `test_create_authenticated_suggestion`
 - `test_create_anonymous_with_email`
@@ -252,33 +267,40 @@ Present in both desktop nav and mobile menu.
 #### 11. UI Tests: `tests/ui/test_suggestion_box.py`
 
 **TestSuggestionBoxVisibility**:
+
 - `test_navbar_suggest_link_visible_on_home_page`
 - `test_navbar_suggest_link_visible_on_finding_models_page`
 - `test_hero_button_visible_on_home_page_only`
 
 **TestSuggestionBoxModalOpening**:
+
 - `test_navbar_link_opens_modal`
 - `test_hero_button_opens_modal`
 
 **TestSuggestionBoxFormContent**:
+
 - `test_form_shows_email_input_for_anonymous_users`
 - `test_form_shows_user_info_for_authenticated_users`
 
 **TestSuggestionBoxReactiveValidation**:
+
 - `test_input_respects_maxlength_attribute`
 - `test_submit_button_disabled_when_content_empty`
 - `test_submit_button_enabled_at_max_length`
 - `test_submit_button_enabled_when_content_valid`
 
 **TestSuggestionBoxSubmissionFlow**:
+
 - `test_modal_closes_and_alert_appears_after_submit`
 - `test_user_stays_on_current_page_after_submit`
 - `test_alert_has_close_button_with_alpine_interaction`
 
 **TestSuggestionBoxStateManagement**:
+
 - `test_form_state_persists_across_modal_close_reopen`
 
 **TestSuggestionBoxPersistence**:
+
 - `test_suggestion_persisted_to_database` - verifies MongoDB storage
 
 ---
@@ -286,12 +308,14 @@ Present in both desktop nav and mobile menu.
 ## Files Changed
 
 **Backend (4 files)**:
+
 - `app/database.py` - Added `SuggestionRepo` class
 - `app/dependencies.py` - Added `SuggestionRepoDep` dependency
 - `app/routers/home.py` - Added `POST /suggestions` endpoint
 - `app/models.py` - (No changes - repo uses dicts directly)
 
 **Frontend (5 files)**:
+
 - `templates/base.html` - Added `#alert-container` and `#suggestion-modal`
 - `templates/components/navbar.html` - Added "Suggest" links
 - `templates/index.html` - Added hero "Suggest" button
@@ -299,6 +323,7 @@ Present in both desktop nav and mobile menu.
 - `templates/components/suggestion_alert.html` - (new) Toast component
 
 **Tests (2 files)**:
+
 - `tests/test_suggestions.py` - (new) Unit and integration tests
 - `tests/ui/test_suggestion_box.py` - (new) Playwright UI tests
 
@@ -309,23 +334,27 @@ Present in both desktop nav and mobile menu.
 ## Technical Patterns Used
 
 ### Alpine.js for All Interactivity
+
 - **Form validation**: `x-data` with computed `canSubmit` property
 - **Toast animation**: `x-transition` directives (no custom JS)
 - **Auto-focus**: `$watch` + `$nextTick` + MutationObserver on modal element
 - **Alert dismissal**: `@click="show = false"` with `x-show`
 
 ### HTMX for Server Interaction
+
 - `hx-post="/suggestions"` - form submission
 - `hx-target="#alert-container"` - where to put response
 - `hx-swap="innerHTML"` - how to update target
 - `hx-on::after-request` - close modal after submission
 
 ### Flowbite for Modal
+
 - `data-modal-target` / `data-modal-toggle` - triggers
 - `data-modal-hide` - close button
 - Standard Flowbite modal HTML structure
 
 ### Repository Pattern
+
 - `SuggestionRepo` follows existing `DraftRepo`, `CommentRepo` patterns
 - Simple `create()` method, returns ID
 - Stores exactly 4 fields (YAGNI)

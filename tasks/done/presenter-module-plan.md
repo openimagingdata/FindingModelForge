@@ -1,26 +1,27 @@
 # Draft Formatting Utilities Plan
 
-**Last Updated**: October 2, 2025
-**Status**: ✅ Ready to implement
-**Prerequisite for**: DraftService Refactor (see `draft-service-refactor-plan.md`)
+**Last Updated**: October 2, 2025 **Status**: ✅ Ready to implement **Prerequisite for**: DraftService Refactor (see
+`draft-service-refactor-plan.md`)
 
 ## Context & Analysis (October 2, 2025)
 
 After examining the actual code, the "presenter layer" concept is **over-engineered**. The real issue is simpler:
 
 **Current State:**
+
 - `DraftService` has 515 lines and mixes business logic with formatting
-- Formatting functions like `format_draft_for_display()` (82 lines) and `extract_attribute_names_from_generated_json()` (25 lines) are **pure functions** with no I/O
+- Formatting functions like `format_draft_for_display()` (82 lines) and `extract_attribute_names_from_generated_json()`
+  (25 lines) are **pure functions** with no I/O
 - These functions only depend on `humanize` and `slugify` - they don't need services, DI, or repositories
 - The project already has `app/utils/slug.py` for pure utility functions
 
 **The Real Problem:**
+
 1. Service bloat - formatting logic doesn't belong in orchestration layer
 2. Code duplication - `get_drafts_for_user()` reimplements parts of `format_draft_for_display()`
 3. No clear home for pure formatting functions
 
-**Better Solution:**
-Follow the existing `app/utils/` pattern instead of inventing a new "presenter layer" architecture.
+**Better Solution:** Follow the existing `app/utils/` pattern instead of inventing a new "presenter layer" architecture.
 
 ## Revised Objectives
 
@@ -29,7 +30,8 @@ Follow the existing `app/utils/` pattern instead of inventing a new "presenter l
 - No new architectural patterns - just move code to where it belongs
 - Make functions testable with deterministic timestamp injection
 - Services call utils for formatting, stay focused on business logic
-- **Enable DraftService refactor**: Once formatting is extracted, service can be cleaned up to focus on business logic only (removes Python-side filtering, keeps orchestration)
+- **Enable DraftService refactor**: Once formatting is extracted, service can be cleaned up to focus on business logic
+  only (removes Python-side filtering, keeps orchestration)
 
 ## Constraints & Principles
 
@@ -49,9 +51,11 @@ Follow the existing `app/utils/` pattern instead of inventing a new "presenter l
 ## Implementation Plan
 
 ### Phase 1 – Create Formatting Utilities
+
 **Status**: ✅ COMPLETE
 
 - [x] Create `app/utils/draft_formatting.py` with functions:
+
   ```python
   def format_draft_for_display(
       draft: dict[str, Any] | FindingModelDraft,
@@ -107,6 +111,7 @@ Follow the existing `app/utils/` pattern instead of inventing a new "presenter l
   - Port timestamp logic → `humanize_timestamp()` and `format_date_short()`
 
 - [ ] Add `now` parameter to all time-dependent functions:
+
   ```python
   # Enables deterministic testing
   if now is None:
@@ -122,8 +127,8 @@ Follow the existing `app/utils/` pattern instead of inventing a new "presenter l
 - [ ] Handle both dict and model inputs gracefully (copy existing pattern)
 
 ### Phase 2 – Create Comprehensive Tests
-**Status**: ✅ COMPLETE
-**Depends on**: Phase 1 complete
+
+**Status**: ✅ COMPLETE **Depends on**: Phase 1 complete
 
 - [ ] Create `tests/test_utils/` directory (if doesn't exist)
 - [ ] Create `tests/test_utils/test_draft_formatting.py` with test cases:
@@ -163,10 +168,11 @@ Follow the existing `app/utils/` pattern instead of inventing a new "presenter l
 - [ ] Target: 100% code coverage for utils module
 
 ### Phase 3 – Update DraftService
-**Status**: ✅ COMPLETE
-**Depends on**: Phase 2 complete (tests passing)
+
+**Status**: ✅ COMPLETE **Depends on**: Phase 2 complete (tests passing)
 
 - [ ] Import formatting utilities in `DraftService`:
+
   ```python
   from app.utils.draft_formatting import (
       format_draft_for_display,
@@ -175,6 +181,7 @@ Follow the existing `app/utils/` pattern instead of inventing a new "presenter l
   ```
 
 - [ ] Replace `get_drafts_for_user()` formatting loop:
+
   ```python
   # OLD: Inline formatting (40+ lines)
   for d in drafts:
@@ -188,6 +195,7 @@ Follow the existing `app/utils/` pattern instead of inventing a new "presenter l
   ```
 
 - [ ] Replace `get_public_drafts()` formatting:
+
   ```python
   # OLD: Calls self.format_draft_for_display()
   result.append(self.format_draft_for_display(draft, comment_count))
@@ -204,8 +212,8 @@ Follow the existing `app/utils/` pattern instead of inventing a new "presenter l
 - [ ] Update docstrings in service methods to reflect delegation
 
 ### Phase 4 – Update Service Tests
-**Status**: ✅ COMPLETE
-**Depends on**: Phase 3 complete
+
+**Status**: ✅ COMPLETE **Depends on**: Phase 3 complete
 
 - [ ] Update `tests/test_services/test_draft_service.py`:
   - [ ] Remove formatting assertion tests (now in test_draft_formatting.py):
@@ -223,10 +231,11 @@ Follow the existing `app/utils/` pattern instead of inventing a new "presenter l
   - [ ] Verify tests still pass (should, since output format unchanged)
 
 ### Phase 5 – Verify Integration
-**Status**: ✅ COMPLETE
-**Depends on**: Phase 4 complete
+
+**Status**: ✅ COMPLETE **Depends on**: Phase 4 complete
 
 - [x] Run full test suite - must remain at 100% pass rate:
+
   ```bash
   task test
   ```
@@ -247,15 +256,17 @@ Follow the existing `app/utils/` pattern instead of inventing a new "presenter l
   - Formatting is still in-memory, just moved to different module
   - No new database queries added
 
-**Verification Results**: All 86 UI tests passed (`task test-ui`), including profile page and public drafts display tests. Formatting working correctly.
+**Verification Results**: All 86 UI tests passed (`task test-ui`), including profile page and public drafts display
+tests. Formatting working correctly.
 
 ### Phase 6 – Documentation & Cleanup
-**Status**: Not started
-**Depends on**: Phase 5 complete
+
+**Status**: Not started **Depends on**: Phase 5 complete
 
 - [ ] Update `app/utils/__init__.py` to export formatting functions (if following that pattern)
 
 - [ ] Add docstring examples to `draft_formatting.py`:
+
   ```python
   """Draft formatting utilities.
 
@@ -290,7 +301,8 @@ Follow the existing `app/utils/` pattern instead of inventing a new "presenter l
 - [ ] Formatting output **identical** to current behavior (backward compatible)
 - [ ] No new dependencies added
 - [ ] Services can be imported without circular dependencies
-- [ ] **Enables next step**: DraftService refactor can proceed (Phase 0 prerequisite satisfied per `draft-service-refactor-plan.md`)
+- [ ] **Enables next step**: DraftService refactor can proceed (Phase 0 prerequisite satisfied per
+      `draft-service-refactor-plan.md`)
 
 ## Risk Assessment
 
@@ -303,6 +315,7 @@ Follow the existing `app/utils/` pattern instead of inventing a new "presenter l
 - Easy to rollback (just one commit)
 
 **Validation Strategy:**
+
 - Tests must pass at each phase
 - Manual verification before merge
 - Integration tests ensure HTMX fragments still work
@@ -310,18 +323,21 @@ Follow the existing `app/utils/` pattern instead of inventing a new "presenter l
 ## Why This Approach is Better
 
 **Original "presenter layer" plan issues:**
+
 - ❌ Created new `app/presenters/` package (unfamiliar pattern)
 - ❌ Talked about "DI integration" for simple functions
 - ❌ Over-engineered with phases about "presenter adoption patterns"
 - ❌ Suggested 2-3 days of work for moving simple functions
 
 **This approach:**
+
 - ✅ Uses existing `app/utils/` pattern (like `slug.py`)
 - ✅ Pure functions - no DI, no complexity
 - ✅ Simple phases - create, test, integrate, done
 - ✅ Clear separation: utils for formatting, services for business logic
 
 **Aligns with project principles:**
+
 - Type safety: Functions have full type hints
 - Testability: Pure functions with deterministic testing
 - Simplicity: No new architectural patterns
@@ -339,6 +355,7 @@ The **DraftService Refactor depends on this work** (see `draft-service-refactor-
    - No mixed responsibilities
 
 2. **Single migration wave**: Routers and services change ONCE:
+
    ```python
    # After this refactor:
    from app.utils.draft_formatting import format_draft_for_display
@@ -362,6 +379,7 @@ The **DraftService Refactor depends on this work** (see `draft-service-refactor-
    - Both have objective success criteria
 
 **What the service looks like after both refactors:**
+
 ```python
 class DraftService:
     """Orchestrates draft business logic - no formatting, no filtering."""
@@ -390,6 +408,7 @@ class DraftService:
 ```
 
 **Services become thin orchestration layers** with:
+
 - Formatting in `app/utils/`
 - Queries in `app/database.py` (repositories)
 - Business logic in services (ownership, transitions, coordination)

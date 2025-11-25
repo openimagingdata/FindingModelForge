@@ -14,7 +14,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **Test performance optimization**: UI test suite now runs in 2.5 minutes (down from 5+ minutes, 2x speedup)
 - **Network wait elimination**: Removed 41 `wait_for_load_state("networkidle")` calls across all UI tests
 - **AI API call removal**: Eliminated 18+ real AI API calls, replaced with production data templates
-- **Test data improvements**: Created `generate_valid_generated_json()` utility using real `abdominal_abscess.fm.json` data
+- **Test data improvements**: Created `generate_valid_generated_json()` utility using real `abdominal_abscess.fm.json`
+  data
 - **HTMX-aware testing**: Migrated 20 arbitrary timeouts to `wait_for_htmx_settled()` utility
 - **Click utility migration**: Standardized 7 HTMX actions to use `click_and_wait_for_htmx()` pattern
 - **Anti-pattern elimination**: Fixed 10 "Schrödinger's Tests" that could pass without testing anything
@@ -38,7 +39,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **Query parameter approach**: `?from=creation&success=made_public` survives redirects where headers don't
 - **Context-aware rendering**: Server checks query params instead of headers for OOB swap decisions
 - **Success message improvements**: Added context-aware alerts for "Make Public" workflow
-- **Files affected**: `app/routers/drafts/workflows.py`, `app/routers/drafts/views.py`, `templates/components/draft_preview_content.html`
+- **Files affected**: `app/routers/drafts/workflows.py`, `app/routers/drafts/views.py`,
+  `templates/components/draft_preview_content.html`
 
 #### Drafts Router Modularization (October 15, 2025)
 

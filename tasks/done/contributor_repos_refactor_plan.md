@@ -1,8 +1,8 @@
 # Contributor Repository Refactor: Index + MongoDB Dual-Source Pattern
 
-**Status**: ✅ COMPLETE (All 5 blocks implemented) **Created**: 2025-10-22 **Updated**: 2025-10-24
-**Branch**: `feature/contributor-repos-refactor` **Goal**: Separate canonical contributors (Index) from draft
-contributors (MongoDB) using Repository pattern
+**Status**: ✅ COMPLETE (All 5 blocks implemented) **Created**: 2025-10-22 **Updated**: 2025-10-24 **Branch**:
+`feature/contributor-repos-refactor` **Goal**: Separate canonical contributors (Index) from draft contributors (MongoDB)
+using Repository pattern
 
 **🔑 Key Principle**: Never reference DuckDB in application code. The `Index` class from `findingmodel` abstracts the
 storage backend.
@@ -674,13 +674,13 @@ async def people_repo(mock_duckdb_index, mongodb_collection):
 
 ## Progress Tracking
 
-| Block                         | Status         | Owner       | Completion Date | Notes                                      |
-| ----------------------------- | -------------- | ----------- | --------------- | ------------------------------------------ |
-| 1. Repository Infrastructure  | ✅ Complete    | Claude Code | 2025-10-24      | PeopleRepo, OrganizationRepo implemented   |
-| 2. Database Class Update      | ✅ Complete    | Claude Code | 2025-10-24      | Repos initialized, dict attrs removed      |
-| 3. Application Code Update    | ✅ Complete    | Claude Code | 2025-10-24      | main.py, helpers.py, creation_service.py   |
-| 4. Test Infrastructure Update | ✅ Complete    | Claude Code | 2025-10-24      | All test mocks updated to use repos        |
-| 5. Repository Tests           | ✅ Complete    | Claude Code | 2025-10-24      | 19 tests passing (PeopleRepo, OrgRepo)     |
+| Block                         | Status      | Owner       | Completion Date | Notes                                    |
+| ----------------------------- | ----------- | ----------- | --------------- | ---------------------------------------- |
+| 1. Repository Infrastructure  | ✅ Complete | Claude Code | 2025-10-24      | PeopleRepo, OrganizationRepo implemented |
+| 2. Database Class Update      | ✅ Complete | Claude Code | 2025-10-24      | Repos initialized, dict attrs removed    |
+| 3. Application Code Update    | ✅ Complete | Claude Code | 2025-10-24      | main.py, helpers.py, creation_service.py |
+| 4. Test Infrastructure Update | ✅ Complete | Claude Code | 2025-10-24      | All test mocks updated to use repos      |
+| 5. Repository Tests           | ✅ Complete | Claude Code | 2025-10-24      | 19 tests passing (PeopleRepo, OrgRepo)   |
 
 **Legend**: ⬜ Not Started | 🟡 In Progress | ✅ Complete | ❌ Blocked
 
