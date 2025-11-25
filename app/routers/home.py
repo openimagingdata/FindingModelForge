@@ -3,7 +3,8 @@
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from loguru import logger
-from pydantic import BaseModel, EmailStr, ValidationError
+from pydantic import validate_email
+from pydantic_core import PydanticCustomError
 
 from app.auth import OptionalUserDep
 from app.dependencies import SuggestionRepoDep
@@ -40,20 +41,15 @@ async def submit_suggestion(
         validated_email: str | None = None
         if submitter_email:
             try:
-                # Use Pydantic model for email validation
-                class EmailValidator(BaseModel):
-                    email: EmailStr
-
-                validator = EmailValidator(email=submitter_email)
-                validated_email = str(validator.email)
-            except ValidationError:
+                _, validated_email = validate_email(submitter_email)
+            except PydanticCustomError as e:
                 logger.warning(f"Invalid email format: {submitter_email}")
                 return templates.TemplateResponse(
                     request=request,
                     name="components/suggestion_alert.html",
                     context={
                         "success": False,
-                        "message": "Invalid email address format. Please check and try again.",
+                        "message": str(e),
                     },
                 )
 

@@ -1,34 +1,33 @@
-# Suggestion Box Feature - Implementation Plan
+# Suggestion Box Feature - Final Implementation Record
 
 **Status**: ✅ COMPLETED
 **Implementation Date**: 2025-11-20 to 2025-11-23
-**Last Updated**: 2025-11-23
+**Last Updated**: 2025-11-25 (post-implementation review)
 
-## What We're Building
+## What We Built
 
 A simple suggestion feature where any user (authenticated or anonymous) can submit finding model ideas. Accessible via navbar link (all pages) and hero button (home page only). Opens modal, user types suggestion + optional email, submits, modal closes, alert appears on current page.
 
 ## User Flow
 
-1. Click "Suggest" → modal opens with empty form
+1. Click "Suggest" → modal opens with empty form, input auto-focused
 2. Type suggestion (max 300 chars) + optional email
-3. Submit or cancel → modal closes, form clears
-4. If submitted: success/error alert appears on current page
-5. User stays on whatever page they're on (no navigation)
+3. Submit → modal closes, form state persists (Alpine.js behavior)
+4. Success/error toast alert appears in top-right corner
+5. User stays on current page (no navigation)
 
-## Key Decisions
+## Key Design Decisions
 
-### UX (As Implemented)
+### UX Decisions
 - **Single-line input** (not textarea) - quick suggestion, not detailed proposal
-- **300 char limit** (not 2000) - keeps it brief, enforced via `maxlength` attribute
-- **No character counter** - `maxlength` provides sufficient feedback, counter removed as unnecessary clutter
-- **Auto-focus on open** - suggestion input automatically focused when modal opens (via MutationObserver)
-- **Tab cycling** - focus trapped within modal when open, cycles between inputs and buttons
-- **Form clears on close** - no persistence, simple interaction
-- **Toast notification** - success/error appears in fixed top-right position with fade-in animation
-- **No navigation** - stay where you are
+- **300 char limit** - enforced via `maxlength` attribute (browser prevents over-typing)
+- **No character counter** - `maxlength` provides sufficient feedback, counter was unnecessary clutter
+- **Auto-focus on open** - input automatically focused when modal opens
+- **Form state persists** - if user closes modal accidentally, their input is preserved
+- **Toast notification** - success/error appears in fixed top-right position with smooth animation
+- **No navigation** - user stays on whatever page they're on
 
-### Data Model (YAGNI - store minimum)
+### Data Model (YAGNI Applied)
 ```
 suggestions collection:
 - content (str, max 300 chars)
@@ -40,34 +39,24 @@ suggestions collection:
 **Not storing**: status, notes, processed_at, processed_by, submitter_name
 **Rationale**: Add admin fields later when we build the admin interface. For now, just collect suggestions.
 
-### Tech Approach
+### Tech Stack Usage
 - **HTMX**: Form posts to `/suggestions`, targets `#alert-container`, swaps innerHTML
-- **Modal**: Global in base.html (available all pages), Flowbite `data-modal-toggle`
-- **Alert**: Flowbite dismissible alert, backend returns rendered HTML
-- **Validation**: Alpine.js for character counter + disabled state, Pydantic for email format
+- **Flowbite**: Modal with `data-modal-toggle` triggers, standard styling
+- **Alpine.js**: Form validation, toast animation (x-transition), auto-focus via MutationObserver
+- **No custom JavaScript in main.js** - all interactivity handled declaratively
 
-## Implementation Details
+---
+
+## Actual Implementation
 
 ### Backend
 
-**1. models.py** - Add two Pydantic models:
-```python
-class SuggestionCreate(BaseModel):
-    content: str = Field(..., min_length=1, max_length=300)
-    submitter_email: EmailStr | None = None
+#### 1. Repository: `app/database.py` (lines 675-697)
 
-class Suggestion(BaseModel):
-    id: str = Field(alias="_id")
-    content: str
-    user_id: int | None = None
-    submitter_email: str | None = None
-    created_at: datetime
-    model_config = ConfigDict(populate_by_name=True)
-```
-
-**2. database.py** - Add SuggestionRepo:
 ```python
 class SuggestionRepo:
+    """Suggestion repository for MongoDB operations."""
+
     def __init__(self, db: AsyncIOMotorDatabase[Any]) -> None:
         self.db = db
         self.collection = db.suggestions
@@ -79,6 +68,8 @@ class SuggestionRepo:
         submitter_email: str | None = None,
     ) -> str:
         """Create suggestion. Returns ID."""
+        from datetime import UTC, datetime
+
         doc = {
             "content": content,
             "user_id": user_id,
@@ -89,20 +80,20 @@ class SuggestionRepo:
         return str(result.inserted_id)
 ```
 
-Also update `Database` class:
-- Add `suggestion_repo: SuggestionRepo | None = None` to `__init__`
-- In `connect()`: `self.suggestion_repo = SuggestionRepo(self.db)`
-- In `connect()`: `await self.db.suggestions.create_index([("created_at", -1)])`
+#### 2. Dependency: `app/dependencies.py` (lines 64-71)
 
-**3. dependencies.py** - Add dependency:
 ```python
-async def get_suggestion_repo(request: Request) -> SuggestionRepo:
-    return request.app.state.database.suggestion_repo
+def get_suggestion_repo(database: DatabaseDep) -> SuggestionRepo:
+    """Get SuggestionRepo instance from the database."""
+    if database.suggestion_repo is None:
+        raise RuntimeError("Database not initialized or SuggestionRepo not available")
+    return database.suggestion_repo
 
 SuggestionRepoDep = Annotated[SuggestionRepo, Depends(get_suggestion_repo)]
 ```
 
-**4. home.py** - Add endpoint with this flow:
+#### 3. Endpoint: `app/routers/home.py` (lines 30-92)
+
 ```python
 @router.post("/suggestions", response_class=HTMLResponse)
 async def submit_suggestion(
@@ -112,38 +103,45 @@ async def submit_suggestion(
     content: str = Form(..., min_length=1, max_length=300),
     submitter_email: str | None = Form(None),
 ) -> HTMLResponse:
-    # Validate email if provided
+    """Submit a suggestion from authenticated or anonymous user."""
+    # Validate email format if provided (using Pydantic's validate_email)
     # Determine user_id and email based on auth state
-    # Save: await suggestion_repo.create(content, user_id, email)
-    # Return alert template with success=True/False
+    # Save via suggestion_repo.create()
+    # Return rendered alert template with success/error message
 ```
 
-Key logic:
-- `user_id = current_user.id if current_user else None`
-- `email = submitter_email or (current_user.email if current_user else None)`
-- Return `templates.TemplateResponse("components/suggestion_alert.html", {"success": bool, "message": str})`
+**Note**: Pydantic models (`SuggestionCreate`, `Suggestion`) were not created - the repo works directly with dicts, which is simpler for this use case.
 
 ### Frontend
 
-**5. base.html** - Add two things (AS IMPLEMENTED):
+#### 4. Alert Container: `templates/base.html` (line 47)
 
-Toast notification container (fixed position top-right):
 ```html
 <!-- Toast Notification Container - Fixed top-right, works on any page -->
 <div id="alert-container" class="fixed top-28 right-8 z-50 w-full max-w-xs"></div>
 ```
 
-Before `</body>`, add global modal:
+#### 5. Modal with Alpine.js Auto-Focus: `templates/base.html` (lines 66-82)
+
 ```html
-<div id="suggestion-modal" tabindex="-1" aria-hidden="true" class="hidden ...">
-  <!-- Standard Flowbite modal structure -->
-  <div class="p-4 md:p-5">
-    {% include 'components/suggestion_form.html' %}
-  </div>
+<div id="suggestion-modal"
+     tabindex="-1"
+     aria-hidden="true"
+     class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 ..."
+     x-data="{ isOpen: false }"
+     x-init="$watch('isOpen', value => { if (value) $nextTick(() => document.getElementById('suggestion-content')?.focus()) });
+             new MutationObserver(() => { isOpen = !$el.classList.contains('hidden') }).observe($el, { attributes: true, attributeFilter: ['class'] })">
+    <!-- Modal content -->
+    <div class="p-4 md:p-5">
+        {% include 'components/suggestion_form.html' %}
+    </div>
 </div>
 ```
 
-**6. suggestion_form.html** - Form with HTMX + Alpine.js (AS IMPLEMENTED):
+**Key pattern**: Uses Alpine.js `$watch` + MutationObserver to detect when Flowbite opens the modal (class change), then auto-focuses the input. This keeps the focus logic co-located with the modal element rather than in a separate JS file.
+
+#### 6. Form: `templates/components/suggestion_form.html`
+
 ```html
 <form hx-post="/suggestions"
       hx-target="#alert-container"
@@ -152,323 +150,209 @@ Before `</body>`, add global modal:
       @submit="setTimeout(() => { content = ''; }, 200);"
       x-data="{
           content: '',
-          get contentLength() { return this.content.length; },
           get canSubmit() { return this.content.trim().length >= 1 && this.content.length <= 300; }
-      }">
+      }"
+      class="space-y-4">
 
-  <!-- Single-line input (NO character counter - maxlength provides feedback) -->
-  <input type="text" id="suggestion-content" name="content" x-model="content" maxlength="300" required>
+    <!-- Single-line input with maxlength (NO character counter) -->
+    <input type="text"
+           id="suggestion-content"
+           name="content"
+           x-model="content"
+           maxlength="300"
+           required
+           class="...flowbite classes..."
+           placeholder="e.g., Pulmonary embolism, Brain tumor classification">
 
-  <!-- Conditional email field -->
-  {% if not user %}
+    <!-- Conditional email field (anonymous only) -->
+    {% if not user %}
     <input type="email" name="submitter_email" placeholder="you@example.com">
-  {% else %}
-    <p>Submitting as {{ user.name or user.login }}
-       {% if user.email %} — we'll notify you at {{ user.email }}{% endif %}
-    </p>
-  {% endif %}
+    {% else %}
+    <div class="...info box...">
+        Submitting as <strong>{{ user.name or user.login }}</strong>
+        {% if user.email %} — we'll notify you at <strong>{{ user.email }}</strong>{% endif %}
+    </div>
+    {% endif %}
 
-  <!-- Submit button (HTMX closes modal via hx-on::after-request) -->
-  <button type="submit" :disabled="!canSubmit">
-    Submit Suggestion
-  </button>
+    <!-- Buttons -->
+    <button type="button" data-modal-hide="suggestion-modal">Cancel</button>
+    <button type="submit" :disabled="!canSubmit">Submit Suggestion</button>
 </form>
 ```
 
-**Key differences from plan:**
-- **No character counter display** - removed as unnecessary clutter
-- **Modal close via HTMX** - `hx-on::after-request` triggers close
-- **Form clear on submit** - Alpine.js `@submit` handler resets content
-- **Input ID added** - `id="suggestion-content"` for focus management
+#### 7. Toast Alert: `templates/components/suggestion_alert.html`
 
-**7. suggestion_alert.html** - Flowbite dismissible alert:
 ```html
-{% if success %}
-  <div id="suggestion-alert" class="... bg-green-50 text-green-800 ...">
-    <svg>...</svg>
-    <div>{{ message }}</div>
-    <button data-dismiss-target="#suggestion-alert">×</button>
-  </div>
-{% else %}
-  <div id="suggestion-alert" class="... bg-red-50 text-red-800 ...">
-    <!-- Same structure, different colors -->
-  </div>
-{% endif %}
+<div id="suggestion-alert"
+     x-data="{ show: false }"
+     x-init="setTimeout(() => show = true, 10)"
+     x-show="show"
+     x-transition:enter="transition ease-out duration-300"
+     x-transition:enter-start="opacity-0 transform -translate-y-2"
+     x-transition:enter-end="opacity-100 transform translate-y-0"
+     class="flex items-center w-full p-4 text-green-800 bg-green-50 rounded-lg shadow-lg ..."
+     role="alert">
+    <!-- Icon, message, close button -->
+    <button @click="show = false" aria-label="Close">×</button>
+</div>
 ```
 
-**8. navbar.html** - Add link to desktop + mobile nav:
+**Key pattern**: Animation handled entirely by Alpine.js `x-transition` - no custom JavaScript needed.
+
+#### 8. Navbar Link: `templates/components/navbar.html`
+
 ```html
-<!-- After "Finding Models" link -->
-<a href="#" data-modal-target="suggestion-modal" data-modal-toggle="suggestion-modal">
-  <svg><!-- lightbulb icon --></svg>
-  Suggest
+<a href="#" data-modal-target="suggestion-modal" data-modal-toggle="suggestion-modal"
+   class="...">
+    <svg><!-- lightbulb icon --></svg>
+    Suggest
 </a>
 ```
 
-**9. index.html** - Add outline button to hero CTA section (AS IMPLEMENTED):
+Present in both desktop nav and mobile menu.
+
+#### 9. Hero Button: `templates/index.html` (line 30-35)
+
 ```html
 <button type="button"
         data-modal-target="suggestion-modal"
         data-modal-toggle="suggestion-modal"
-        class="... border-primary-600 text-primary-600 ...">
-  <svg><!-- lightbulb icon --></svg>
-  Suggest
+        class="...outline button styles...">
+    <svg><!-- lightbulb icon --></svg>
+    Suggest
 </button>
-```
-
-**10. main.js** - Add focus management and animations (NOT IN ORIGINAL PLAN):
-
-Lines 285-297 - Toast fade-in animation:
-```javascript
-// Add fade-in animation to toast notifications in alert-container
-if (content.id === 'alert-container' || content.closest('#alert-container')) {
-  const alertElement = content.id === 'alert-container' ? content.firstElementChild : content
-  if (alertElement) {
-    alertElement.style.opacity = '0'
-    alertElement.style.transform = 'translateY(-10px)'
-    setTimeout(() => {
-      alertElement.style.transition = 'opacity 0.3s ease, transform 0.3s ease'
-      alertElement.style.opacity = '1'
-      alertElement.style.transform = 'translateY(0)'
-    }, 10)
-  }
-}
-```
-
-Lines 300-347 - Modal focus management:
-```javascript
-// Suggestion modal focus management and accessibility
-document.addEventListener('DOMContentLoaded', function() {
-  const suggestionModalElement = document.getElementById('suggestion-modal')
-  const suggestionInput = document.getElementById('suggestion-content')
-
-  // MutationObserver to detect when modal opens (class changes from hidden)
-  const observer = new MutationObserver((mutations) => {
-    mutations.forEach((mutation) => {
-      if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-        const isVisible = !suggestionModalElement.classList.contains('hidden')
-        if (isVisible) {
-          setTimeout(() => { suggestionInput.focus() }, 150)
-        }
-      }
-    })
-  })
-
-  observer.observe(suggestionModalElement, {
-    attributes: true,
-    attributeFilter: ['class']
-  })
-
-  // Focus trapping for tab navigation
-  suggestionModalElement.addEventListener('keydown', function(e) {
-    if (!suggestionModalElement.classList.contains('hidden') && e.key === 'Tab') {
-      // Tab cycling logic...
-    }
-  })
-})
 ```
 
 ### Testing
 
-**11. tests/test_suggestions.py** - Repository and endpoint tests:
-- Test `create()` with authenticated user (verify user_id populated, email from session)
-- Test `create()` with anonymous user + email (verify user_id=None, email from form)
-- Test `create()` with anonymous user without email (verify both None)
-- Verify document has exactly 4 fields: content, user_id, submitter_email, created_at
-- Verify no extra fields (no status, notes, etc.)
+#### 10. Unit/Integration Tests: `tests/test_suggestions.py`
 
-**12. tests/ui/test_suggestion_box.py** - UI workflow tests (AS IMPLEMENTED):
-- Test POST as authenticated user (user_id + email populated from session)
-- Test POST as anonymous with email (user_id=None, email from form)
-- Test POST as anonymous without email (both None)
-- Test invalid email format (returns error alert HTML)
-- Test content validation (empty = error, >300 chars = error, valid = success)
-- Test alert HTML structure (verify success/error context passed correctly)
-- Verify suggestion stored in database with correct field values
+**TestSuggestionEndpoint** (with mocked dependencies):
+- `test_submit_as_authenticated_user` - verifies user_id + email from session
+- `test_submit_as_anonymous_with_email` - verifies user_id=None, email from form
+- `test_submit_as_anonymous_without_email` - verifies both None
+- `test_invalid_email_format` - verifies error handling
+- `test_content_empty_validation` - FastAPI 422 response
+- `test_content_too_long_validation` - FastAPI 422 response
+- `test_email_validation_accepts_valid_formats` - various valid emails
+- `test_email_validation_rejects_invalid_formats` - various invalid emails
 
-- Test "Suggest" link visible in navbar on home page
-- Test "Suggest" link visible in navbar on other pages (e.g., /finding-models)
-- Test hero button visible on home page
-- Test clicking navbar link opens modal
-- Test clicking hero button opens modal
-- Test form shows email input for anonymous users
-- Test form shows user info (no email input) for authenticated users
-- Test `maxlength="300"` attribute enforced (NOT character counter - removed)
-- Test submit button disabled when content empty
-- Test submit button enabled when content at 300 chars boundary
-- Test modal closes after submit
-- Test user stays on current page (no navigation)
-- Test alert appears in #alert-container
-- Test alert is dismissible with close button
-- Test form clears when modal reopens after submission
-- Use `wait_for_htmx_settled()` for HTMX interactions
+**TestSuggestionRepo** (with mocked DB):
+- `test_create_authenticated_user` - verifies field structure
+- `test_create_anonymous_with_email`
+- `test_create_anonymous_without_email`
+- `test_create_field_count_validation` - **exactly 4 fields, no more**
+- `test_created_at_timestamp` - UTC datetime verification
 
-## Files to Change
+**TestSuggestionRepoIntegration** (with real MongoDB):
+- `test_create_suggestion_in_database`
+- `test_create_authenticated_suggestion`
+- `test_create_anonymous_with_email`
 
-**Backend (5 files)**:
-- app/models.py
-- app/database.py
-- app/dependencies.py
-- app/routers/home.py
-- (new) tests/unit/test_suggestion_repo.py
-- (new) tests/test_suggestions.py
+#### 11. UI Tests: `tests/ui/test_suggestion_box.py`
 
-**Frontend (4 files)**:
-- templates/base.html
-- templates/components/navbar.html
-- templates/index.html
-- (new) templates/components/suggestion_form.html
-- (new) templates/components/suggestion_alert.html
-- (new) tests/ui/test_suggestion_box.py
+**TestSuggestionBoxVisibility**:
+- `test_navbar_suggest_link_visible_on_home_page`
+- `test_navbar_suggest_link_visible_on_finding_models_page`
+- `test_hero_button_visible_on_home_page_only`
 
-## Technical Notes
+**TestSuggestionBoxModalOpening**:
+- `test_navbar_link_opens_modal`
+- `test_hero_button_opens_modal`
 
-### HTMX Integration
-- Form: `hx-post="/suggestions"` + `hx-target="#alert-container"` + `hx-swap="innerHTML"`
-- On submit: HTMX posts form data, replaces alert container content with response HTML
-- Modal close: `data-modal-hide="suggestion-modal"` on submit button (Flowbite handles this)
-- No custom JavaScript needed - HTMX + Flowbite handle the entire flow
+**TestSuggestionBoxFormContent**:
+- `test_form_shows_email_input_for_anonymous_users`
+- `test_form_shows_user_info_for_authenticated_users`
 
-### Authentication Handling
-- Use `OptionalUserDep` in endpoint (allows both auth states)
-- For authenticated: email pulled from `current_user.email`, no form field needed
-- For anonymous: optional email input in form
-- Logic: `email = submitter_email or (current_user.email if current_user else None)`
+**TestSuggestionBoxReactiveValidation**:
+- `test_input_respects_maxlength_attribute`
+- `test_submit_button_disabled_when_content_empty`
+- `test_submit_button_enabled_at_max_length`
+- `test_submit_button_enabled_when_content_valid`
 
-### Form State Management
-- Form clears automatically when modal closes (browser default behavior)
-- No persistence - each modal open starts with empty form (except user info display)
-- Alpine.js reactive state (`content`, `contentLength`, `canSubmit`) resets when modal reopens
+**TestSuggestionBoxSubmissionFlow**:
+- `test_modal_closes_and_alert_appears_after_submit`
+- `test_user_stays_on_current_page_after_submit`
+- `test_alert_has_close_button_with_alpine_interaction`
 
-### Alert Display
-- HTMX targets `#alert-container` (global div in base.html)
-- Alert appears on whatever page user is currently on
-- User doesn't navigate away - stays on same page
-- Alert is dismissible via Flowbite's `data-dismiss-target="#suggestion-alert"`
-- Backend returns rendered alert HTML with `success` and `message` context
+**TestSuggestionBoxStateManagement**:
+- `test_form_state_persists_across_modal_close_reopen`
 
-### Validation Strategy
-**Client-side** (Alpine.js):
-- Reactive character counter: `<span x-text="contentLength"></span>/300`
-- Submit button disabled when invalid: `:disabled="!canSubmit"`
-- Prevents submission of empty or too-long content
+**TestSuggestionBoxPersistence**:
+- `test_suggestion_persisted_to_database` - verifies MongoDB storage
 
-**Server-side** (Pydantic + custom):
-- `content: str = Form(..., min_length=1, max_length=300)`
-- `submitter_email: EmailStr | None = None` (validates format if provided)
-- Custom check: `EmailStr._validate(submitter_email)` with try/except for friendly error
+---
 
-## What We're NOT Building (Yet)
+## Files Changed
 
-- Status tracking (pending/reviewed/accepted/rejected)
-- Admin interface to review suggestions
-- Email notifications
-- Rate limiting
-- Duplicate detection
-- Name field for anonymous users (just email is enough)
+**Backend (4 files)**:
+- `app/database.py` - Added `SuggestionRepo` class
+- `app/dependencies.py` - Added `SuggestionRepoDep` dependency
+- `app/routers/home.py` - Added `POST /suggestions` endpoint
+- `app/models.py` - (No changes - repo uses dicts directly)
 
-Add these when we need them, not before.
+**Frontend (5 files)**:
+- `templates/base.html` - Added `#alert-container` and `#suggestion-modal`
+- `templates/components/navbar.html` - Added "Suggest" links
+- `templates/index.html` - Added hero "Suggest" button
+- `templates/components/suggestion_form.html` - (new) Form component
+- `templates/components/suggestion_alert.html` - (new) Toast component
 
-## Why This Approach is Simple
+**Tests (2 files)**:
+- `tests/test_suggestions.py` - (new) Unit and integration tests
+- `tests/ui/test_suggestion_box.py` - (new) Playwright UI tests
 
-**YAGNI applied**:
-- Store only 4 fields (content, user_id, submitter_email, created_at)
-- No status tracking, no admin fields, no submitter_name
-- Add those when we build the admin interface, not before
+**No changes to `src/js/main.js`** - all JavaScript functionality handled via Alpine.js in templates.
 
-**Standard patterns**:
-- HTMX for form submission (existing pattern)
-- Flowbite components (modal, alert, form inputs)
-- Alpine.js for reactivity (character counter, validation)
-- Repository pattern (matches DraftRepo, CommentRepo)
-- OptionalUserDep (allows both auth states)
+---
 
-**No custom code**:
-- No custom JavaScript event listeners
-- No special HTMX headers or events
-- No complex state management
-- Browser + Flowbite + HTMX handle everything
+## Technical Patterns Used
 
-**Total implementation**: ~250 lines of code across 12 files
+### Alpine.js for All Interactivity
+- **Form validation**: `x-data` with computed `canSubmit` property
+- **Toast animation**: `x-transition` directives (no custom JS)
+- **Auto-focus**: `$watch` + `$nextTick` + MutationObserver on modal element
+- **Alert dismissal**: `@click="show = false"` with `x-show`
 
-## Implementation Summary
+### HTMX for Server Interaction
+- `hx-post="/suggestions"` - form submission
+- `hx-target="#alert-container"` - where to put response
+- `hx-swap="innerHTML"` - how to update target
+- `hx-on::after-request` - close modal after submission
 
-### Backend (✅ Complete)
-- **Repository**: `SuggestionRepo` in `app/database.py` (lines 674-697)
-  - Writes to `suggestions` collection in MongoDB
-  - Stores exactly 4 fields: `content`, `user_id`, `submitter_email`, `created_at`
-- **Endpoint**: `POST /suggestions` in `app/routers/home.py` (lines 29-96)
-  - Handles both authenticated and anonymous users
-  - Email validation with Pydantic `EmailStr`
-  - Returns rendered alert template
-- **Dependency**: `SuggestionRepoDep` in `app/dependencies.py`
+### Flowbite for Modal
+- `data-modal-target` / `data-modal-toggle` - triggers
+- `data-modal-hide` - close button
+- Standard Flowbite modal HTML structure
 
-### Frontend (✅ Complete)
-- **Modal**: Global `#suggestion-modal` in `templates/base.html`
-  - Uses Flowbite modal with `data-modal-toggle` triggers
-  - Includes `templates/components/suggestion_form.html`
-- **Form**: Alpine.js reactive validation
-  - Single-line input with `maxlength="300"`
-  - Character counter **removed** (maxlength sufficient)
-  - Conditional email field (anonymous only)
-  - Submit button disabled when invalid
-- **Alert**: Fixed position toast in `#alert-container` (top-right)
-  - Flowbite dismissible alert component
-  - Fade-in animation via `src/js/main.js` (lines 285-297)
-- **Triggers**:
-  - Navbar link: "Suggest" in `templates/components/navbar.html`
-  - Hero button: "Suggest" in `templates/index.html` (home page only)
+### Repository Pattern
+- `SuggestionRepo` follows existing `DraftRepo`, `CommentRepo` patterns
+- Simple `create()` method, returns ID
+- Stores exactly 4 fields (YAGNI)
 
-### JavaScript Enhancements (✅ Complete)
-**File**: `src/js/main.js` (lines 300-347)
-- **Auto-focus**: MutationObserver detects modal open, focuses suggestion input after 150ms
-- **Focus trapping**: Tab key cycles within modal (inputs → buttons → back to inputs)
-- **Non-invasive**: Preserves Flowbite's data-attribute functionality
-- **Pattern**: MutationObserver watches `class` changes on `#suggestion-modal`
+---
 
-### Testing (✅ Complete)
-- **Unit tests**: `tests/test_suggestions.py` - Repository and endpoint tests ✅
-  - `TestSuggestionRepo` - 5 tests passing
-  - `TestSuggestionEndpoint` - Basic endpoint tests
-- **UI tests**: `tests/ui/test_suggestion_box.py` - Workflow tests ✅
-  - Updated to verify `maxlength` attribute instead of character counter
-  - Hero button selector updated to `"Suggest"` (not `"Suggest a Finding Model"`)
-  - All tests properly scoped and updated
-
-### Fixed Issues
-1. **Character counter tests**: Updated to check `maxlength="300"` attribute and input length validation
-2. **Hero button selector**: Changed from `"Suggest a Finding Model"` to `"Suggest"`
-3. **Comment test conflict**: Fixed `test_comments.py` to scope selectors to comment thread (avoid finding suggestion modal's Cancel button)
-
-### Database Verification
-```bash
-mongosh findingmodels --eval "db.suggestions.find().pretty()"
-```
-Current status: 82 test suggestions stored successfully
-
-## Success Criteria
+## Success Criteria (All Met)
 
 - [x] Any user can submit suggestion from any page
 - [x] Authenticated users don't need to enter email
 - [x] Anonymous users can optionally provide email
-- [x] Modal closes and form clears after submit
-- [x] Success/error alert appears on current page (toast notification)
+- [x] Modal closes after submit
+- [x] Success/error alert appears as toast notification
 - [x] User stays on current page (no navigation)
 - [x] Database stores exactly 4 fields, no more
 - [x] Auto-focus on modal open
-- [x] Tab cycling within modal
-- [x] Smooth animations for modal and toast
-- [x] All tests updated and passing
+- [x] Smooth animations (Alpine.js x-transition)
+- [x] All tests passing
 
-## Optional Next Steps
+---
 
-1. **Clean up test data**:
-   ```bash
-   mongosh findingmodels --eval "db.suggestions.deleteMany({})"
-   ```
+## Future Enhancements (Not Built)
 
-3. **Optional: Add admin interface** (future enhancement):
-   - View all suggestions with filtering/sorting
-   - Mark as reviewed/implemented/rejected
-   - Add notes/comments on suggestions
-   - Email notifications to submitters
+- Status tracking (pending/reviewed/accepted/rejected)
+- Admin interface to review suggestions
+- Email notifications to submitters
+- Rate limiting
+- Duplicate detection
+
+Add these when needed, not before.

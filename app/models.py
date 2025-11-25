@@ -230,7 +230,7 @@ class Suggestion(BaseModel):
     id: str = Field(alias="_id")
     content: str
     user_id: int | None = None
-    submitter_email: str | None = None
+    submitter_email: EmailStr | None = None
     created_at: datetime
 
     model_config = ConfigDict(populate_by_name=True)

@@ -402,3 +402,55 @@ class TestSuggestionBoxStateManagement:
         # Submit button should be enabled since form has valid content
         submit_button = modal.locator('button[type="submit"]:has-text("Submit Suggestion")')
         await expect(submit_button).to_be_enabled(timeout=5000)
+
+
+class TestSuggestionBoxPersistence:
+    """Test database persistence of suggestions."""
+
+    async def test_suggestion_persisted_to_database(self, authenticated_page: Page) -> None:
+        """Test that suggestions are saved to MongoDB."""
+        from datetime import UTC, datetime
+
+        from motor.motor_asyncio import AsyncIOMotorClient
+
+        from app.config import settings
+
+        # Arrange
+        timestamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
+        test_content = f"Database persistence test suggestion {timestamp}"
+
+        # Navigate and open modal
+        await authenticated_page.goto("http://localhost:8000/")
+
+        # Open modal
+        suggest_link = authenticated_page.locator('a[data-modal-target="suggestion-modal"]:has-text("Suggest")').first
+        await suggest_link.click()
+
+        # Wait for modal to be visible
+        modal = authenticated_page.locator("#suggestion-modal")
+        await expect(modal).to_be_visible(timeout=5000)
+
+        # Act - Submit suggestion
+        await authenticated_page.fill('input[name="content"]', test_content)
+        await authenticated_page.click('button[type="submit"]:has-text("Submit Suggestion")')
+        await wait_for_htmx_settled(authenticated_page)
+
+        # Assert - Query MongoDB to verify persistence
+        client = AsyncIOMotorClient(settings.mongodb_uri)
+        db = client[settings.mongodb_db]
+
+        suggestion = await db.suggestions.find_one({"content": test_content}, sort=[("created_at", -1)])
+
+        assert suggestion is not None, "Suggestion should be persisted to database"
+        assert suggestion["content"] == test_content
+        assert "user_id" in suggestion
+        assert "submitter_email" in suggestion  # Should have submitter_email field (can be None)
+        assert "created_at" in suggestion
+        assert isinstance(suggestion["created_at"], datetime)
+
+        # For authenticated user, verify user_id is set
+        assert suggestion["user_id"] == 999999, "User ID should match authenticated test user"
+
+        # Cleanup
+        await db.suggestions.delete_one({"_id": suggestion["_id"]})
+        client.close()
