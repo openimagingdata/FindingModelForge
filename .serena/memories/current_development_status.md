@@ -1,5 +1,54 @@
 # Current Development Status
 
+## Service Layer Completion (November 2025)
+
+### Status: 🔄 PLANNED - Ready for Implementation
+
+**Project**: Complete the service layer refactoring to move all remaining business logic from routers to services.
+
+**Related Documents:**
+- Assessment: `tasks/backend_complexity_assessment.md`
+- Implementation Plan: `tasks/service_layer_completion_plan.md`
+- Previous Work: `tasks/done/router_cleanup.md`
+
+#### Problem Statement
+
+The October 2025 router cleanup successfully broke up monolithic files, but:
+- Business logic still leaks into routers (~40% of logic)
+- HTMX response patterns duplicated across files
+- Services don't provide complete context objects
+
+#### Planned Changes
+
+**Phase 1: Service Layer Completion** (8-11 hours)
+- 1.1: Add `prepare_list_context()` and `prepare_detail_context()` to `FindingModelService`
+- 1.2: Move `generate_finding_model_json()` to `DraftService`
+- 1.3: Add workflow resolution methods to `CreationService`
+- 1.4: Add `prepare_view_context()` to `DraftService`
+- 1.5: Move validation logic to services
+
+**Phase 2: HTMX Response Service** (4-6 hours)
+- 2.1: Create `HTMXResponseService` for standardized response building
+- 2.2: Migrate routers to use the service
+
+#### Success Metrics
+
+| Metric | Current | Target |
+|--------|---------|--------|
+| Max router function length | 220 lines | <80 lines |
+| Business logic in routers | ~40% | 0% |
+| Test coverage | 81% | 85%+ |
+| `drafts/helpers.py` | 448 lines | <200 lines |
+
+#### Architectural Decisions
+
+1. **Merge workflow into CreationService** - No separate `CreationWorkflowService`
+2. **HTMX patterns → `HTMXResponseService`** - Service pattern, not utility
+3. **Validation in services** - Centralized, testable, single source of truth
+
+---
+
+
 ## Documentation Updates (November 10, 2025)
 
 ### Status: ✅ COMPLETE
