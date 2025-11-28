@@ -23,6 +23,57 @@
 </div>
 {% endif %}
 
+<!-- Iteration Results Message -->
+{% if iteration_result %}
+<div id="iteration-result-alert" class="mb-6 border rounded-lg overflow-hidden">
+    {# Changes Applied Section #}
+    {% if iteration_result.changes %}
+    <div class="flex items-start p-4 text-green-800 border-b border-green-300 bg-green-50 dark:bg-gray-800 dark:text-green-400 dark:border-green-800">
+        <svg class="flex-shrink-0 w-5 h-5 mt-0.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z"/>
+        </svg>
+        <div class="ms-3 text-sm w-full">
+            <span class="font-semibold">Changes Applied:</span>
+            <ul class="mt-2 ml-4 list-disc list-inside space-y-1">
+                {% for change in iteration_result.changes %}
+                <li>{{ change }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+
+    {# Rejections Warning Section #}
+    {% if iteration_result.rejections %}
+    <div class="flex items-start p-4 text-yellow-800 bg-yellow-50 dark:bg-gray-800 dark:text-yellow-300 dark:border-yellow-800">
+        <svg class="flex-shrink-0 w-5 h-5 mt-0.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
+        </svg>
+        <div class="ms-3 text-sm w-full">
+            <span class="font-semibold">Some changes were rejected:</span>
+            <ul class="mt-2 ml-4 list-disc list-inside space-y-1">
+                {% for rejection in iteration_result.rejections %}
+                <li>{{ rejection }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+
+    {# No changes case #}
+    {% if not iteration_result.changes and not iteration_result.rejections %}
+    <div class="flex items-center p-4 text-blue-800 bg-blue-50 dark:bg-gray-800 dark:text-blue-400">
+        <svg class="flex-shrink-0 w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
+        </svg>
+        <div class="ms-3 text-sm font-medium">
+            <span class="font-semibold">Info:</span> No changes were applied. The command may not have resulted in any modifications.
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
 {% if draft.status == 'submitted' %}
 <div class="flex items-center p-4 mb-4 text-sm text-blue-800 border border-blue-300 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400 dark:border-blue-800" role="alert">
     <svg class="flex-shrink-0 inline w-4 h-4 me-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">

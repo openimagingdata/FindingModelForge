@@ -106,12 +106,15 @@ class DraftRepo:
         draft_id: str | None = None,
         generated_json: str | None = None,
         user: User | None = None,
+        is_iteration: bool = False,
+        base_model_id: str | None = None,
     ) -> FindingModelDraft:
         """Create or update a draft owned by the user.
 
         - Inserts a new draft when draft_id is None (status = "draft").
         - Updates state when draft_id provided and status is "draft" or "public" for the owner.
         - Appends action_log entries accordingly.
+        - For iteration drafts, use different uniqueness constraint.
         """
         now = datetime.now(UTC)
         # Normalize draft_id: empty string or whitespace should be treated as None (insert)
@@ -119,14 +122,28 @@ class DraftRepo:
             draft_id = None
 
         if draft_id is None:
-            # Upsert by (user_id, name, status='draft'): ensure uniqueness per user/name for editable drafts
-            filter_doc = {"user_id": user_id, "name": name, "status": "draft"}
+            # Upsert logic differs for iteration drafts vs regular drafts
+            if is_iteration:
+                # For iteration drafts: unique by (user_id, base_model_id, is_iteration=True, status='draft')
+                filter_doc = {
+                    "user_id": user_id,
+                    "base_model_id": base_model_id,
+                    "is_iteration": True,
+                    "status": "draft",
+                }
+            else:
+                # For regular drafts: unique by (user_id, name, status='draft')
+                filter_doc = {"user_id": user_id, "name": name, "status": "draft"}
+
             set_doc: dict[str, Any] = {
                 "name": name,
                 "user_id": user_id,
                 "updated_at": now,
                 "inputs": inputs.model_dump(),
+                "is_iteration": is_iteration,
             }
+            if is_iteration and base_model_id is not None:
+                set_doc["base_model_id"] = base_model_id
             if generated_json is not None:
                 set_doc["generated_json"] = generated_json
             # Populate author fields if user is provided
@@ -406,6 +423,57 @@ class DraftRepo:
             result.append(draft_dict)
 
         return result
+
+    async def get_iteration_draft(self, user_id: int, base_model_id: str) -> FindingModelDraft | None:
+        """Get an iteration draft for a specific user and base model.
+
+        Args:
+            user_id: ID of the user who owns the iteration draft
+            base_model_id: The oifm_id of the base model being iterated
+
+        Returns:
+            The iteration draft if found, None otherwise
+        """
+        doc = await self.collection.find_one(
+            {"user_id": user_id, "base_model_id": base_model_id, "is_iteration": True, "status": "draft"}
+        )
+        if not doc:
+            return None
+        return self._to_model(doc)
+
+    async def update_generated_json(self, draft_id: str, user_id: int, generated_json: str) -> bool:
+        """Update just the generated_json field of a draft.
+
+        Args:
+            draft_id: The draft ID to update
+            user_id: User ID for ownership verification
+            generated_json: New JSON content
+
+        Returns:
+            True if updated successfully, False if draft not found or user doesn't own it
+        """
+        if not ObjectId.is_valid(draft_id):
+            return False
+
+        oid = ObjectId(draft_id)
+        now = datetime.now(UTC)
+
+        result = await self.collection.update_one(
+            {"_id": oid, "user_id": user_id},
+            {
+                "$set": {"generated_json": generated_json, "updated_at": now},
+                "$push": {
+                    "action_log": {
+                        "timestamp": now,
+                        "user_id": user_id,
+                        "action": "draft.generated_json_updated",
+                        "details": None,
+                    }
+                },
+            },
+        )
+
+        return result.matched_count > 0
 
     async def _load_by_oid(self, oid: ObjectId) -> FindingModelDraft:
         doc = await self.collection.find_one({"_id": oid})

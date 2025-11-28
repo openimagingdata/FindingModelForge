@@ -1,28 +1,30 @@
 # FindingModel v0.6.0 Upgrade
 
-**Status**: ✅ Complete
-**Date**: November 11, 2025
-**Target Version**: findingmodel v0.6.0
-**Previous Version**: findingmodel v0.5.0
+**Status**: ✅ Complete **Date**: November 11, 2025 **Target Version**: findingmodel v0.6.0 **Previous Version**:
+findingmodel v0.5.0
 
 ## Overview
 
-Simple upgrade from findingmodel v0.5.0 to v0.6.0. Unlike the previous 0.4.0→0.5.0 upgrade which required significant refactoring, this upgrade had zero breaking changes for our use case.
+Simple upgrade from findingmodel v0.5.0 to v0.6.0. Unlike the previous 0.4.0→0.5.0 upgrade which required significant
+refactoring, this upgrade had zero breaking changes for our use case.
 
 ## Changes in v0.6.0
 
 ### New Features (Not Used by FindingModelForge)
+
 - **Model Context Protocol (MCP) Server** - Exposes Index search to AI agents
 - **Multi-Provider AI Architecture** - Support for OpenAI and Anthropic models
 - **Tavily API Integration** - Replaces Perplexity for finding detail generation
 
 ### Breaking Changes (None Affect Us)
+
 - ❌ Removed `instructor` library dependency - **We don't use this**
 - ❌ Deprecated `get_openai_model()` - **We don't use this**
 - ❌ Changed `add_details_to_info()` - **We don't use this**
 - ❌ Refactored `markdown_in` tool - **We don't use this**
 
 ### What We Actually Use (All Unchanged ✅)
+
 - `Index` - Finding model index search
 - `FindingModelFull`, `FindingInfo`, `FindingModelBase` - Data types
 - `add_ids_to_model` - Add IDs to model structure
@@ -38,6 +40,7 @@ Simple upgrade from findingmodel v0.5.0 to v0.6.0. Unlike the previous 0.4.0→0
 **File**: `pyproject.toml:17`
 
 **Change**:
+
 ```diff
 - "findingmodel>=0.5.0",
 + "findingmodel>=0.6.0",
@@ -46,6 +49,7 @@ Simple upgrade from findingmodel v0.5.0 to v0.6.0. Unlike the previous 0.4.0→0
 **Command**: `uv sync`
 
 **Result**:
+
 ```
 Uninstalled 11 packages:
 - instructor==1.10.0 (deprecated)
@@ -66,15 +70,17 @@ Installed 9 packages:
 ### Phase 2: Testing
 
 #### Unit Tests
-**Command**: `task test-unit`
-**Result**: ✅ All 71 tests passing
+
+**Command**: `task test-unit` **Result**: ✅ All 71 tests passing
+
 - 6 tests skipped (expected, marked TODO)
 - Zero failures
 - All `findingmodel.tools` functions working correctly
 
 #### UI Tests
-**Command**: `task test-ui`
-**Result**: ✅ All 85 tests passing
+
+**Command**: `task test-ui` **Result**: ✅ All 85 tests passing
+
 - Requires dev server running (`task dev`)
 - Zero failures
 - Full workflow verification complete
@@ -82,25 +88,25 @@ Installed 9 packages:
 ### Phase 3: Documentation
 
 **Updated**: `CLAUDE.md`
+
 - Added "Running UI Tests (for Claude Code)" section
 - Documented background bash usage for `task dev`
 - Ensured Claude Code knows to run UI tests autonomously
 
 ## Success Criteria
 
-✅ **Zero code changes required**
-✅ **All 156 tests passing** (71 unit + 85 UI)
-✅ **No breaking changes in used APIs**
-✅ **Dependencies updated cleanly**
-✅ **Documentation updated**
+✅ **Zero code changes required** ✅ **All 156 tests passing** (71 unit + 85 UI) ✅ **No breaking changes in used APIs**
+✅ **Dependencies updated cleanly** ✅ **Documentation updated**
 
 ## What Changed in Dependencies
 
 **Removed**:
+
 - `instructor` library (deprecated in v0.6.0)
 - Various async HTTP libraries (aiohappyeyeballs, aiohttp, etc.)
 
 **Added**:
+
 - `anthropic` (new multi-provider AI support)
 - `mcp` (Model Context Protocol server)
 - `sse-starlette` (server-sent events)
@@ -116,6 +122,7 @@ Installed 9 packages:
 ## Comparison to Previous Upgrade
 
 ### v0.4.0 → v0.5.0 (Major Refactoring)
+
 - ~150 lines of code deleted
 - Removed entire Redis caching layer
 - Refactored FindingModelService
@@ -123,6 +130,7 @@ Installed 9 packages:
 - **Estimated time**: 2.5 hours
 
 ### v0.5.0 → v0.6.0 (This Upgrade - No Changes)
+
 - 1 line changed (version constraint)
 - Zero code refactoring
 - Zero test updates

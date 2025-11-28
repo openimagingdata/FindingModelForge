@@ -78,9 +78,16 @@
 
         <!-- Dynamic Content Container -->
         <div id="main-content">
-            {% if mode == 'edit' %}
+            {% if draft.is_iteration and mode == 'edit' %}
+                {# Iteration draft - show iteration UI #}
+                {% from 'macros/iteration_components.html' import iteration_banner %}
+                {{ iteration_banner(draft.base_model_name, draft.base_model_slug) }}
+                {% include 'components/iteration_form.html' %}
+            {% elif mode == 'edit' %}
+                {# Regular draft - show normal edit form #}
                 {% include 'components/draft_edit_form.html' %}
             {% else %}
+                {# Preview mode #}
                 {% include 'components/draft_preview.html' %}
             {% endif %}
         </div>

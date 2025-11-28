@@ -1,10 +1,11 @@
 """Workflow state transition routes for drafts."""
 
 import contextlib
-from datetime import UTC, datetime
+import json
+from datetime import UTC, datetime, timedelta
 
 import humanize
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, Form, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from app.auth import CurrentUserDep
@@ -12,6 +13,10 @@ from app.config import logger
 from app.dependencies import CacheDep, CreationSessionDep, DraftServiceDep, SessionManagerDep
 from app.models import DraftStatus
 from app.templates import templates
+
+# Key prefix for storing iteration results in Redis
+ITERATION_RESULT_KEY_PREFIX = "iteration_result:"
+ITERATION_RESULT_TTL = timedelta(minutes=5)  # Results expire after 5 minutes
 
 router = APIRouter()
 
@@ -93,3 +98,64 @@ async def make_draft_public(
     except Exception as e:
         logger.error(f"Error making draft public {draft_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Error making draft public: {str(e)}") from e
+
+
+@router.post("/{draft_id}/iterate")
+async def iterate_draft(
+    draft_id: str,
+    request: Request,
+    current_user: CurrentUserDep,
+    draft_service: DraftServiceDep,
+    cache: CacheDep,
+    command: str = Form(...),
+) -> Response:
+    """Apply a natural language iteration command to a draft."""
+    try:
+        # Apply the iteration command
+        result = await draft_service.apply_natural_language_iteration(draft_id, current_user.id, command)
+
+        if result.get("success"):
+            # Store iteration results in Redis for display on preview page
+            result_key = f"{ITERATION_RESULT_KEY_PREFIX}{draft_id}"
+            result_data = {
+                "command": command,
+                "changes": result.get("changes", []),
+                "rejections": result.get("rejections", []),
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+            await cache.set(result_key, json.dumps(result_data), expires_in=ITERATION_RESULT_TTL)
+            logger.debug(f"Stored iteration result for draft {draft_id}")
+
+            # Redirect to preview mode so user sees updated model with results banner
+            response = HTMLResponse(content="", status_code=200)
+            response.headers["HX-Redirect"] = f"/drafts/{draft_id}?mode=view"
+            return response
+        else:
+            # On failure, show error in results container (stays on edit page)
+            return templates.TemplateResponse(
+                request=request,
+                name="components/iteration_result.html",
+                context={
+                    "result": result,
+                    "command": command,
+                },
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error applying iteration to draft {draft_id}: {e}")
+        # Return error template
+        return templates.TemplateResponse(
+            request=request,
+            name="components/iteration_result.html",
+            context={
+                "result": {
+                    "success": False,
+                    "changes": [],
+                    "rejections": [],
+                    "error": str(e),
+                },
+                "command": command,
+            },
+            status_code=500,
+        )

@@ -1,12 +1,10 @@
 # UI Test Suite: Comprehensive Improvement Plan
 
-**Created:** November 6, 2025
-**Last Updated:** November 9, 2025
-**Status:** 🟢 In Progress (Sprints 0, 1, 2, 4 complete)
-**Priority:** HIGH - Test quality and performance directly impact deployment confidence
+**Created:** November 6, 2025 **Last Updated:** November 9, 2025 **Status:** 🟢 In Progress (Sprints 0, 1, 2, 4
+complete) **Priority:** HIGH - Test quality and performance directly impact deployment confidence
 
-**Plan Review Status:** ✅ Reviewed and aligned with 2025 Playwright best practices
-**Implementation Status:** Sprint 0 (100% complete), Sprint 1 (100% complete), Sprint 2 (100% complete), Sprint 4 (100% complete), Sprints 3, 5 pending
+**Plan Review Status:** ✅ Reviewed and aligned with 2025 Playwright best practices **Implementation Status:** Sprint 0
+(100% complete), Sprint 1 (100% complete), Sprint 2 (100% complete), Sprint 4 (100% complete), Sprints 3, 5 pending
 
 ---
 
@@ -19,6 +17,7 @@ This plan addresses three critical issues in our UI test suite:
 3. **Coverage gaps**: Workflow tests with incomplete validation
 
 **Key Results So Far:**
+
 - ✅ Profile tests: 75s → 9s (8x faster)
 - ✅ Draft management tests: 408s → 40s (10x faster)
 - ✅ UI test suite: 5+ min → 2.5 min (50% faster, 2x speedup)
@@ -36,11 +35,13 @@ This plan addresses three critical issues in our UI test suite:
 
 **Problem:** Creation workflow "Make Public" button caused `htmx:oobErrorNoTarget` console errors.
 
-**Root Cause:** HTTP 303 redirect lost `HX-Current-URL` header, causing server to include OOB swaps for elements that didn't exist on the creation workflow page (`#draft-mode-toggle-header`, `#page-title`).
+**Root Cause:** HTTP 303 redirect lost `HX-Current-URL` header, causing server to include OOB swaps for elements that
+didn't exist on the creation workflow page (`#draft-mode-toggle-header`, `#page-title`).
 
 **Solution:** Query parameter approach (`?from=creation&success=made_public`) survives redirects.
 
 **Files Changed:**
+
 - `app/routers/drafts/workflows.py:92` - Added query params to redirect
 - `app/routers/drafts/views.py:152-154, 170` - Check query param instead of header
 - `templates/components/draft_preview_content.html:11-15` - Context-aware success message
@@ -54,16 +55,19 @@ This plan addresses three critical issues in our UI test suite:
 **Problem:** Tests used `wait_for_ai_completion_and_swap()` with 60-second timeouts and complex JavaScript selectors.
 
 **Solution:** Created Playwright-native utilities:
+
 - `wait_for_htmx_settled(page, timeout=5000)` - Wait for HTMX operations
 - `click_and_wait_for_htmx(page, selector, timeout=5000)` - Click + wait pattern
 - `click_button_and_wait_for_element(page, button_text, expected_selector, timeout=5000)` - Assert-based waiting
 
 **Files Changed:**
+
 - `tests/ui/utils.py` - New utilities
 - `tests/ui/test_creation_workflow.py` - 12 selector fixes
 - `tests/CLAUDE.md` - Updated documentation
 
-**Bug Discovered:** Selector ambiguity with `button:has-text('Make Public')` matching both trigger and confirmation buttons. Fixed with `.first`.
+**Bug Discovered:** Selector ambiguity with `button:has-text('Make Public')` matching both trigger and confirmation
+buttons. Fixed with `.first`.
 
 **Impact:** Tests now use 5-second timeouts for mocked operations, proper Playwright patterns.
 
@@ -74,11 +78,13 @@ This plan addresses three critical issues in our UI test suite:
 ### Performance Issues (Sprint 0)
 
 **Completed (November 7, 2025):**
+
 - ✅ `test_profile.py` - Removed 4 networkidle waits → 75s to 9s (8x faster)
 - ✅ `test_draft_management.py` - Replaced 18 AI calls + removed 2 networkidle → 408s to 40s (10x faster)
 - ✅ `utils.py` - `generate_valid_generated_json()` now uses real test data template
 
 **Remaining:**
+
 - `test_comments.py` - 17 networkidle waits
 - `test_draft_comments.py` - 9 networkidle + 9 AI calls
 - `test_finding_models_navigation.py` - 12 networkidle waits (1 already fixed in Sprint 1)
@@ -91,9 +97,11 @@ This plan addresses three critical issues in our UI test suite:
 ### Anti-Pattern Issues (Sprint 1)
 
 **Completed (November 7, 2025):**
+
 - ✅ 3 critical tests that could pass without testing core functionality
 
 **Key Finding:** 13 instances of conditional logic like:
+
 ```python
 if await element.count() > 0:
     await expect(element).to_be_visible()  # Test passes even if element missing!
@@ -107,20 +115,19 @@ if await element.count() > 0:
 
 This plan has been verified against 2025 Playwright testing best practices:
 
-✅ **Conditional Anti-Patterns**: Playwright docs and eslint rules specifically warn against `no-conditional-in-test`
-✅ **Auto-Retrying Assertions**: Using `expect().to_be_visible()` instead of `.count() > 0` checks aligns with web-first assertion patterns
-✅ **HTMX-Aware Waiting**: Using HTMX lifecycle events (`.htmx-settling`, `htmx:afterSettle`) matches recommended framework-specific testing patterns
-✅ **Avoiding Arbitrary Timeouts**: Replacing `wait_for_timeout()` with condition-based waiting reduces flakiness
-✅ **Test Isolation**: Each test should be deterministic and independent, with proper setup/teardown
-✅ **Real Test Data**: Using actual production data templates instead of AI-generated or mock data
+✅ **Conditional Anti-Patterns**: Playwright docs and eslint rules specifically warn against `no-conditional-in-test` ✅
+**Auto-Retrying Assertions**: Using `expect().to_be_visible()` instead of `.count() > 0` checks aligns with web-first
+assertion patterns ✅ **HTMX-Aware Waiting**: Using HTMX lifecycle events (`.htmx-settling`, `htmx:afterSettle`) matches
+recommended framework-specific testing patterns ✅ **Avoiding Arbitrary Timeouts**: Replacing `wait_for_timeout()` with
+condition-based waiting reduces flakiness ✅ **Test Isolation**: Each test should be deterministic and independent, with
+proper setup/teardown ✅ **Real Test Data**: Using actual production data templates instead of AI-generated or mock data
 
 ---
 
 ## Sprint 0: Performance Cleanup 🚀
 
-**Priority:** HIGHEST - Quick wins with massive impact
-**Status:** ✅ COMPLETE (November 8, 2025)
-**Time Spent:** 2 hours
+**Priority:** HIGHEST - Quick wins with massive impact **Status:** ✅ COMPLETE (November 8, 2025) **Time Spent:** 2
+hours
 
 ### Completed Tasks
 
@@ -129,6 +136,7 @@ This plan has been verified against 2025 Playwright testing best practices:
 **Completed:** November 7, 2025
 
 **Changes Made:**
+
 - Removed 4 `wait_for_load_state("networkidle")` calls
 - Updated `navigate_to_profile_page()` in utils.py
 - Rely on Playwright auto-waiting with `expect()` assertions
@@ -136,6 +144,7 @@ This plan has been verified against 2025 Playwright testing best practices:
 **Impact:** 75 seconds → 9 seconds (8x faster)
 
 **Files Changed:**
+
 - `tests/ui/test_profile.py:81-84, and 3 other locations`
 - `tests/ui/utils.py:424-432`
 
@@ -146,6 +155,7 @@ This plan has been verified against 2025 Playwright testing best practices:
 **Completed:** November 7, 2025
 
 **Changes Made:**
+
 - Replaced `generate_valid_generated_json()` to use real test data from `tests/data/abdominal_abscess.fm.json`
 - Removed 2 `wait_for_load_state("networkidle")` calls
 - 18 tests now use instant data generation instead of AI API calls (10-30s each)
@@ -153,10 +163,12 @@ This plan has been verified against 2025 Playwright testing best practices:
 **Impact:** 408 seconds → 40 seconds (10x faster)
 
 **Files Changed:**
+
 - `tests/ui/utils.py:29-63` - Complete rewrite of `generate_valid_generated_json()`
 - `tests/ui/test_draft_management.py:1058, 1083` - Removed networkidle waits
 
-**Key Innovation:** Using real production data (`abdominal_abscess.fm.json`) with customization instead of calling AI API or creating fake data.
+**Key Innovation:** Using real production data (`abdominal_abscess.fm.json`) with customization instead of calling AI
+API or creating fake data.
 
 ---
 
@@ -167,6 +179,7 @@ This plan has been verified against 2025 Playwright testing best practices:
 **Completed:** November 8, 2025
 
 **Changes Made:**
+
 - Removed 17 `wait_for_load_state("networkidle")` calls
 - Added explanatory comments about Playwright auto-waiting
 - All 17 tests passing
@@ -174,6 +187,7 @@ This plan has been verified against 2025 Playwright testing best practices:
 **Impact:** ~8-10 seconds saved
 
 **Files Changed:**
+
 - `tests/ui/test_comments.py`
 
 ---
@@ -183,6 +197,7 @@ This plan has been verified against 2025 Playwright testing best practices:
 **Completed:** November 8, 2025
 
 **Changes Made:**
+
 - Removed 9 `wait_for_load_state("networkidle")` calls
 - Added HTMX synchronization fix for comment form initialization
 - All 7 tests passing
@@ -190,6 +205,7 @@ This plan has been verified against 2025 Playwright testing best practices:
 **Impact:** ~90-270 seconds saved (AI calls already fixed in utils.py)
 
 **Files Changed:**
+
 - `tests/ui/test_draft_comments.py`
 
 ---
@@ -199,6 +215,7 @@ This plan has been verified against 2025 Playwright testing best practices:
 **Completed:** November 8, 2025
 
 **Changes Made:**
+
 - Removed 12 remaining `wait_for_load_state("networkidle")` calls
 - Preserved Sprint 1 fix (lines 529-545)
 - Fixed double-conditional anti-pattern in `test_detail_not_found`
@@ -207,6 +224,7 @@ This plan has been verified against 2025 Playwright testing best practices:
 **Impact:** ~6 seconds saved
 
 **Files Changed:**
+
 - `tests/ui/test_finding_models_navigation.py`
 
 **Additional Fix:** Eliminated Schrödinger's Test in 404 handling test
@@ -218,6 +236,7 @@ This plan has been verified against 2025 Playwright testing best practices:
 **Completed:** November 8, 2025
 
 **Changes Made:**
+
 - Verified all uses of `generate_valid_generated_json()` are correct
 - No direct AI API calls found
 - All 8 tests passing
@@ -225,6 +244,7 @@ This plan has been verified against 2025 Playwright testing best practices:
 **Impact:** ~30-90 seconds saved (automatic via utils.py fix)
 
 **Files Changed:**
+
 - None (verification only, already optimized)
 
 ---
@@ -234,15 +254,18 @@ This plan has been verified against 2025 Playwright testing best practices:
 **Completed:** November 8, 2025
 
 **Changes Made:**
+
 - Deleted `test_model_reuse_when_no_changes` (impossible to test via UI)
 - Added explanatory comment about why test cannot exist
 - Test count reduced from 86 to 85 (expected)
 
-**Rationale:** Alpine.js validation correctly prevents form submission when there are no changes. Testing model reuse without changes requires backend unit tests, not UI tests.
+**Rationale:** Alpine.js validation correctly prevents form submission when there are no changes. Testing model reuse
+without changes requires backend unit tests, not UI tests.
 
 **Impact:** Eliminated server error from invalid draft operations
 
 **Files Changed:**
+
 - `tests/ui/test_draft_management.py`
 
 ---
@@ -250,6 +273,7 @@ This plan has been verified against 2025 Playwright testing best practices:
 ### Sprint 0 Verification Steps
 
 After each task:
+
 - [x] Run specific test file: `uv run pytest tests/ui/test_[file].py -v --no-cov`
 - [x] Verify tests pass and complete faster
 - [x] Check no new console errors
@@ -268,9 +292,7 @@ After each task:
 
 ## Sprint 1: CRITICAL Anti-Pattern Fixes 🔥
 
-**Priority:** HIGHEST (after Sprint 0)
-**Status:** ✅ COMPLETE (November 7, 2025)
-**Time Spent:** 1 hour
+**Priority:** HIGHEST (after Sprint 0) **Status:** ✅ COMPLETE (November 7, 2025) **Time Spent:** 1 hour
 
 These were tests that claimed to test features but could pass without testing them at all.
 
@@ -281,6 +303,7 @@ These were tests that claimed to test features but could pass without testing th
 **File:** `tests/ui/test_profile.py:92-123`
 
 **Problem Fixed:**
+
 ```python
 # BEFORE: Test passes even if button missing!
 view_button_count = await draft_card.locator("a[title='View'], button[title='View']").count()
@@ -289,6 +312,7 @@ if view_button_count > 0:
 ```
 
 **Solution Applied:**
+
 ```python
 # AFTER: Test MUST have View button to succeed
 view_button = draft_card.locator("a[title='View'], button[title='View']")
@@ -307,6 +331,7 @@ await view_button.first.click()
 **File:** `tests/ui/test_finding_models_navigation.py:520-540`
 
 **Problem Fixed:**
+
 ```python
 # BEFORE: Test claims to test navigation but skips it!
 breadcrumb_link = page.locator("nav[aria-label='Breadcrumb'] a").filter(has_text="Finding Models")
@@ -316,6 +341,7 @@ if await breadcrumb_link.count() > 0:
 ```
 
 **Solution Applied:**
+
 ```python
 # AFTER: Breadcrumb MUST exist, use HTMX-aware waiting
 breadcrumb_link = page.locator("nav[aria-label='Breadcrumb'] a").filter(has_text="Finding Models")
@@ -335,6 +361,7 @@ await wait_for_htmx_settled(page)
 **File:** `tests/ui/test_finding_models_navigation.py:490-518`
 
 **Problem Fixed:**
+
 ```python
 # BEFORE: Test doesn't verify model loads!
 model_heading = page.locator("h2:has-text('abdominal abscess')")
@@ -343,6 +370,7 @@ if await model_heading.count() > 0:
 ```
 
 **Solution Applied:**
+
 ```python
 # AFTER: Model content MUST load
 model_heading = page.locator("h2:has-text('abdominal abscess')")
@@ -364,14 +392,14 @@ await expect(model_heading).to_be_visible(timeout=10000)
 
 ## Sprint 2: HIGH Priority - Workflow Gaps ⚠️
 
-**Status:** ✅ COMPLETE (November 9, 2025)
-**Actual Time:** 1.5 hours (including iteration cycles for selector fixes)
+**Status:** ✅ COMPLETE (November 9, 2025) **Actual Time:** 1.5 hours (including iteration cycles for selector fixes)
 
 ### Task 2.1: Fix test_comments.py::test_empty_comment_state_authenticated ✅
 
 **File:** `tests/ui/test_comments.py:28-57`
 
 **Problem:**
+
 ```python
 empty_state = page.locator("text=Be the first to share your thoughts!")
 if await empty_state.count() > 0:  # ❌ Test skips verification if comments exist
@@ -381,6 +409,7 @@ if await empty_state.count() > 0:  # ❌ Test skips verification if comments exi
 **Solution Implemented:**
 
 Added database cleanup to guarantee empty state:
+
 ```python
 # Clean up any existing comments first to guarantee empty state
 client = AsyncIOMotorClient(settings.mongodb_uri)
@@ -405,6 +434,7 @@ await expect(empty_state).to_be_visible(timeout=5000)
 **File:** `tests/ui/test_comments.py:629-664`
 
 **Problem:**
+
 ```python
 existing_comment = page.locator("text=Test comment")
 if await existing_comment.count() > 0:  # ❌ Test might pass without verifying viewing
@@ -414,6 +444,7 @@ if await existing_comment.count() > 0:  # ❌ Test might pass without verifying 
 **Solution Implemented:**
 
 Used existing `seed_comment()` utility to guarantee comment exists:
+
 ```python
 # Seed a comment to guarantee existence for anonymous viewing
 await seed_comment(
@@ -440,9 +471,11 @@ await expect(existing_comment).to_be_visible(timeout=5000)
 
 **File:** `tests/ui/test_comments.py:186-242`
 
-**Problem:** Test filled reply form and verified button was enabled but NEVER submitted the reply or verified it appeared.
+**Problem:** Test filled reply form and verified button was enabled but NEVER submitted the reply or verified it
+appeared.
 
 **Solution Implemented:**
+
 - Added reply submission via button click and HTMX wait
 - Added verification that reply text appears in thread (10s timeout)
 - Added verification that reply is nested with `ml-6` indentation
@@ -459,6 +492,7 @@ await expect(existing_comment).to_be_visible(timeout=5000)
 **Problem:** Used conditional logic that allowed test to pass without verifying structure.
 
 **Solution Implemented:**
+
 - Added explicit wait for seeded comment content to appear BEFORE structure checks
 - Removed ALL conditionals from structure checks
 - Direct assertions for: first_comment, avatar, username, timestamp, reply_button
@@ -474,6 +508,7 @@ await expect(existing_comment).to_be_visible(timeout=5000)
 **Problem:** Used conditional logic that allowed test to pass without verifying nested structure.
 
 **Solution Implemented:**
+
 - Added explicit waits for BOTH seeded comments (parent and reply) to appear
 - Removed conditional check - now direct assertions
 - Scoped selector to parent article to avoid matching navigation elements
@@ -503,20 +538,22 @@ await expect(existing_comment).to_be_visible(timeout=5000)
 
 ## Sprint 3: MEDIUM Priority - HTMX Utility Migration 📝
 
-**Status:** ✅ COMPLETE (November 9, 2025)
-**Actual Time:** 2 hours (including iteration cycle for selector fix)
+**Status:** ✅ COMPLETE (November 9, 2025) **Actual Time:** 2 hours (including iteration cycle for selector fix)
 
 These tasks improve test reliability and maintainability by using purpose-built HTMX utilities.
 
 ### Task 3.1: Replace arbitrary timeouts with wait_for_htmx_settled()
 
-**Note:** This is closely related to Sprint 0 performance work. Remaining arbitrary timeouts should be handled together with networkidle removals.
+**Note:** This is closely related to Sprint 0 performance work. Remaining arbitrary timeouts should be handled together
+with networkidle removals.
 
 **Affected Files:**
+
 - `test_finding_models_navigation.py` (1 instance already fixed in Sprint 1)
 - Other files may have similar patterns
 
 **Pattern to Replace:**
+
 ```python
 # Before:
 await some_action()
@@ -528,16 +565,16 @@ await wait_for_htmx_settled(page)
 ```
 
 **Search Strategy:**
+
 ```bash
 # Find all arbitrary timeouts
 grep -r "wait_for_timeout" tests/ui/test_*.py
 ```
 
-**Rationale:** Arbitrary timeouts cause flaky tests. HTMX-aware waiting is more reliable and aligns with 2025 Playwright best practices.
+**Rationale:** Arbitrary timeouts cause flaky tests. HTMX-aware waiting is more reliable and aligns with 2025 Playwright
+best practices.
 
-**Estimated Time:** 20 minutes
-**Risk:** LOW
-**Dependencies:** None
+**Estimated Time:** 20 minutes **Risk:** LOW **Dependencies:** None
 
 ---
 
@@ -546,11 +583,13 @@ grep -r "wait_for_timeout" tests/ui/test_*.py
 **Pattern Found:** Modal delete/submit buttons don't wait for HTMX to complete
 
 **Affected Tests:**
+
 - `test_profile.py::test_delete_draft_modal_and_removal` (line 180)
 - `test_profile.py::test_delete_last_draft_shows_placeholder` (line 217)
 - Similar patterns in comment tests
 
 **Current Pattern:**
+
 ```python
 await modal.locator("button:has-text('Yes, delete')").click()
 # Immediately checks for card removal - race condition possible
@@ -558,53 +597,58 @@ await expect(page.locator(f"#draft-card-{draft_id}")).to_have_count(0)
 ```
 
 **Improved Pattern:**
+
 ```python
 await modal.locator("button:has-text('Yes, delete')").click()
 await wait_for_htmx_settled(page)  # Wait for HTMX OOB swap
 await expect(page.locator(f"#draft-card-{draft_id}")).to_have_count(0)
 ```
 
-**Why This Matters:** HTMX OOB swaps might take a few milliseconds. Without explicit waiting, we're relying on Playwright's auto-wait, which might not catch HTMX operations.
+**Why This Matters:** HTMX OOB swaps might take a few milliseconds. Without explicit waiting, we're relying on
+Playwright's auto-wait, which might not catch HTMX operations.
 
-**Estimated Time:** 30 minutes (multiple files)
-**Risk:** LOW
-**Dependencies:** None
+**Estimated Time:** 30 minutes (multiple files) **Risk:** LOW **Dependencies:** None
 
 ---
 
 ### Task 3.3: Migrate to click_and_wait_for_htmx() for HTMX actions
 
-**Context:** We have a utility `click_and_wait_for_htmx(page, selector)` that should be used consistently for HTMX-triggered actions.
+**Context:** We have a utility `click_and_wait_for_htmx(page, selector)` that should be used consistently for
+HTMX-triggered actions.
 
 **Candidates:**
+
 - Comment form submissions
 - Report button clicks
 - Reply form submissions
 
 **Current Pattern:**
+
 ```python
 await post_button.click()
 await page.wait_for_selector(f"text={test_comment}", timeout=10000)
 ```
 
 **Improved Pattern:**
+
 ```python
 await click_and_wait_for_htmx(page, "button:has-text('Post')")
 await expect(page.locator(f"text={test_comment}")).to_be_visible(timeout=5000)
 ```
 
-**Rationale:** Combining click + HTMX wait in reusable utility reduces code duplication and ensures consistent HTMX handling. Aligns with 2025 best practices for framework-specific testing patterns. User directive: Use this utility WHEREVER relevant.
+**Rationale:** Combining click + HTMX wait in reusable utility reduces code duplication and ensures consistent HTMX
+handling. Aligns with 2025 best practices for framework-specific testing patterns. User directive: Use this utility
+WHEREVER relevant.
 
-**Estimated Time:** 1.5-2 hours (comprehensive migration)
-**Risk:** LOW
-**Dependencies:** None
-**Priority:** REQUIRED - use wherever relevant
+**Estimated Time:** 1.5-2 hours (comprehensive migration) **Risk:** LOW **Dependencies:** None **Priority:** REQUIRED -
+use wherever relevant
 
 ---
 
 ### Sprint 3 Completion Summary
 
 **Implementation:**
+
 - **Task 3.1**: Replaced 20 arbitrary timeouts with `wait_for_htmx_settled()` in test_finding_models_navigation.py
 - **Task 3.2**: Added HTMX settling after 2 modal confirmations in test_profile.py
 - **Task 3.3**: Migrated 7 HTMX actions (6 to `click_and_wait_for_htmx()`, 1 direct click with settling)
@@ -613,19 +657,23 @@ await expect(page.locator(f"text={test_comment}")).to_be_visible(timeout=5000)
 **Total Changes**: 43 improvements across 3 test files
 
 **Files Modified:**
+
 - `tests/ui/test_finding_models_navigation.py` - 20 timeout replacements
 - `tests/ui/test_profile.py` - 2 modal confirmation fixes
 - `tests/ui/test_comments.py` - 7 HTMX action migrations + 14 standardizations
 
 **Selector Fix (Iteration 1):**
+
 - Fixed selector ambiguity in `test_cannot_report_own_comment` (line 567)
 - Changed from `click_and_wait_for_htmx(page, "button:has-text('Post')")` to direct locator click
 - Reason: Avoid ambiguity when multiple buttons match string selector
 
 **Preserved:**
+
 - 7 intentional debounce timeout tests (600-700ms for search input debounce validation)
 
 **Impact:**
+
 - **85/85 UI tests passing** (100% pass rate)
 - **More reliable waiting** - HTMX-aware instead of arbitrary timeouts
 - **Consistent patterns** - Utility functions used throughout
@@ -642,18 +690,20 @@ await expect(page.locator(f"text={test_comment}")).to_be_visible(timeout=5000)
 
 ## Sprint 4: Test Documentation Updates 📚
 
-**Status:** ✅ Complete
-**Priority:** HIGH - Should be done after Sprint 1 while patterns are fresh
+**Status:** ✅ Complete **Priority:** HIGH - Should be done after Sprint 1 while patterns are fresh
 
 ### Task 4.1: Update tests/CLAUDE.md with anti-pattern warnings ✅
 
-**Location:** Add new section "Common Test Anti-Patterns to Avoid" after the "Testing Patterns" section in `tests/CLAUDE.md`
+**Location:** Add new section "Common Test Anti-Patterns to Avoid" after the "Testing Patterns" section in
+`tests/CLAUDE.md`
 
 **Content:**
-```markdown
+
+````markdown
 ## Anti-Patterns to Avoid
 
 ### ❌ Conditional Logic That Makes Tests Pass
+
 Never use conditional logic that allows a test to pass without testing:
 
 ```python
@@ -664,8 +714,10 @@ if await element.count() > 0:
 # ✅ CORRECT - Test fails if element missing
 await expect(element).to_be_visible()
 ```
+````
 
 ### ❌ Arbitrary Timeouts
+
 Don't use arbitrary delays - use HTMX-aware waiting:
 
 ```python
@@ -679,6 +731,7 @@ await wait_for_htmx_settled(page)
 ```
 
 ### ❌ Real AI API Calls in Tests
+
 Don't call real AI APIs - use real test data templates:
 
 ```python
@@ -688,7 +741,8 @@ fm = await create_model_from_markdown(info, markdown_text=md)
 # ✅ CORRECT - Use real test data template
 generated_json = await generate_valid_generated_json(name)
 ```
-```
+
+````
 
 **Estimated Time:** 20 minutes
 **Risk:** NONE
@@ -715,15 +769,17 @@ def test_feature_works():
     if feature_exists():  # ❌ Test might not test anything
         assert feature_works()
     # Test passes whether feature exists or not!
-```
+````
 
 **The Fix:** Tests should fail if they can't perform their intended verification:
+
 ```python
 def test_feature_works():
     assert feature_exists(), "Feature must exist to test it"
     assert feature_works()
 ```
-```
+
+````
 
 **Estimated Time:** 15 minutes
 **Risk:** NONE
@@ -783,23 +839,23 @@ def test_feature_works():
 # Find potential ambiguous click operations
 grep -r "\.click()" tests/ui/test_*.py | grep -v "\.first\."
 grep -r "\.fill(" tests/ui/test_*.py | grep -v "\.first\."
-```
+````
 
 **Action:**
+
 1. Search for locator operations without `.first` or `.nth()`
 2. Evaluate if selector is specific enough or needs disambiguation
 3. Add explicit `.first` where multiple matches possible
 4. Document findings
 
-**Estimated Time:** 1 hour
-**Risk:** LOW - Improves test clarity
-**Dependencies:** None
+**Estimated Time:** 1 hour **Risk:** LOW - Improves test clarity **Dependencies:** None
 
 ---
 
 ### Sprint 5 Completion Summary
 
 **Implementation:**
+
 - **Task 5.1**: Analyzed 4 defensive conditionals in display tests
   - Fixed 1 test regression (removed irrelevant author info assertion in edit mode)
   - Documented 3 acceptable defensive checks with clear justification
@@ -810,17 +866,20 @@ grep -r "\.fill(" tests/ui/test_*.py | grep -v "\.first\."
   - No changes needed
 
 **Regression Fix (Iteration 1):**
+
 - Fixed test_public_draft_author_permissions (line 868-871)
 - Removed assertion checking author info visibility in edit mode
 - Reason: Author info only displayed in preview mode, not edit mode
 - Test purpose is edit mode verification, not author display
 
 **Documented Acceptable Conditionals:**
+
 1. **test_draft_management.py:1008-1013** - Eye icon in navigation (optional UI decoration)
 2. **utils.py:349-360** - Model ready header detection (handles two legitimate page variants)
 3. **utils.py:596-607** - Model ready wait logic (handles creation vs draft preview)
 
 **Impact:**
+
 - **85/85 UI tests passing** (100% pass rate maintained)
 - **0 anti-patterns remaining** in display tests
 - **Clear documentation** for all acceptable defensive checks
@@ -903,6 +962,7 @@ Based on impact, dependencies, and maintainability:
 ### Performance Verification
 
 For Sprint 0 tasks, also verify:
+
 1. Test execution time improves
 2. No reduction in test coverage
 3. All assertions still valid
@@ -910,6 +970,7 @@ For Sprint 0 tasks, also verify:
 ### Rollback Strategy
 
 If a fix breaks tests unexpectedly:
+
 1. Use git to revert the specific file:
    ```bash
    git checkout HEAD -- tests/ui/test_[file].py
@@ -922,17 +983,17 @@ If a fix breaks tests unexpectedly:
 
 ## Risk Mitigation
 
-**Risk:** Fixing conditionals might expose real bugs
-**Mitigation:** This is GOOD - we want tests to fail when features are broken
+**Risk:** Fixing conditionals might expose real bugs **Mitigation:** This is GOOD - we want tests to fail when features
+are broken
 
-**Risk:** Tests might become flaky after removing conditionals
-**Mitigation:** Use proper HTMX-aware waiting and Playwright best practices
+**Risk:** Tests might become flaky after removing conditionals **Mitigation:** Use proper HTMX-aware waiting and
+Playwright best practices
 
-**Risk:** Changes might break currently passing tests
-**Mitigation:** Fix one test at a time, run full suite after each change
+**Risk:** Changes might break currently passing tests **Mitigation:** Fix one test at a time, run full suite after each
+change
 
-**Risk:** Performance fixes might reduce test coverage
-**Mitigation:** Verify all assertions remain valid, use real production data
+**Risk:** Performance fixes might reduce test coverage **Mitigation:** Verify all assertions remain valid, use real
+production data
 
 ---
 
@@ -972,10 +1033,11 @@ If a fix breaks tests unexpectedly:
 
 ### Actual Results After Sprint 0 Complete
 
-**Full Test Suite:** 42.64 seconds (547 tests including unit tests)
-**UI Test Suite Only:** 156 seconds (85 tests, all passing)
+**Full Test Suite:** 42.64 seconds (547 tests including unit tests) **UI Test Suite Only:** 156 seconds (85 tests, all
+passing)
 
 **Individual File Performance:**
+
 - `test_profile.py`: ~9 seconds ✅
 - `test_draft_management.py`: ~40 seconds ✅
 - `test_comments.py`: ~8.5 seconds ✅
@@ -986,6 +1048,7 @@ If a fix breaks tests unexpectedly:
 **Overall Improvement:** 5+ minutes → 2.5 minutes (50% faster, 2x speedup)
 
 **Additional Achievements:**
+
 - 5 anti-patterns eliminated (3 in Sprint 1, 2 in Sprint 0)
 - All server errors resolved
 - Test count: 86 → 85 (removed impossible-to-test scenario)
@@ -993,5 +1056,4 @@ If a fix breaks tests unexpectedly:
 
 ---
 
-**Last Updated:** November 8, 2025
-**Next Review:** After Sprint 0 completion
+**Last Updated:** November 8, 2025 **Next Review:** After Sprint 0 completion

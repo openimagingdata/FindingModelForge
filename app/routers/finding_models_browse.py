@@ -7,7 +7,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 
 from app.auth import CurrentUserDep, OptionalUserDep
 from app.config import logger
-from app.dependencies import FindingModelServiceDep
+from app.dependencies import DraftServiceDep, FindingModelServiceDep
 from app.services import NotFoundError
 from app.templates import templates
 from app.vite_manifest import get_vite_asset_path
@@ -336,3 +336,33 @@ async def report_model_comment(
         logger.error(f"Error reporting comment on model '{slug}': {e}")
         error_html = '<span class="text-xs text-red-600 dark:text-red-400">Error</span>'
         return HTMLResponse(error_html, status_code=500)
+
+
+@router.post("/finding-models/{slug}/iterate", response_model=None)
+async def start_iteration(
+    slug: str,
+    current_user: CurrentUserDep,
+    finding_model_service: FindingModelServiceDep,
+    draft_service: DraftServiceDep,
+) -> RedirectResponse:
+    """Start an iteration on an existing finding model."""
+    try:
+        # Get the finding model to iterate on
+        finding_model = await finding_model_service.get_model_by_slug(slug)
+        if not finding_model:
+            raise HTTPException(status_code=404, detail=f"Finding model '{slug}' not found")
+
+        # Start the iteration (creates or returns existing iteration draft)
+        draft = await draft_service.start_iteration(current_user.id, current_user, finding_model)
+
+        # Redirect to the iteration draft page in edit mode
+        logger.info(f"User {current_user.login} started iteration on {slug}, draft {draft.id}")
+        return RedirectResponse(url=f"/drafts/{draft.id}?mode=edit", status_code=303)
+
+    except NotFoundError as err:
+        raise HTTPException(status_code=404, detail=f"Finding model '{slug}' not found") from err
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error starting iteration on finding model '{slug}': {e}")
+        raise HTTPException(status_code=500, detail=f"Error starting iteration: {str(e)}") from e

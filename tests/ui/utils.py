@@ -618,6 +618,43 @@ async def wait_for_step_container_content(page: Page, expected_content_selector:
     await page.wait_for_selector(full_selector, state="visible", timeout=timeout)
 
 
+async def seed_iteration_result(
+    *,
+    draft_id: str,
+    changes: list[str],
+    rejections: list[str] | None = None,
+    success: bool = True,
+    error: str | None = None,
+) -> None:
+    """Seed an iteration result into Redis for testing UI display.
+
+    This allows testing the iteration results display without actually calling the AI service.
+
+    Args:
+        draft_id: The draft ID to associate with the result
+        changes: List of change descriptions that were applied
+        rejections: Optional list of rejection reasons (things that couldn't be applied)
+        success: Whether the iteration was successful overall
+        error: Optional error message if success is False
+    """
+    import json
+
+    import redis.asyncio as redis
+
+    result = {
+        "success": success,
+        "changes": changes,
+        "rejections": rejections or [],
+        "error": error,
+    }
+
+    r = redis.Redis(host="localhost", port=6379, decode_responses=True)
+    # Use the same key format as the backend
+    key = f"iteration_result:{draft_id}"
+    await r.set(key, json.dumps(result), ex=300)  # 5 minute TTL like backend
+    await r.aclose()
+
+
 async def wait_for_creation_workflow_transition(
     page: Page, button_text: str, expected_outcome_selector: str, timeout: int = 60000
 ) -> str:

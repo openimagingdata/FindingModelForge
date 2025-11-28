@@ -125,8 +125,13 @@ class FindingModelService:
         """
         try:
             result = await self.index.get(oifm_id)
+            if result:
+                logger.debug(f"Found base model by OIFM ID {oifm_id}: slug={result.slug_name}, name={result.name}")
+            else:
+                logger.warning(f"No result found for OIFM ID: {oifm_id}")
             return cast(IndexEntry | None, result)
-        except Exception:
+        except Exception as e:
+            logger.error(f"Error looking up OIFM ID {oifm_id}: {e}")
             return None
 
     async def get_comments_for_model(self, oifm_id: str) -> CommentThread | None:

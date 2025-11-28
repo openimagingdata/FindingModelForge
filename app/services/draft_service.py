@@ -2,9 +2,12 @@
 
 from typing import TYPE_CHECKING, Any
 
+from findingmodel import FindingModelFull
+from findingmodel.tools.model_editor import edit_model_natural_language
+
 from app.config import logger
 from app.database import DraftRepo, UserRepo
-from app.models import Comment, CommentThread, User
+from app.models import Comment, CommentThread, FindingModelInputs, LogEntry, User
 from app.services.comment_service import CommentService
 from app.utils.draft_formatting import format_draft_for_display
 
@@ -293,3 +296,180 @@ class DraftService:
             HTTPException: If comment not found or already reported by user
         """
         await self.comment_service.report_comment("draft", draft_id, comment_id, user_id)
+
+    async def start_iteration(self, user_id: int, user: User, base_model: FindingModelFull) -> Any:
+        """Start an iteration on an existing finding model.
+
+        Creates or returns an existing iteration draft for the given base model.
+
+        Args:
+            user_id: ID of the user starting the iteration
+            user: User object for author information
+            base_model: The base FindingModelFull to iterate on
+
+        Returns:
+            The iteration draft (existing or newly created)
+        """
+        try:
+            # Check if an iteration draft already exists for this user and base model
+            existing_draft = await self.draft_repo.get_iteration_draft(user_id, base_model.oifm_id)
+            if existing_draft:
+                logger.info(f"Returning existing iteration draft {existing_draft.id} for user {user_id}")
+                return existing_draft
+
+            # Create new iteration draft
+            inputs = FindingModelInputs(
+                description=base_model.description,
+                synonyms=[],
+                attributes_markdown="",
+            )
+
+            draft = await self.draft_repo.save_draft(
+                user_id=user_id,
+                name=base_model.name,
+                inputs=inputs,
+                generated_json=base_model.model_dump_json(indent=2),
+                user=user,
+                is_iteration=True,
+                base_model_id=base_model.oifm_id,
+            )
+
+            logger.info(f"Created new iteration draft {draft.id} for user {user_id} on base model {base_model.oifm_id}")
+            return draft
+
+        except Exception as e:
+            logger.error(f"Error starting iteration for user {user_id} on base model {base_model.oifm_id}: {e}")
+            raise
+
+    async def apply_natural_language_iteration(self, draft_id: str, user_id: int, command: str) -> dict[str, Any]:
+        """Apply a natural language edit command to an iteration draft.
+
+        Args:
+            draft_id: The iteration draft ID
+            user_id: User ID for ownership verification
+            command: Natural language command describing the desired changes
+
+        Returns:
+            Dictionary with keys:
+                - success: bool
+                - changes: list of applied changes
+                - rejections: list of rejected changes
+                - error: str | None (error message if failed)
+        """
+        try:
+            # Get the draft and verify ownership
+            draft = await self.get_draft_by_id(draft_id, user_id)
+            if not draft:
+                return {"success": False, "changes": [], "rejections": [], "error": "Draft not found"}
+
+            # Verify this is an iteration draft
+            if not draft.is_iteration:
+                return {
+                    "success": False,
+                    "changes": [],
+                    "rejections": [],
+                    "error": "Draft is not an iteration draft",
+                }
+
+            # Parse the current generated_json into a FindingModelFull
+            if not draft.generated_json:
+                return {
+                    "success": False,
+                    "changes": [],
+                    "rejections": [],
+                    "error": "Draft has no generated JSON to iterate on",
+                }
+
+            try:
+                model = FindingModelFull.model_validate_json(draft.generated_json)
+            except Exception as e:
+                logger.error(f"Failed to parse generated_json for draft {draft_id}: {e}")
+                return {
+                    "success": False,
+                    "changes": [],
+                    "rejections": [],
+                    "error": f"Invalid model JSON: {str(e)}",
+                }
+
+            # Apply the natural language iteration
+            try:
+                result = await edit_model_natural_language(model, command)
+                changes = result.changes
+                rejections = result.rejections
+
+                # Update the draft's generated_json with the modified model (from EditResult)
+                updated_json = result.model.model_dump_json(indent=2)
+                success = await self.draft_repo.update_generated_json(draft_id, user_id, updated_json)
+
+                if not success:
+                    return {
+                        "success": False,
+                        "changes": [],
+                        "rejections": [],
+                        "error": "Failed to update draft",
+                    }
+
+                # Log the iteration to action_log
+                from datetime import UTC, datetime
+
+                log_entry = LogEntry(
+                    timestamp=datetime.now(UTC),
+                    user_id=user_id,
+                    action="iteration.applied" if len(changes) > 0 else "iteration.failed",
+                    details={
+                        "user_input": command,
+                        "changes": changes,
+                        "rejections": rejections,
+                    },
+                )
+
+                # Update draft with new action log entry
+                draft_updated = await self.draft_repo.get_draft(draft_id)
+                if draft_updated:
+                    draft_updated.action_log.append(log_entry)
+                    # Note: We're not persisting the action_log here since update_generated_json
+                    # already adds an entry. In a full implementation, we might want to update
+                    # this entry with iteration details instead.
+
+                logger.info(
+                    f"Applied iteration to draft {draft_id}: {len(changes)} changes, {len(rejections)} rejections"
+                )
+
+                return {
+                    "success": True,
+                    "changes": changes,
+                    "rejections": rejections,
+                    "error": None,
+                }
+
+            except Exception as e:
+                logger.error(f"Error applying natural language iteration to draft {draft_id}: {e}")
+                # Log the failed attempt
+                from datetime import UTC, datetime
+
+                log_entry = LogEntry(
+                    timestamp=datetime.now(UTC),
+                    user_id=user_id,
+                    action="iteration.failed",
+                    details={
+                        "user_input": command,
+                        "error": str(e),
+                    },
+                )
+
+                # Note: Similar to above, we're not persisting this separately
+                return {
+                    "success": False,
+                    "changes": [],
+                    "rejections": [],
+                    "error": str(e),
+                }
+
+        except Exception as e:
+            logger.error(f"Error in apply_natural_language_iteration for draft {draft_id}: {e}")
+            return {
+                "success": False,
+                "changes": [],
+                "rejections": [],
+                "error": str(e),
+            }

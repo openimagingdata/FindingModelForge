@@ -3,13 +3,14 @@
 # ruff: noqa: B008, I001
 
 import json
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from app.auth import CurrentUserDep, OptionalCurrentUserDep, OptionalUserDep
 from app.config import logger
-from app.dependencies import CacheDep, DraftServiceDep
+from app.dependencies import CacheDep, DraftServiceDep, FindingModelServiceDep
 from app.routers.drafts.helpers import (
     build_htmx_response_with_oob,
     check_draft_permissions,
@@ -88,11 +89,17 @@ async def edit_draft(
         return HTMLResponse(content=error_html, status_code=500)
 
 
+# Key prefix for iteration results (must match workflows.py)
+ITERATION_RESULT_KEY_PREFIX = "iteration_result:"
+
+
 @router.get("/{draft_id}", response_model=None)
 async def unified_draft_page(
     request: Request,
     current_user: OptionalCurrentUserDep,
     draft_service: DraftServiceDep,
+    finding_model_service: FindingModelServiceDep,
+    cache: CacheDep,
     draft_id: str,
     mode: str = "view",  # Default to view mode
 ) -> Response:
@@ -103,6 +110,19 @@ async def unified_draft_page(
 
         # Fetch draft with author information using helper
         draft, author_name = await fetch_draft_with_context(draft_id, user_id, draft_service)
+
+        # Check for iteration results stored in Redis (one-time retrieval)
+        iteration_result: dict[str, Any] | None = None
+        result_key = f"{ITERATION_RESULT_KEY_PREFIX}{draft_id}"
+        cached_result = await cache.get(result_key)
+        if cached_result:
+            try:
+                iteration_result = json.loads(cached_result)
+                # Delete after retrieval - one-time display
+                await cache.delete(result_key)
+                logger.debug(f"Retrieved and deleted iteration result for draft {draft_id}")
+            except json.JSONDecodeError:
+                logger.warning(f"Invalid JSON in iteration result for draft {draft_id}")
 
         # Check permissions using helper
         can_edit, can_delete = check_draft_permissions(draft, current_user)
@@ -122,6 +142,18 @@ async def unified_draft_page(
         thread = None
         if current_user and draft.status in ["public", "submitted"]:
             thread = await draft_service.get_comments_for_draft(str(draft.id))
+
+        # For iteration drafts, lookup the base model slug and name
+        base_model_slug = None
+        base_model_name = None
+        if draft.is_iteration and draft.base_model_id:
+            try:
+                base_model_entry = await finding_model_service.get_by_oifm_id(draft.base_model_id)
+                if base_model_entry:
+                    base_model_slug = base_model_entry.slug_name
+                    base_model_name = base_model_entry.name
+            except Exception as e:
+                logger.warning(f"Could not lookup base model slug for draft {draft_id}: {e}")
 
         # If trying to view a draft without generated JSON, redirect to edit mode (only if user can edit)
         if mode == "view" and not finding_model and draft.status == "draft" and can_edit:
@@ -155,7 +187,9 @@ async def unified_draft_page(
 
             # Render appropriate content based on mode
             if mode == "edit":
-                main_content = render_draft_edit_content(request, current_user, draft, templates)
+                main_content = render_draft_edit_content(
+                    request, current_user, draft, templates, finding_model, base_model_slug, base_model_name
+                )
             else:  # view mode
                 main_content = render_draft_preview_content(
                     request,
@@ -168,6 +202,7 @@ async def unified_draft_page(
                     can_delete,
                     templates,
                     show_success_message=show_success,
+                    iteration_result=iteration_result,
                 )
 
             # Determine if OOB swaps should be included
@@ -199,6 +234,9 @@ async def unified_draft_page(
                     "show_ids": draft.status == "submitted",
                     "show_json": draft.status == "submitted",
                     "author_name": author_name,
+                    "base_model_slug": base_model_slug,
+                    "base_model_name": base_model_name,
+                    "iteration_result": iteration_result,
                 },
             )
     except HTTPException as exc:

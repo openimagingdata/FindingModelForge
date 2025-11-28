@@ -35,7 +35,8 @@ def test_feature_works():
     assert feature_works()
 ```
 
-**Key Insight:** If your test has conditional logic, ask yourself: "Can this test pass without testing what it's supposed to test?" If yes, it's a Schrödinger's Test and needs fixing.
+**Key Insight:** If your test has conditional logic, ask yourself: "Can this test pass without testing what it's
+supposed to test?" If yes, it's a Schrödinger's Test and needs fixing.
 
 **See also:** [`tests/ui/CLAUDE.md`](ui/CLAUDE.md) for UI-specific examples of this anti-pattern in Playwright tests.
 
@@ -138,11 +139,13 @@ tests/
 **Check `tests/conftest.py` first** - Don't duplicate existing fixtures.
 
 **Key fixtures available:**
+
 - `mock_finding_model` - Valid FindingModelFull from `tests/data/abdominal_abscess.fm.json`
 - `mock_github_user` - Sample GitHub user
 - `client` - TestClient with mocked dependencies
 
 **For new fixtures:**
+
 - Reusable fixtures → `conftest.py`
 - Test-specific fixtures → in the test file
 - Load sample data from `tests/data/*.json` files (don't construct manually)
@@ -595,7 +598,8 @@ def mock_session():
 
 ### ❌ Missing Validation of Expected Errors
 
-If your test causes server errors, either fix the test so it doesn't cause errors, OR explicitly validate the error is expected:
+If your test causes server errors, either fix the test so it doesn't cause errors, OR explicitly validate the error is
+expected:
 
 ```python
 # ❌ WRONG - Test passes but server logs errors
@@ -629,6 +633,7 @@ async def test_get_user(mock_database):
 ### For UI-Specific Anti-Patterns
 
 See [`tests/ui/CLAUDE.md`](ui/CLAUDE.md) for comprehensive UI testing anti-patterns including:
+
 - Conditional logic in Playwright tests (Schrödinger's Tests)
 - Arbitrary timeouts and networkidle waits
 - Real AI API calls in tests

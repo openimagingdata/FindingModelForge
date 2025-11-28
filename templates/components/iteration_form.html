@@ -1,0 +1,71 @@
+{# Iteration Form Component - Natural language model iteration interface #}
+{% from 'macros/iteration_components.html' import htmx_spinner %}
+{% from 'macros/json_accordion.html' import json_accordion %}
+
+<div class="space-y-6" x-data="{ isSubmitting: false }">
+    <!-- Iteration Input Form -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <form hx-post="/drafts/{{ draft.id }}/iterate"
+              hx-target="#iteration-results"
+              hx-swap="innerHTML"
+              @htmx:before-request="isSubmitting = true"
+              @htmx:after-request="isSubmitting = false"
+              x-data="{ command: '' }">
+
+            <div class="mb-6">
+                <label for="iteration-command" class="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                    Describe your changes
+                </label>
+                <textarea
+                    id="iteration-command"
+                    name="command"
+                    rows="4"
+                    x-model="command"
+                    :disabled="isSubmitting"
+                    class="block w-full px-4 py-3 text-sm text-gray-900 border border-gray-300 rounded-lg bg-white focus:ring-4 focus:ring-blue-300 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-800 dark:focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    placeholder="Example: Add a new attribute called 'Severity' with values 'Mild', 'Moderate', and 'Severe'..."
+                    required></textarea>
+                <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                    Use natural language to describe the changes you want to make to this model.
+                </p>
+            </div>
+
+            <div class="flex items-center justify-end">
+                <button type="submit"
+                        :disabled="command.trim().length === 0 || isSubmitting"
+                        class="inline-flex items-center px-5 py-2.5 text-sm font-medium text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 rounded-lg disabled:bg-gray-400 disabled:cursor-not-allowed dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
+                    <!-- Normal state icon -->
+                    <svg x-show="!isSubmitting" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                    <!-- Spinner when submitting -->
+                    <svg x-show="isSubmitting" class="animate-spin w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span x-text="isSubmitting ? 'Applying...' : 'Apply Changes'"></span>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Results Container -->
+    <div id="iteration-results" class="min-h-16">
+        <!-- Iteration results will be inserted here via HTMX -->
+        <div class="bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+            <div class="text-center text-gray-500 dark:text-gray-400">
+                <svg class="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+                </svg>
+                <p class="text-sm">Your changes will appear here after you apply them.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- JSON Preview (shows current model state) -->
+    {% if finding_model %}
+    <div id="json-preview-container" class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+        {{ json_accordion(finding_model, "iteration-json-preview", "Current Model JSON") }}
+    </div>
+    {% endif %}
+</div>

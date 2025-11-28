@@ -1,14 +1,14 @@
 # FindingModel v0.5.0 Upgrade Plan
 
-**Status**: Phases 0, 1, and 1.5 complete - Ready for Phase 2 implementation
-**Created**: 2025-11-03
-**Updated**: 2025-11-04 (Phase 1.5 complete - all API patterns verified and documented)
-**Target Version**: findingmodel v0.5.0
+**Status**: Phases 0, 1, and 1.5 complete - Ready for Phase 2 implementation **Created**: 2025-11-03 **Updated**:
+2025-11-04 (Phase 1.5 complete - all API patterns verified and documented) **Target Version**: findingmodel v0.5.0
 **Current Version**: findingmodel v0.4.0
 
 ## Overview
 
-Upgrade from findingmodel v0.4.0 to v0.5.0 to leverage the improved Index API and significantly simplify our codebase. The v0.5.0 release provides built-in methods for operations we currently implement manually, allowing us to **delete ~150+ lines of custom code**.
+Upgrade from findingmodel v0.4.0 to v0.5.0 to leverage the improved Index API and significantly simplify our codebase.
+The v0.5.0 release provides built-in methods for operations we currently implement manually, allowing us to **delete
+~150+ lines of custom code**.
 
 ## Key Benefits
 
@@ -22,13 +22,16 @@ Upgrade from findingmodel v0.4.0 to v0.5.0 to leverage the improved Index API an
 
 ### Critical: Direct SQL Access Pattern
 
-**What Changed**: v0.5.0 removes MongoDB backend and consolidates on DuckDB. Direct connection access via `Index._ensure_connection()` is no longer supported.
+**What Changed**: v0.5.0 removes MongoDB backend and consolidates on DuckDB. Direct connection access via
+`Index._ensure_connection()` is no longer supported.
 
 **Impact**: `app/services/finding_model_service.py` line 60 uses `_ensure_connection()` for direct SQL queries.
 
 **Migration**: Use new Index API methods instead:
+
 - `Index.all(offset, limit)` - Paginated listing, returns `tuple[list[IndexEntry], int]`
-- `Index.search_by_slug(pattern, limit, offset)` - Search by slug with pagination, returns `tuple[list[IndexEntry], int]`
+- `Index.search_by_slug(pattern, limit, offset)` - Search by slug with pagination, returns
+  `tuple[list[IndexEntry], int]`
 - `Index.count()` - Total count (no search parameter)
 - `Index.count_search(pattern)` - Count search results
 - `Index.get_full(oifm_id)` - Get complete model JSON (requires OIFM ID, raises KeyError if not found)
@@ -42,6 +45,7 @@ Upgrade from findingmodel v0.4.0 to v0.5.0 to leverage the improved Index API an
 **File**: `scripts/verify_v0.4.0_baseline.py` (create new file)
 
 **Content**:
+
 ```python
 """Verify current v0.4.0 capabilities before upgrade."""
 import asyncio
@@ -96,6 +100,7 @@ if __name__ == "__main__":
 **Run**: `uv run python scripts/verify_v0.4.0_baseline.py`
 
 **Expected Output**:
+
 - `index.get()` works
 - `index.count()` may or may not exist
 - `index.list()`, `search_by_slug()`, `get_full()` should raise `AttributeError`
@@ -109,6 +114,7 @@ if __name__ == "__main__":
 **File**: `pyproject.toml`
 
 **Change**:
+
 ```toml
 # Line 17: Update version constraint
 dependencies = [
@@ -119,8 +125,7 @@ dependencies = [
 
 **Command**: `uv sync`
 
-**Verification**: `uv run python -c "import findingmodel; print(findingmodel.__version__)"`
-Expected output: `0.5.0`
+**Verification**: `uv run python -c "import findingmodel; print(findingmodel.__version__)"` Expected output: `0.5.0`
 
 ---
 
@@ -131,6 +136,7 @@ Expected output: `0.5.0`
 **File**: `scripts/verify_v0.5.0_api.py` (create new file)
 
 **Content**:
+
 ```python
 """Verify v0.5.0 API methods work correctly."""
 import asyncio
@@ -242,6 +248,7 @@ if __name__ == "__main__":
 **Run**: `uv run python scripts/verify_v0.5.0_api.py`
 
 **Expected Output**:
+
 - All required methods exist
 - Method signatures documented
 - IndexEntry field structure confirmed
@@ -266,9 +273,11 @@ if __name__ == "__main__":
 4. **`set_finding_models()`** (lines 333-346)
 5. **`invalidate_finding_models_cache()`** (lines 348-352)
 
-**Why**: With `Index.get_full()`, we no longer need to cache full finding models from GitHub. The Index provides fast access directly.
+**Why**: With `Index.get_full()`, we no longer need to cache full finding models from GitHub. The Index provides fast
+access directly.
 
 **Verification**:
+
 - Run `task test-unit` - no tests should break (these methods are unused)
 - Search codebase for references: `rg "get_finding_model|set_finding_model"` should only show deletions
 
@@ -283,6 +292,7 @@ if __name__ == "__main__":
 **Lines 23-44**: Update `__init__()` signature
 
 **Before**:
+
 ```python
 def __init__(
     self,
@@ -298,6 +308,7 @@ def __init__(
 ```
 
 **After**:
+
 ```python
 def __init__(
     self,
@@ -319,12 +330,14 @@ def __init__(
 **Lines 46-105**: Replace entire implementation
 
 **Current Pattern** (~60 lines):
+
 - Direct SQL via `conn = self.index._ensure_connection()`
 - Manual query building with LIKE patterns
 - Manual normalization of search terms
 - Two separate SQL queries (count + data)
 
 **New Implementation** (based on Phase 1.5 verified API):
+
 ```python
 async def list_models(
     self, search: str | None = None, page: int = 1, per_page: int = 20
@@ -364,6 +377,7 @@ async def list_models(
 ```
 
 **Key Changes**:
+
 - No more direct SQL queries
 - No more `_ensure_connection()`
 - No more manual normalization
@@ -374,6 +388,7 @@ async def list_models(
 - Convert `IndexEntry` objects to dicts for templates
 
 **Confirmed by Phase 1.5**:
+
 - ✅ Server-side pagination: Both `all()` and `search_by_slug()` have `limit`/`offset` parameters
 - ✅ Tuple returns: Both methods return `(list[IndexEntry], int)` with total count included
 - ✅ Slug field exists: `IndexEntry.slug_name` is available and should be used directly
@@ -386,6 +401,7 @@ async def list_models(
 **Lines 106-155**: Replace entire implementation
 
 **Current Pattern** (~50 lines):
+
 - Check Redis cache for model JSON
 - Fetch from GitHub if cache miss
 - Parse and validate JSON
@@ -393,6 +409,7 @@ async def list_models(
 - Complex error handling for HTTP requests
 
 **New Implementation** (based on Phase 1.5 findings):
+
 ```python
 async def get_model_by_slug(self, slug: str) -> FindingModelFull:
     """Get finding model by slug.
@@ -423,6 +440,7 @@ async def get_model_by_slug(self, slug: str) -> FindingModelFull:
 ```
 
 **Key Changes**:
+
 - No cache checks
 - No GitHub API calls
 - No httpx import needed
@@ -432,6 +450,7 @@ async def get_model_by_slug(self, slug: str) -> FindingModelFull:
 - Handle `KeyError` from `get_full()` (doesn't return None)
 
 **CRITICAL Finding from Phase 1.5**:
+
 - ⚠️ `get_full()` requires **OIFM ID** (e.g., "OIFM.1001"), NOT slug
 - ⚠️ `get_full()` **raises KeyError** if not found (doesn't return None)
 - ⚠️ Requires `finding_model_json` table in database (may need schema update)
@@ -439,6 +458,7 @@ async def get_model_by_slug(self, slug: str) -> FindingModelFull:
 **Alternative**: If `get_full()` is unreliable, keep GitHub fetching pattern temporarily.
 
 **Return Type Change**:
+
 - **Before**: `tuple[FindingModelFull, IndexEntry]`
 - **After**: `FindingModelFull` only
 
@@ -451,12 +471,14 @@ async def get_model_by_slug(self, slug: str) -> FindingModelFull:
 **Top of file**: Remove unused imports (confirmed by Phase 1.5)
 
 **Remove**:
+
 ```python
 import httpx
 from app.cache import RedisCache
 ```
 
 **Keep**:
+
 ```python
 from findingmodel import FindingModelFull
 from findingmodel.index import IndexEntry
@@ -464,6 +486,7 @@ from findingmodel.index import IndexEntry
 ```
 
 **Note from Phase 1.5**:
+
 - ✅ **No slug generation needed**: `IndexEntry.slug_name` field exists and should be used directly
 - ✅ **No normalize_name() needed**: Library provides slugs in the format we need
 - ✅ **No httpx needed**: No GitHub API calls anymore
@@ -477,6 +500,7 @@ from findingmodel.index import IndexEntry
 **Changes to `FindingModelService` class:**
 
 1. **`__init__()` signature** (Phase 3A already covers this):
+
    ```python
    # Before
    def __init__(self, index: Any, cache: RedisCache, ...) -> None:
@@ -486,6 +510,7 @@ from findingmodel.index import IndexEntry
    ```
 
 2. **`get_model_by_slug()` return type**:
+
    ```python
    # Before
    async def get_model_by_slug(self, slug: str) -> tuple[FindingModelFull, IndexEntry]:
@@ -502,6 +527,7 @@ from findingmodel.index import IndexEntry
 **Verification**: Run `uv run mypy app` to catch any type errors after changes.
 
 **Files likely needing updates**:
+
 - `app/routers/finding_models_browse.py` - Main caller of `get_model_by_slug()`
 - Any tests that mock or call this method
 
@@ -516,6 +542,7 @@ from findingmodel.index import IndexEntry
 **Update**: Remove `cache` parameter from service initialization
 
 **Before**:
+
 ```python
 async def get_finding_model_service(
     database: DatabaseDep,
@@ -531,6 +558,7 @@ async def get_finding_model_service(
 ```
 
 **After**:
+
 ```python
 async def get_finding_model_service(
     database: DatabaseDep,
@@ -556,12 +584,14 @@ async def get_finding_model_service(
 **Update**: Handle new return type (no longer returns tuple)
 
 **Before**:
+
 ```python
 finding_model, index_entry = await finding_model_service.get_model_by_slug(slug)
 # Use index_entry for something...
 ```
 
 **After**:
+
 ```python
 finding_model = await finding_model_service.get_model_by_slug(slug)
 # If you need index data, make separate call:
@@ -581,6 +611,7 @@ finding_model = await finding_model_service.get_model_by_slug(slug)
 **Lines 22-42**: Update mock fixtures
 
 **Remove**:
+
 ```python
 @pytest.fixture
 def mock_cache(self) -> MagicMock:
@@ -593,6 +624,7 @@ def mock_cache(self) -> MagicMock:
 **Update `mock_index` fixture** (based on Phase 1.5 findings):
 
 **Before**:
+
 ```python
 @pytest.fixture
 def mock_index(self) -> MagicMock:
@@ -603,6 +635,7 @@ def mock_index(self) -> MagicMock:
 ```
 
 **After**:
+
 ```python
 @pytest.fixture
 def mock_index(self) -> MagicMock:
@@ -650,6 +683,7 @@ def mock_index(self) -> MagicMock:
 **Update service instantiation in tests**:
 
 **Before**:
+
 ```python
 service = FindingModelService(
     index=mock_index,
@@ -661,6 +695,7 @@ service = FindingModelService(
 ```
 
 **After**:
+
 ```python
 service = FindingModelService(
     index=mock_index,
@@ -677,6 +712,7 @@ service = FindingModelService(
 **Update assertions** to match new return types:
 
 **Before**:
+
 ```python
 finding_model, index_entry = await service.get_model_by_slug("test-slug")
 assert index_entry.name == "Test Model"
@@ -684,6 +720,7 @@ assert finding_model.oifm_id == "OIFM.1001"
 ```
 
 **After**:
+
 ```python
 finding_model = await service.get_model_by_slug("test-slug")
 assert finding_model.oifm_id == "OIFM.1001"
@@ -691,6 +728,7 @@ assert finding_model.name == "Test Model"
 ```
 
 **Remove cache-related tests**:
+
 - Delete tests verifying cache hit/miss behavior
 - Delete tests verifying GitHub fetch logic
 - Keep tests for business logic (search, pagination, error handling)
@@ -702,11 +740,13 @@ assert finding_model.name == "Test Model"
 **File**: `tests/test_routers/test_finding_models_browse.py` (if exists)
 
 **Update mocks**:
+
 - Remove httpx mocking
 - Remove cache mocking
 - Update service mock to return `FindingModelFull` directly (not tuple)
 
 **Pattern**:
+
 ```python
 mock_service.get_model_by_slug = AsyncMock(
     return_value=FindingModelFull(...)  # Not tuple anymore
@@ -717,7 +757,8 @@ mock_service.get_model_by_slug = AsyncMock(
 
 ### Phase 7: Final Integration Verification
 
-**Note**: API verification is now handled comprehensively in **Phase 1.5**. This phase focuses on integration testing after all code changes are complete.
+**Note**: API verification is now handled comprehensively in **Phase 1.5**. This phase focuses on integration testing
+after all code changes are complete.
 
 **Tasks**:
 
@@ -732,6 +773,7 @@ mock_service.get_model_by_slug = AsyncMock(
    - Verify HTMX interactions work
 
 3. **Manual verification**:
+
    ```bash
    # Start dev server
    task dev
@@ -752,6 +794,7 @@ mock_service.get_model_by_slug = AsyncMock(
    - No Redis cache misses for finding models
 
 **Success Criteria**:
+
 - All tests pass
 - Browse/search/detail pages work correctly
 - No errors in application logs
@@ -766,12 +809,14 @@ mock_service.get_model_by_slug = AsyncMock(
 **Run**: `task test-unit`
 
 **Expected Results**:
+
 - All 144 tests pass (or more if we add new ones)
 - No cache-related test failures
 - Service tests use new Index mocks
 - Router tests use new service return types
 
 **If failures occur**:
+
 1. Check mock setup matches new API
 2. Verify return type handling in routers
 3. Check for any lingering cache references
@@ -781,6 +826,7 @@ mock_service.get_model_by_slug = AsyncMock(
 **Run**: `task test`
 
 **Focus Areas**:
+
 1. Browse page (`/finding-models`) - pagination works
 2. Search functionality - returns correct results
 3. Model detail page (`/finding-models/{slug}`) - displays correctly
@@ -788,6 +834,7 @@ mock_service.get_model_by_slug = AsyncMock(
 5. No GitHub API calls being made
 
 **Manual Verification**:
+
 ```bash
 # Start dev server
 task dev
@@ -808,6 +855,7 @@ tail -f logs/app.log | grep -i github
 ### Performance Testing
 
 **Before upgrade**: Measure current performance
+
 ```bash
 # Time browse page load
 time curl -s http://localhost:8000/finding-models > /dev/null
@@ -821,6 +869,7 @@ time curl -s http://localhost:8000/finding-models/pneumonia > /dev/null
 ```
 
 **After upgrade**: Compare performance
+
 ```bash
 # Should be similar or faster (no Redis overhead)
 time curl -s http://localhost:8000/finding-models > /dev/null
@@ -860,6 +909,7 @@ task dev
 ## Success Criteria
 
 ✅ **Code simplification**:
+
 - `finding_model_service.py`: ~90 lines removed
 - `cache.py`: ~60 lines removed
 - Tests: Fewer mocks, simpler fixtures
@@ -867,6 +917,7 @@ task dev
 ✅ **All tests pass**: 144+ tests green
 
 ✅ **No regressions**:
+
 - Browse page loads and paginates
 - Search works correctly
 - Model detail pages display
@@ -941,12 +992,12 @@ This plan must be executed in strict sequence:
 
 ---
 
-**Document Version**: 3.0
-**Last Updated**: 2025-11-04
+**Document Version**: 3.0 **Last Updated**: 2025-11-04
 
 ## Changelog
 
 ### Version 3.0 (2025-11-04) - Phase 1.5 Complete
+
 - ✅ **Phases 0, 1, 1.5 executed and verified**
 - ✅ Updated all code examples with verified API patterns:
   - Changed `list()` to `all()` throughout
@@ -962,6 +1013,7 @@ This plan must be executed in strict sequence:
 - ✅ Updated Breaking Changes section with accurate method signatures
 
 ### Version 2.0 (2025-11-04)
+
 - ✅ Added Phase 0: Pre-upgrade baseline verification
 - ✅ Added Phase 1.5: Post-upgrade API verification (comprehensive)
 - ✅ Added `await` keywords to all Index method calls throughout
@@ -976,4 +1028,5 @@ This plan must be executed in strict sequence:
 - ✅ Updated task assignment with strict sequential ordering
 
 ### Version 1.0 (2025-11-03)
+
 - Initial plan created

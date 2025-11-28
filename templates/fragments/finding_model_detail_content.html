@@ -3,6 +3,21 @@
 <!-- Update document title -->
 <title>{{ page_title }}</title>
 
+<!-- Create Iteration Button (for authenticated users) -->
+{% if user or current_user %}
+<div class="mb-4">
+    <form method="post" action="/finding-models/{{ model_slug or reference_id }}/iterate">
+        <button type="submit"
+                class="inline-flex items-center px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg focus:outline-none focus:ring-4 focus:ring-purple-300 transition-colors dark:bg-purple-600 dark:hover:bg-purple-700 dark:focus:ring-purple-800">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+            </svg>
+            Create Iteration
+        </button>
+    </form>
+</div>
+{% endif %}
+
 <!-- Detail view content (no back link needed - breadcrumbs handle navigation) -->
 {% include "components/finding_model_complete_display.html" %}
 

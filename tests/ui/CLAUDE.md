@@ -155,7 +155,8 @@ else:
     assert "/finding-models" in page.url
 ```
 
-**Impact:** Fixed 10 Schrödinger's Tests that were passing without testing, preventing silent failures (5 from Sprint 1, 5 from Sprint 2).
+**Impact:** Fixed 10 Schrödinger's Tests that were passing without testing, preventing silent failures (5 from Sprint 1,
+5 from Sprint 2).
 
 ### ❌ 2. Arbitrary Timeouts and networkidle Waits
 
@@ -177,6 +178,7 @@ await expect(element).to_be_visible()  # Auto-waits up to timeout
 ```
 
 **Why networkidle is bad:**
+
 - Adds 500ms+ delay EVERY time, even when page is already ready
 - Doesn't actually guarantee HTMX operations are complete
 - Accumulates: 41 waits × 500ms = 20+ seconds of pure waiting
@@ -219,6 +221,7 @@ async def generate_valid_generated_json(name: str) -> str:
 ```
 
 This ensures:
+
 - Valid FindingModelFull structure that passes backend validation
 - All required fields present (id, codes, attributes, etc.)
 - Comment sections will render (requires valid generated_json)
@@ -244,7 +247,9 @@ async def test_form_submission_blocked_when_no_changes():
     await expect(submit_button).to_be_disabled()
 ```
 
-**Lesson:** If you have to work around the application's correct behavior to test something, you're testing the wrong thing. Either:
+**Lesson:** If you have to work around the application's correct behavior to test something, you're testing the wrong
+thing. Either:
+
 1. Test that the application correctly prevents the action, OR
 2. Test the backend unit directly (not via UI)
 
@@ -253,6 +258,7 @@ async def test_form_submission_blocked_when_no_changes():
 ### ❌ 5. Missing Validation of Expected Server Errors
 
 If your test causes server errors, either:
+
 - Fix the test so it doesn't cause errors, OR
 - Explicitly validate the error is expected
 
@@ -277,6 +283,7 @@ else:
 ## Summary of Anti-Pattern Fixes (November 2025)
 
 **Sprint 0 & 1 Results:**
+
 - ✅ Removed 41 networkidle waits → 2x speedup
 - ✅ Eliminated 18+ AI API calls → 10x speedup for draft management tests
 - ✅ Fixed 5 Schrödinger's Tests → prevented silent failures
@@ -284,6 +291,7 @@ else:
 - ✅ Overall: UI test suite 5+ min → 2.5 min
 
 **Sprint 2 Results:**
+
 - ✅ Fixed 5 additional Schrödinger's Tests in test_comments.py
 - ✅ Completed 3 incomplete workflows (reply submission, thread structure, nested replies)
 - ✅ Established database setup pattern: seed/cleanup → navigate → wait for content → test WITHOUT conditionals

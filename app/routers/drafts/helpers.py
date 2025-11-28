@@ -118,6 +118,9 @@ def render_draft_edit_content(
     user: User | None,
     draft: FindingModelDraft,
     templates: Any,
+    finding_model: FindingModelFull | None = None,
+    base_model_slug: str | None = None,
+    base_model_name: str | None = None,
 ) -> str:
     """Render draft edit form content.
 
@@ -126,6 +129,9 @@ def render_draft_edit_content(
         user: Current authenticated user (None if not authenticated)
         draft: Draft to render for editing
         templates: Jinja2 templates instance
+        finding_model: Parsed finding model (for iteration drafts)
+        base_model_slug: Base model slug (for iteration drafts)
+        base_model_name: Base model name (for iteration drafts)
 
     Returns:
         Rendered HTML content as string
@@ -135,6 +141,9 @@ def render_draft_edit_content(
             request=request,
             user=user,
             draft=draft,
+            finding_model=finding_model,
+            base_model_slug=base_model_slug,
+            base_model_name=base_model_name,
         )
     )
 
@@ -150,6 +159,7 @@ def render_draft_preview_content(
     can_delete: bool,
     templates: Any,
     show_success_message: bool = False,
+    iteration_result: dict[str, Any] | None = None,
 ) -> str:
     """Render draft preview content.
 
@@ -164,6 +174,8 @@ def render_draft_preview_content(
         can_delete: Whether current user can delete this draft
         templates: Jinja2 templates instance
         show_success_message: Whether to show success alert (default: False)
+        iteration_result: Iteration result data from Redis (default: None)
+            Contains: command, changes, rejections, timestamp
 
     Returns:
         Rendered HTML content as string
@@ -184,6 +196,7 @@ def render_draft_preview_content(
             can_edit=can_edit,
             can_delete=can_delete,
             show_success_message=show_success_message,
+            iteration_result=iteration_result,
         )
     )
 

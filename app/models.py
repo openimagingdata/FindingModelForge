@@ -213,5 +213,7 @@ class FindingModelDraft(BaseModel):
     generated_json: str | None = None
     status: DraftStatus = DraftStatus.DRAFT
     action_log: list[LogEntry] = Field(default_factory=list)
+    is_iteration: bool = False
+    base_model_id: str | None = None
 
     model_config = {"from_attributes": True}

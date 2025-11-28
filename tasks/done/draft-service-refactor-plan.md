@@ -1,12 +1,12 @@
 # DraftService Refactor Plan
 
-**Last Updated**: October 5, 2025
-**Status**: ✅ **COMPLETE** - All steps implemented and verified
-**Time Taken**: ~45 minutes
+**Last Updated**: October 5, 2025 **Status**: ✅ **COMPLETE** - All steps implemented and verified **Time Taken**: ~45
+minutes
 
 ## Current State (as of October 4, 2025)
 
 ✅ **Completed Prerequisites:**
+
 - `app/utils/draft_formatting.py` exists with all formatting functions
 - `format_draft_for_display()`, `extract_attribute_names()`, `humanize_timestamp()`, `format_date_short()`
 - `DraftService.get_drafts_for_user()` already delegates to formatting utilities
@@ -14,6 +14,7 @@
 - Service already focused on business logic for most operations
 
 ❌ **Remaining Issues:**
+
 - 3 service methods duplicate `DraftRepo` functionality with Python-side filtering:
   - `list_for_user_by_name()` - fetches ALL drafts, filters in Python
   - `find_editable_by_name()` - fetches ALL drafts, filters in Python
@@ -23,7 +24,9 @@
 
 ## Context
 
-The formatting extraction work (originally planned as "Phase 0") has been **completed**. This refactor is now a simple cleanup task to:
+The formatting extraction work (originally planned as "Phase 0") has been **completed**. This refactor is now a simple
+cleanup task to:
+
 1. Remove duplicate filtering methods from `DraftService`
 2. Update 2 router calls to use `DraftRepo` directly
 3. Delete associated tests
@@ -60,9 +63,11 @@ This is **not** an architectural change—the architecture is already correct pe
 This is a **single-phase cleanup task**, not a multi-phase refactor.
 
 ### Step 1: Update Router Call Sites (5 minutes) ✅ COMPLETE
+
 **File**: `app/routers/creation.py`
 
 - [x] Line 128: Change to call `draft_repo.find_editable_by_name()` directly
+
   ```python
   # OLD:
   draft = await draft_service.find_editable_by_name(user_id=current_user.id, name=name)
@@ -72,6 +77,7 @@ This is a **single-phase cleanup task**, not a multi-phase refactor.
   ```
 
 - [x] Line 147: Change to call `draft_repo.find_latest_by_name()` directly
+
   ```python
   # OLD:
   latest = await draft_service.find_latest_by_name(user_id=current_user.id, name=name)
@@ -83,6 +89,7 @@ This is a **single-phase cleanup task**, not a multi-phase refactor.
 - [x] Verify `draft_repo` is available via dependency injection in the route handler
 
 ### Step 2: Remove Duplicate Methods from DraftService (10 minutes) ✅ COMPLETE
+
 **File**: `app/services/draft_service.py`
 
 - [x] Delete `list_for_user_by_name()` method (lines ~181-197)
@@ -102,6 +109,7 @@ This is a **single-phase cleanup task**, not a multi-phase refactor.
 **Result**: ~60 lines deleted from service
 
 ### Step 3: Update Tests (15 minutes) ✅ COMPLETE
+
 **File**: `tests/test_services/test_draft_service.py`
 
 - [x] Remove or update tests for deleted methods:
@@ -120,6 +128,7 @@ This is a **single-phase cleanup task**, not a multi-phase refactor.
 **Note**: Repository-level tests in `tests/test_draftrepo_queries.py` remain unchanged
 
 **Additional work**: Fixed test mocks in `tests/test_finding_models_comprehensive.py`:
+
 - Updated 8 tests to mock `app.database.DraftRepo` methods instead of removed service methods
 - Fixed `test_process_step_1_resume_existing_draft` to mock repository instance directly
 - Fixed `test_step1_resumes_submitted_draft_to_draft_view` mock setup
@@ -127,15 +136,19 @@ This is a **single-phase cleanup task**, not a multi-phase refactor.
 ### Step 4: Verify & Test (10 minutes) ✅ COMPLETE
 
 - [x] Run service tests:
+
   ```bash
   uv run pytest tests/test_services/test_draft_service.py -v
   ```
+
   **Result**: 16 tests passed (down from 18 as expected)
 
 - [x] Run router tests:
+
   ```bash
   uv run pytest tests/test_drafts_router.py tests/test_resume_logic.py -v
   ```
+
   **Result**: All tests passed
 
 - [x] Run full test suite:
@@ -147,6 +160,7 @@ This is a **single-phase cleanup task**, not a multi-phase refactor.
 ### Step 5: Documentation (5 minutes) ✅ COMPLETE
 
 - [x] Update `docs/RECENT_UPDATES_SUMMARY.md`:
+
   ```markdown
   ## Service Layer Cleanup (October 4, 2025)
 
@@ -192,6 +206,7 @@ This is a **single-phase cleanup task**, not a multi-phase refactor.
 ## Why This Approach
 
 **Simplified from original plan because:**
+
 - ✅ Formatting extraction already complete (was "Phase 0")
 - ✅ Only 2 call sites need updating (not "25+")
 - ✅ Only 3 methods to delete (straightforward)
@@ -199,6 +214,7 @@ This is a **single-phase cleanup task**, not a multi-phase refactor.
 - ✅ 1-hour task, not multi-phase project
 
 **Aligns with FastAPI 2025 best practices:**
+
 - Thin routers → call repos directly for simple queries ✓
 - Services → business logic and orchestration only ✓
 - Utilities → formatting and presentation ✓

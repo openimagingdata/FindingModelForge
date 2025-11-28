@@ -4,6 +4,13 @@
 {% from "macros/unified_form_data.html" import unified_form_data %}
 {% from "macros/flowbite_components.html" import flowbite_button %}
 
+{% if draft.is_iteration %}
+    {# Iteration draft - show iteration UI #}
+    {% from 'macros/iteration_components.html' import iteration_banner %}
+    {{ iteration_banner(base_model_name, base_model_slug) }}
+    {% include 'components/iteration_form.html' %}
+{% else %}
+    {# Regular draft - show normal edit form #}
 <div x-data='{{ unified_form_data(initial_description=draft.inputs.description or "", initial_attributes=draft.inputs.attributes_markdown or "", initial_synonyms=draft.inputs.synonyms or [], has_no_generated_json=not draft.generated_json) }}'>
 
     {% if draft.status == 'submitted' %}
@@ -96,3 +103,4 @@
         </div>
     </form>
 </div>
+{% endif %}

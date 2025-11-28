@@ -337,3 +337,286 @@ class TestDraftService:
         await service.report_draft_comment("draft-1", "comment-1", 123)
 
         mock_comment_service.report_comment.assert_awaited_once_with("draft", "draft-1", "comment-1", 123)
+
+    # Iteration feature tests
+
+    @pytest.mark.asyncio
+    async def test_start_iteration_creates_new_draft(
+        self, service: DraftService, mock_draft_repo: MagicMock, sample_user: User, mock_finding_model
+    ) -> None:
+        """Test start_iteration creates a new iteration draft when none exists."""
+        # Arrange
+        base_model = mock_finding_model
+
+        # No existing iteration draft
+        mock_draft_repo.get_iteration_draft.return_value = None
+
+        # Mock save_draft to return a new draft
+        now = datetime.now(UTC)
+        new_draft = FindingModelDraft(
+            id="new-draft-id",
+            user_id=sample_user.id,
+            name=base_model.name,
+            created_at=now,
+            updated_at=now,
+            inputs=FindingModelInputs(
+                description=base_model.description,
+                synonyms=[],
+                attributes_markdown="",
+            ),
+            generated_json=base_model.model_dump_json(indent=2),
+            status=DraftStatus.DRAFT,
+            is_iteration=True,
+            base_model_id=base_model.oifm_id,
+            action_log=[],
+        )
+        mock_draft_repo.save_draft.return_value = new_draft
+
+        # Act
+        result = await service.start_iteration(sample_user.id, sample_user, base_model)
+
+        # Assert
+        assert result == new_draft
+        mock_draft_repo.get_iteration_draft.assert_called_once_with(sample_user.id, base_model.oifm_id)
+        mock_draft_repo.save_draft.assert_called_once()
+
+        # Verify save_draft was called with correct parameters
+        call_kwargs = mock_draft_repo.save_draft.call_args.kwargs
+        assert call_kwargs["user_id"] == sample_user.id
+        assert call_kwargs["name"] == base_model.name
+        assert call_kwargs["is_iteration"] is True
+        assert call_kwargs["base_model_id"] == base_model.oifm_id
+
+    @pytest.mark.asyncio
+    async def test_start_iteration_returns_existing(
+        self, service: DraftService, mock_draft_repo: MagicMock, sample_user: User, mock_finding_model
+    ) -> None:
+        """Test start_iteration returns existing iteration draft if found."""
+        # Arrange
+        base_model = mock_finding_model
+
+        # Existing iteration draft
+        now = datetime.now(UTC)
+        existing_draft = FindingModelDraft(
+            id="existing-draft-id",
+            user_id=sample_user.id,
+            name=base_model.name,
+            created_at=now,
+            updated_at=now,
+            inputs=FindingModelInputs(
+                description=base_model.description,
+                synonyms=[],
+                attributes_markdown="",
+            ),
+            generated_json=base_model.model_dump_json(indent=2),
+            status=DraftStatus.DRAFT,
+            is_iteration=True,
+            base_model_id=base_model.oifm_id,
+            action_log=[],
+        )
+        mock_draft_repo.get_iteration_draft.return_value = existing_draft
+
+        # Act
+        result = await service.start_iteration(sample_user.id, sample_user, base_model)
+
+        # Assert
+        assert result == existing_draft
+        mock_draft_repo.get_iteration_draft.assert_called_once_with(sample_user.id, base_model.oifm_id)
+        mock_draft_repo.save_draft.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_apply_iteration_success(
+        self, service: DraftService, mock_draft_repo: MagicMock, mock_finding_model
+    ) -> None:
+        """Test apply_natural_language_iteration with successful changes."""
+        # Arrange
+        from unittest.mock import patch
+
+        draft_id = "draft-123"
+        user_id = 123
+        command = "Add a new attribute called 'size'"
+
+        # Create a base model
+        base_model = mock_finding_model
+
+        # Mock draft
+        now = datetime.now(UTC)
+        draft = FindingModelDraft(
+            id=draft_id,
+            user_id=user_id,
+            name="Test Finding",
+            created_at=now,
+            updated_at=now,
+            inputs=FindingModelInputs(
+                description="Test description",
+                synonyms=[],
+                attributes_markdown="",
+            ),
+            generated_json=base_model.model_dump_json(indent=2),
+            status=DraftStatus.DRAFT,
+            is_iteration=True,
+            base_model_id=base_model.oifm_id,
+            action_log=[],
+        )
+
+        # Mock get_draft_by_id to return the draft
+        service.get_draft_by_id = AsyncMock(return_value=draft)
+
+        # Mock update_generated_json to return success
+        mock_draft_repo.update_generated_json.return_value = True
+        mock_draft_repo.get_draft.return_value = draft
+
+        # Mock the AI editing function with EditResult object
+        from findingmodel.tools.model_editor import EditResult
+
+        mock_edit_result = EditResult(
+            model=base_model,
+            changes=["Added attribute 'size'"],
+            rejections=[],
+        )
+
+        with patch("app.services.draft_service.edit_model_natural_language", new_callable=AsyncMock) as mock_edit:
+            mock_edit.return_value = mock_edit_result
+
+            # Act
+            result = await service.apply_natural_language_iteration(draft_id, user_id, command)
+
+        # Assert
+        assert result["success"] is True
+        assert len(result["changes"]) == 1
+        assert "Added attribute 'size'" in result["changes"]
+        assert len(result["rejections"]) == 0
+        assert result["error"] is None
+
+        mock_edit.assert_called_once()
+        mock_draft_repo.update_generated_json.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_apply_iteration_with_rejections(
+        self, service: DraftService, mock_draft_repo: MagicMock, mock_finding_model
+    ) -> None:
+        """Test apply_natural_language_iteration with some rejections."""
+        # Arrange
+        from unittest.mock import patch
+
+        draft_id = "draft-123"
+        user_id = 123
+        command = "Add invalid attribute"
+
+        # Create a base model
+        base_model = mock_finding_model
+
+        # Mock draft
+        now = datetime.now(UTC)
+        draft = FindingModelDraft(
+            id=draft_id,
+            user_id=user_id,
+            name="Test Finding",
+            created_at=now,
+            updated_at=now,
+            inputs=FindingModelInputs(
+                description="Test description",
+                synonyms=[],
+                attributes_markdown="",
+            ),
+            generated_json=base_model.model_dump_json(indent=2),
+            status=DraftStatus.DRAFT,
+            is_iteration=True,
+            base_model_id=base_model.oifm_id,
+            action_log=[],
+        )
+
+        # Mock get_draft_by_id to return the draft
+        service.get_draft_by_id = AsyncMock(return_value=draft)
+
+        # Mock update_generated_json to return success
+        mock_draft_repo.update_generated_json.return_value = True
+        mock_draft_repo.get_draft.return_value = draft
+
+        # Mock the AI editing function with rejections using EditResult
+        from findingmodel.tools.model_editor import EditResult
+
+        mock_edit_result = EditResult(
+            model=base_model,
+            changes=["Added synonym 'test2'"],
+            rejections=["Cannot add invalid attribute"],
+        )
+
+        with patch("app.services.draft_service.edit_model_natural_language", new_callable=AsyncMock) as mock_edit:
+            mock_edit.return_value = mock_edit_result
+
+            # Act
+            result = await service.apply_natural_language_iteration(draft_id, user_id, command)
+
+        # Assert
+        assert result["success"] is True  # Still successful even with rejections
+        assert len(result["changes"]) == 1
+        assert len(result["rejections"]) == 1
+        assert "Cannot add invalid attribute" in result["rejections"]
+        assert result["error"] is None
+
+    @pytest.mark.asyncio
+    async def test_apply_iteration_logs_to_action_log(
+        self, service: DraftService, mock_draft_repo: MagicMock, mock_finding_model
+    ) -> None:
+        """Test that apply_natural_language_iteration logs changes to action_log."""
+        # Arrange
+        from unittest.mock import patch
+
+        draft_id = "draft-123"
+        user_id = 123
+        command = "Add synonym 'test2'"
+
+        # Create a base model
+        base_model = mock_finding_model
+
+        # Mock draft
+        now = datetime.now(UTC)
+        draft = FindingModelDraft(
+            id=draft_id,
+            user_id=user_id,
+            name="Test Finding",
+            created_at=now,
+            updated_at=now,
+            inputs=FindingModelInputs(
+                description="Test description",
+                synonyms=[],
+                attributes_markdown="",
+            ),
+            generated_json=base_model.model_dump_json(indent=2),
+            status=DraftStatus.DRAFT,
+            is_iteration=True,
+            base_model_id=base_model.oifm_id,
+            action_log=[],
+        )
+
+        # Mock get_draft_by_id to return the draft
+        service.get_draft_by_id = AsyncMock(return_value=draft)
+
+        # Mock update_generated_json to return success
+        mock_draft_repo.update_generated_json.return_value = True
+        mock_draft_repo.get_draft.return_value = draft
+
+        # Mock the AI editing function using EditResult
+        from findingmodel.tools.model_editor import EditResult
+
+        mock_edit_result = EditResult(
+            model=base_model,
+            changes=["Added synonym 'test2'"],
+            rejections=[],
+        )
+
+        with patch("app.services.draft_service.edit_model_natural_language", new_callable=AsyncMock) as mock_edit:
+            mock_edit.return_value = mock_edit_result
+
+            # Act
+            result = await service.apply_natural_language_iteration(draft_id, user_id, command)
+
+        # Assert
+        assert result["success"] is True
+
+        # Verify update_generated_json was called (which adds to action_log)
+        mock_draft_repo.update_generated_json.assert_called_once()
+        call_args = mock_draft_repo.update_generated_json.call_args
+        assert call_args[0][0] == draft_id
+        assert call_args[0][1] == user_id

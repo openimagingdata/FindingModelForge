@@ -131,7 +131,8 @@ FindingModelForge/
 - **HTMX-aware testing**: Purpose-built utilities (`wait_for_htmx_settled()`, `click_and_wait_for_htmx()`)
 - **Database-driven tests**: Proper cleanup/seeding for deterministic behavior
 - **Playwright MCP integration**: Browser automation for debugging and verification
-- **Router testing patterns**: See [`tests/CLAUDE.md`](tests/CLAUDE.md) and [`tests/ui/CLAUDE.md`](tests/ui/CLAUDE.md) for examples
+- **Router testing patterns**: See [`tests/CLAUDE.md`](tests/CLAUDE.md) and [`tests/ui/CLAUDE.md`](tests/ui/CLAUDE.md)
+  for examples
 
 ### 5. Security Best Practices
 

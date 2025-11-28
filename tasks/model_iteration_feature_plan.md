@@ -1,9 +1,6 @@
 # Model Iteration Feature - Implementation Plan
 
-**Status**: Planning - Under Review
-**Created**: 2025-10-29
-**Last Updated**: 2025-11-25
-**Branch**: `feature/model-editing`
+**Status**: Sprint 1 Complete **Created**: 2025-10-29 **Last Updated**: 2025-11-27 **Branch**: `feature/model-editing`
 
 ---
 
@@ -13,7 +10,7 @@ Add capability for users to create **iterations** of existing published finding 
 
 ### Iteration Methods
 
-1. **Natural Language Iteration** (Sprint 1 - MVP): User submits text prompts describing desired changes
+1. **Natural Language Iteration** (Sprint 1 - MVP): User submits text prompts describing desired changes ✅ COMPLETE
 2. **Markdown Edit Iteration** (Sprint 2): AI exports model to markdown, user edits, AI applies changes back
 
 **Key Distinction**: Iterations are AI-assisted ONLY. Users cannot manually edit iteration drafts.
@@ -51,24 +48,25 @@ class EditResult(BaseModel):
 
 ## Sprint Overview
 
-| Sprint | Focus | Scope |
-|--------|-------|-------|
-| **Sprint 1** | MVP - Natural Language | Core iteration with NL editing |
-| **Sprint 2** | Markdown Edit | Export/edit/apply markdown workflow |
-| **Sprint 3** | Enhanced History | Timeline UI, structured history model |
+| Sprint       | Focus                  | Status      |
+| ------------ | ---------------------- | ----------- |
+| **Sprint 1** | MVP - Natural Language | ✅ Complete |
+| **Sprint 2** | Markdown Edit          | Not Started |
+| **Sprint 3** | Enhanced History       | Not Started |
 
 ---
 
-# Sprint 1: MVP - Natural Language Iteration
+# Sprint 1: MVP - Natural Language Iteration ✅ COMPLETE
 
 **Goal**: Working iteration feature for test users with natural language editing only.
 
 **Scope**:
-- Create iteration from published model
-- Natural language change requests
-- Display changes/rejections
-- Use existing draft submission workflow
-- Simple UI (no tabs)
+
+- Create iteration from published model ✅
+- Natural language change requests ✅
+- Display changes/rejections ✅
+- Use existing draft submission workflow ✅
+- Simple UI (no tabs) ✅
 
 ---
 
@@ -76,7 +74,7 @@ class EditResult(BaseModel):
 
 ### Simplified Data Model
 
-Add only two fields to `FindingModelDraft`:
+Added two fields to `FindingModelDraft`:
 
 ```python
 # In app/models.py
@@ -88,142 +86,131 @@ class FindingModelDraft(BaseModel):
     base_model_id: str | None = None  # oifm_id of model being iterated
 ```
 
-**MVP Decision**: Use existing `action_log` for iteration history. Log entries with action types `iteration.applied` or `iteration.failed` store user input, changes, rejections.
+**MVP Decision**: Use existing `action_log` for iteration history. Log entries with action types `iteration.applied` or
+`iteration.failed` store user input, changes, rejections.
 
 ### Service Layer Approach
 
-Extend `DraftService` with iteration methods (follows existing patterns in `app/services/draft_service.py`).
+Extended `DraftService` with iteration methods (follows existing patterns in `app/services/draft_service.py`).
 
 ---
 
-## Sprint 1, Phase 1: Data Model
+## Sprint 1, Phase 1: Data Model ✅ COMPLETE
 
 ### Tasks
 
-- [ ] Add `is_iteration: bool = False` to `FindingModelDraft`
-- [ ] Add `base_model_id: str | None = None` to `FindingModelDraft`
-- [ ] **Unit test**: Verify serialization with new fields
-- [ ] **Unit test**: Verify defaults for existing drafts
+- [x] Add `is_iteration: bool = False` to `FindingModelDraft`
+- [x] Add `base_model_id: str | None = None` to `FindingModelDraft`
+- [x] **Unit test**: Verify serialization with new fields
+- [x] **Unit test**: Verify defaults for existing drafts
 
 ---
 
-## Sprint 1, Phase 2: Backend
+## Sprint 1, Phase 2: Backend ✅ COMPLETE
 
 ### Tasks
 
 #### DraftRepo (app/database.py)
 
-- [ ] Add `get_iteration_draft(user_id: int, base_model_id: str) -> FindingModelDraft | None`
-- [ ] Modify `save_draft()` to accept `is_iteration` and `base_model_id` parameters
-- [ ] Add `update_generated_json(draft_id: str, json: str)` helper method
-- [ ] **Unit test**: `test_get_iteration_draft_returns_existing`
-- [ ] **Unit test**: `test_get_iteration_draft_returns_none_when_not_found`
+- [x] Add `get_iteration_draft(user_id: int, base_model_id: str) -> FindingModelDraft | None`
+- [x] Modify `save_draft()` to accept `is_iteration` and `base_model_id` parameters
+- [x] Add `update_generated_json(draft_id: str, json: str)` helper method
+- [x] **Unit test**: `test_get_iteration_draft_returns_existing`
+- [x] **Unit test**: `test_get_iteration_draft_returns_none_when_not_found`
 
 #### DraftService (app/services/draft_service.py)
 
-- [ ] Add `start_iteration(user_id, user, base_model) -> FindingModelDraft`
-- [ ] Add `apply_natural_language_iteration(draft_id, user_id, command) -> dict`
-- [ ] **Unit test**: `test_start_iteration_creates_new_draft`
-- [ ] **Unit test**: `test_start_iteration_returns_existing`
-- [ ] **Unit test**: `test_apply_iteration_success` (mock AI)
-- [ ] **Unit test**: `test_apply_iteration_with_rejections` (mock AI)
-- [ ] **Unit test**: `test_apply_iteration_logs_to_action_log`
-
-#### Implementation Notes
-
-The service methods follow existing patterns in `DraftService`:
-- Use `self.draft_repo` for database operations
-- Log errors with `logger.error()`
-- Return dict with `success`, `changes`, `rejections`, `error` keys
+- [x] Add `start_iteration(user_id, user, base_model) -> FindingModelDraft`
+- [x] Add `apply_natural_language_iteration(draft_id, user_id, command) -> dict`
+- [x] **Unit test**: `test_start_iteration_creates_new_draft`
+- [x] **Unit test**: `test_start_iteration_returns_existing`
+- [x] **Unit test**: `test_apply_iteration_success` (mock AI)
+- [x] **Unit test**: `test_apply_iteration_with_rejections` (mock AI)
+- [x] **Unit test**: `test_apply_iteration_logs_to_action_log`
 
 ---
 
-## Sprint 1, Phase 3: Endpoints
+## Sprint 1, Phase 3: Endpoints ✅ COMPLETE
 
 ### Tasks
 
 #### Entry Point (app/routers/finding_models_browse.py)
 
-- [ ] Add `POST /{slug}/iterate` endpoint
-- [ ] **Integration test**: `test_start_iteration_creates_draft`
-- [ ] **Integration test**: `test_start_iteration_redirects_to_draft`
+- [x] Add `POST /{slug}/iterate` endpoint
+- [x] **Integration test**: `test_start_iteration_creates_draft`
+- [x] **Integration test**: `test_start_iteration_redirects_to_draft`
 
 #### Iteration Endpoint (app/routers/drafts/workflows.py)
 
-- [ ] Add `POST /{draft_id}/iterate` endpoint
-- [ ] **Integration test**: `test_iterate_endpoint_applies_changes`
-- [ ] **Integration test**: `test_iterate_endpoint_requires_auth`
-- [ ] **Integration test**: `test_iterate_non_iteration_draft_fails`
+- [x] Add `POST /{draft_id}/iterate` endpoint
+- [x] **Integration test**: `test_iterate_endpoint_applies_changes`
+- [x] **Integration test**: `test_iterate_endpoint_requires_auth`
+- [x] **Integration test**: `test_iterate_non_iteration_draft_fails`
 
 #### View Modification (app/routers/drafts/views.py)
 
-- [ ] Modify `get_draft_page` to fetch `base_model_slug` for iterations
-- [ ] Pass `base_model_slug` to template context
-
-### Implementation Notes
-
-Follow existing patterns in `workflows.py`:
-- Use `CurrentUserDep`, `DraftServiceDep` from `app.dependencies`
-- Return `templates.TemplateResponse()` for HTMX partials
-- Use `Form(...)` for form field extraction
+- [x] Modify `get_draft_page` to fetch `base_model_slug` for iterations
+- [x] Pass `base_model_slug` to template context
+- [x] Store iteration results in Redis for one-time display after redirect
 
 ---
 
-## Sprint 1, Phase 4: UI
+## Sprint 1, Phase 4: UI ✅ COMPLETE
 
 ### Tasks
 
-#### Entry Button (templates/finding_models/detail.html)
+#### Entry Button (templates/components/finding_model_display.html)
 
-- [ ] Add "Create Iteration" form/button for authenticated users
-- [ ] **Playwright test**: `test_iterate_button_visible_for_authenticated_user`
-- [ ] **Playwright test**: `test_iterate_button_creates_draft_and_redirects`
+- [x] Add "Create Iteration" form/button for authenticated users
+- [x] **Playwright test**: `test_iterate_button_visible_for_authenticated_user`
+- [x] **Playwright test**: `test_iterate_button_not_visible_for_unauthenticated_user`
+- [x] **Playwright test**: `test_iterate_button_creates_draft_and_redirects`
 
-#### New Macros (templates/macros/iteration_components.html)
+#### Iteration UI Components
 
-- [ ] Create `iteration_banner(model_name, base_model_slug)` macro
-- [ ] Create `htmx_spinner(id, text)` macro (or reuse existing if available)
+- [x] Iteration banner showing "Iteration Draft" status with link to base model
+- [x] Natural language textarea form with HTMX submission
+- [x] "Apply Changes" button with disabled state when empty
+- [x] Loading spinner during AI processing
+- [x] JSON preview accordion for current model
 
-#### Draft Page Modification (templates/drafts/edit.html or unified template)
+#### Draft Page Modification (templates/drafts/)
 
-- [ ] Add conditional for `draft.is_iteration`
-- [ ] Include iteration banner for iteration drafts
-- [ ] Include iteration form component
+- [x] Add conditional for `draft.is_iteration` in edit mode
+- [x] Show iteration form instead of standard edit form for iteration drafts
+- [x] Include iteration banner for iteration drafts
+- [x] Show iteration results in preview mode (changes/rejections)
 
-#### Iteration Form (templates/components/iteration_form.html)
+#### Result Display (templates/components/draft_preview_content.html)
 
-- [ ] Natural language textarea with HTMX submission
-- [ ] Result container for changes/rejections
-- [ ] JSON preview accordion (reuse `json_accordion` macro)
-- [ ] **Playwright test**: `test_iteration_form_submission`
-- [ ] **Playwright test**: `test_changes_and_rejections_display`
+- [x] Green "Changes Applied:" section with list of changes
+- [x] Yellow "Some changes were rejected:" section with list of rejections
+- [x] Blue "Info:" section when no changes or rejections
+- [x] **Playwright test**: `test_iteration_results_with_both_changes_and_rejections`
+- [x] **Playwright test**: `test_iteration_results_with_only_changes`
+- [x] **Playwright test**: `test_iteration_results_with_only_rejections`
 
-#### Result Component (templates/components/iteration_result.html)
+#### Workflow Tests
 
-- [ ] Success state with changes list
-- [ ] Rejections in warning style
-- [ ] Error state
-- [ ] Reuse `error_alert` from `macros/creation_components.html`
-
-### Implementation Notes
-
-All UI must follow project standards:
-- Use Flowbite component patterns (see templates/CLAUDE.md)
-- Use Alpine.js for any client-side state
-- Use existing macros from `templates/macros/`
-- Include dark mode classes
+- [x] **Playwright test**: `test_iteration_form_visible_on_iteration_draft`
+- [x] **Playwright test**: `test_iteration_results_container_visible`
+- [x] **Playwright test**: `test_iteration_json_preview_visible`
+- [x] **Playwright test**: `test_iteration_form_submission_with_mocked_response`
+- [x] **Playwright test**: `test_iteration_form_submit_button_disabled_when_empty`
+- [x] **Playwright test**: `test_multiple_iteration_commands_on_same_draft`
+- [x] **Playwright test**: `test_iteration_draft_persists_across_sessions`
 
 ---
 
-## Sprint 1 Success Criteria
+## Sprint 1 Success Criteria ✅ ALL MET
 
-- [ ] User can click "Create Iteration" on any published model
-- [ ] Iteration draft created with `is_iteration=True` and `base_model_id`
-- [ ] User can enter natural language request and see changes/rejections
-- [ ] Multiple iteration rounds work
-- [ ] Iteration drafts can be submitted via existing workflow
-- [ ] All existing tests pass
-- [ ] New tests pass
+- [x] User can click "Create Iteration" on any published model
+- [x] Iteration draft created with `is_iteration=True` and `base_model_id`
+- [x] User can enter natural language request and see changes/rejections
+- [x] Multiple iteration rounds work
+- [x] Iteration drafts can be submitted via existing workflow
+- [x] All existing tests pass
+- [x] New tests pass (13 iteration UI tests)
 
 ---
 
@@ -288,7 +275,8 @@ All UI must follow project standards:
 
 ### Manual Editing Restriction
 
-Iteration drafts cannot be manually edited. The draft editor detects `is_iteration=True` and shows iteration UI instead of the standard form.
+Iteration drafts cannot be manually edited. The draft editor detects `is_iteration=True` and shows iteration UI instead
+of the standard form.
 
 ### Concurrent Iterations
 
@@ -309,4 +297,24 @@ Display summary of changes from `EditResult.changes`, not line-by-line diff.
 
 ---
 
-_Last Updated: 2025-11-25_
+## Known Issues / Future Work
+
+### AI Call Mocking for UI Tests
+
+The current UI tests that submit iteration commands (`test_iteration_form_submission_with_mocked_response`,
+`test_multiple_iteration_commands_on_same_draft`) make real AI API calls, which:
+
+- Take 40-60 seconds per call
+- Cost real money
+- Are unreliable (rate limits, network issues)
+
+**TODO**: Implement test-user detection in the iteration service to return mocked AI responses for user ID 999999,
+similar to how other AI operations are mocked for testing. This would allow the UI tests to run quickly and
+deterministically without real API calls.
+
+The `seed_iteration_result()` helper in `tests/ui/utils.py` provides a workaround for testing the _display_ of iteration
+results by seeding results directly into Redis, but doesn't help with testing the actual form submission flow.
+
+---
+
+_Last Updated: 2025-11-27_

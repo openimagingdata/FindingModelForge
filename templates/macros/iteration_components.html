@@ -1,0 +1,38 @@
+{# =============================================================================
+   ITERATION COMPONENTS
+
+   Shared macros and components for the model iteration workflow.
+   ============================================================================= #}
+
+{# ===== ITERATION BANNER ===== #}
+
+{# Banner showing that this draft is an iteration of another model #}
+{% macro iteration_banner(model_name, base_model_slug) -%}
+<div class="flex items-start p-4 mb-6 text-sm text-blue-800 border border-blue-300 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400 dark:border-blue-800" role="alert">
+    <svg class="flex-shrink-0 inline w-4 h-4 me-3 mt-0.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+        <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
+    </svg>
+    <span class="sr-only">Info</span>
+    <div>
+        <span class="font-medium">Iteration Draft:</span> This is an iteration of the published model
+        <a href="/finding-models/{{ base_model_slug }}"
+           class="font-semibold underline hover:no-underline"
+           hx-get="/finding-models/{{ base_model_slug }}"
+           hx-target="#main-content"
+           hx-push-url="/finding-models/{{ base_model_slug }}">{{ model_name }}</a>.
+        Use natural language commands below to modify the model.
+    </div>
+</div>
+{%- endmacro %}
+
+{# ===== HTMX SPINNER ===== #}
+
+{# Loading spinner for HTMX operations #}
+{% macro htmx_spinner(id="htmx-spinner", text="Processing...") -%}
+<div id="{{ id }}" class="htmx-indicator">
+    <div class="flex items-center space-x-3 p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+        <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+        <span class="text-sm text-gray-700 dark:text-gray-300 font-medium">{{ text }}</span>
+    </div>
+</div>
+{%- endmacro %}
