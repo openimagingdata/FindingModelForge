@@ -53,14 +53,16 @@ class TestServiceDependencyInjection:
         # Mock dependencies
         mock_index = MagicMock()
         mock_database = MagicMock(spec=Database)
+        mock_draft_repo = MagicMock(spec=DraftRepo)
 
         # Call the dependency function
-        service = get_creation_service(mock_index, mock_database)
+        service = get_creation_service(mock_index, mock_database, mock_draft_repo)
 
         # Verify service is created correctly
         assert isinstance(service, CreationService)
         assert service.index is mock_index
         assert service.database is mock_database
+        assert service.draft_repo is mock_draft_repo
 
     def test_get_draft_service(self):
         """Test that get_draft_service creates a DraftService."""
@@ -72,11 +74,13 @@ class TestServiceDependencyInjection:
 
         # Call the dependency function
         mock_comment_service = MagicMock(spec=CommentService)
+        mock_creation_service = MagicMock()  # Added creation_service
         service = get_draft_service(
             mock_draft_repo,
             mock_user_repo,
             mock_database,
             mock_comment_service,
+            mock_creation_service,
         )
 
         # Verify service is created correctly
@@ -85,6 +89,7 @@ class TestServiceDependencyInjection:
         assert service.user_repo is mock_user_repo
         assert service.database is mock_database
         assert service.comment_service is mock_comment_service
+        assert service.creation_service is mock_creation_service
 
 
 class TestServiceDependenciesInRouters:
@@ -92,9 +97,25 @@ class TestServiceDependenciesInRouters:
 
     def test_finding_model_service_injection_in_pages(self, client: TestClient):
         """Test that FindingModelService can be injected in pages router."""
+        from app.services.finding_model_service import PaginationContext
+
         # Mock the service and its dependencies
         mock_service = MagicMock(spec=FindingModelService)
-        mock_service.list_models = AsyncMock(return_value=([], 0))
+
+        # Create a proper PaginationContext mock return value
+        mock_list_context = PaginationContext(
+            models=[],
+            total_count=0,
+            current_page=1,
+            per_page=20,
+            total_pages=1,
+            page_range=[1],
+            start_index=0,
+            end_index=0,
+            url_params={},
+            page_title="Finding Models - Finding Model Forge",
+        )
+        mock_service.prepare_list_context = AsyncMock(return_value=mock_list_context)
 
         # Override the service dependency
         from app.dependencies import get_finding_model_service
@@ -108,7 +129,7 @@ class TestServiceDependenciesInRouters:
 
             # Verify response - the service should work when the route is available
             assert response.status_code == 200
-            mock_service.list_models.assert_called_once()
+            mock_service.prepare_list_context.assert_called_once()
 
         finally:
             app.dependency_overrides.clear()
@@ -166,7 +187,7 @@ class TestServiceDependenciesInRouters:
         try:
             # Test that we can override the dependency successfully
             # This proves the dependency injection system is working
-            _ = get_creation_service(MagicMock(), MagicMock())
+            _ = get_creation_service(MagicMock(), MagicMock(), MagicMock())
 
             # The key test: verify that dependency overrides work
             # This is the core functionality we're testing
@@ -274,12 +295,13 @@ class TestCircularImportPrevention:
             mock_user_repo,
             comment_service,
         )
-        creation_service = CreationService(mock_index, mock_database)
+        creation_service = CreationService(mock_index, mock_database, mock_draft_repo)
         draft_service = DraftService(
             mock_draft_repo,
             mock_user_repo,
             mock_database,
             comment_service,
+            creation_service,
         )
 
         # Verify they're the correct types

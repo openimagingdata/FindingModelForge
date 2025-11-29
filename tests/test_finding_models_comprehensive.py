@@ -189,6 +189,16 @@ def authenticated_client(
     app.dependency_overrides[get_current_user] = lambda: mock_user
     app.dependency_overrides[get_optional_user] = lambda: mock_user
 
+    # Override creation service dependency first (needed by draft service)
+    def get_mock_creation_service() -> CreationService:
+        return CreationService(
+            index=mock_database.finding_index,
+            database=mock_database,
+            draft_repo=mock_database.draft_repo,
+        )
+
+    app.dependency_overrides[get_creation_service] = get_mock_creation_service
+
     # Override draft service dependency to use our mocked database
     def get_mock_draft_service() -> DraftService:
         comment_service = CommentService(
@@ -196,23 +206,16 @@ def authenticated_client(
             user_repo=mock_database.user_repo,
             draft_repo=mock_database.draft_repo,
         )
+        creation_service = get_mock_creation_service()
         return DraftService(
             draft_repo=mock_database.draft_repo,
             user_repo=mock_database.user_repo,
             database=mock_database,
             comment_service=comment_service,
+            creation_service=creation_service,
         )
 
     app.dependency_overrides[get_draft_service] = get_mock_draft_service
-
-    # Override creation service dependency
-    def get_mock_creation_service() -> CreationService:
-        return CreationService(
-            index=mock_database.finding_index,
-            database=mock_database,
-        )
-
-    app.dependency_overrides[get_creation_service] = get_mock_creation_service
 
     # Override session manager dependency
     def get_mock_session_manager() -> SessionManager:
@@ -240,8 +243,9 @@ class TestHelperFunctions:
         # Mock dependencies that CreationService needs
         mock_index = MagicMock()
         mock_database = MagicMock()
+        mock_draft_repo = MagicMock()
 
-        creation_service = CreationService(index=mock_index, database=mock_database)
+        creation_service = CreationService(index=mock_index, database=mock_database, draft_repo=mock_draft_repo)
         result = creation_service.generate_default_attributes_markdown("nodule")
 
         assert "### presence" in result

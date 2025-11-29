@@ -49,7 +49,9 @@ def test_finding_models_list_htmx_request(client: TestClient) -> None:
 
 def test_finding_models_detail_valid_slug(client: TestClient) -> None:
     """Test finding model detail page with valid slug."""
-    # Mock the service with a proper finding model mock
+    # Mock the service with prepare_detail_context
+    from app.services.finding_model_service import ModelDetailContext
+
     mock_service = AsyncMock()
     mock_finding_model = MagicMock()
     mock_finding_model.name = "Abdominal Abscess"
@@ -62,9 +64,14 @@ def test_finding_models_detail_valid_slug(client: TestClient) -> None:
     mock_finding_model.last_modified = None
     mock_finding_model.version = None
     mock_finding_model.oifm_id = None
-    # NEW: get_model_by_slug returns FindingModelFull directly, not tuple
-    mock_service.get_model_by_slug.return_value = mock_finding_model
-    mock_service.get_comments_for_model.return_value = None  # No comments for test
+
+    mock_ctx = ModelDetailContext(
+        finding_model=mock_finding_model,
+        thread=None,
+        reference_type="finding_model",
+        reference_id="abdominal-abscess",
+    )
+    mock_service.prepare_detail_context.return_value = mock_ctx
 
     app.dependency_overrides[get_finding_model_service] = lambda: mock_service
     try:
@@ -76,7 +83,8 @@ def test_finding_models_detail_valid_slug(client: TestClient) -> None:
 
 def test_finding_models_detail_htmx_request(client: TestClient) -> None:
     """Test that HTMX detail requests return HX-Push-Url header."""
-    # Mock the service with a proper finding model mock
+    from app.services.finding_model_service import ModelDetailContext
+
     mock_service = AsyncMock()
     mock_finding_model = MagicMock()
     mock_finding_model.name = "Abdominal Abscess"
@@ -89,9 +97,14 @@ def test_finding_models_detail_htmx_request(client: TestClient) -> None:
     mock_finding_model.last_modified = None
     mock_finding_model.version = None
     mock_finding_model.oifm_id = None
-    # NEW: get_model_by_slug returns FindingModelFull directly, not tuple
-    mock_service.get_model_by_slug.return_value = mock_finding_model
-    mock_service.get_comments_for_model.return_value = None  # No comments for test
+
+    mock_ctx = ModelDetailContext(
+        finding_model=mock_finding_model,
+        thread=None,
+        reference_type="finding_model",
+        reference_id="abdominal-abscess",
+    )
+    mock_service.prepare_detail_context.return_value = mock_ctx
 
     app.dependency_overrides[get_finding_model_service] = lambda: mock_service
     try:
@@ -106,10 +119,24 @@ def test_finding_models_detail_htmx_request(client: TestClient) -> None:
 
 def test_finding_models_detail_not_found(client: TestClient) -> None:
     """Test finding model detail with non-existent slug returns 404."""
+    from app.services.finding_model_service import PaginationContext
+
     mock_service = AsyncMock()
-    mock_service.get_model_by_slug.side_effect = NotFoundError("Model not found")
+    mock_service.prepare_detail_context.side_effect = NotFoundError("Model not found")
     # For fallback list call
-    mock_service.list_models.return_value = ([], 0)
+    mock_ctx = PaginationContext(
+        models=[],
+        total_count=0,
+        current_page=1,
+        per_page=20,
+        total_pages=1,
+        page_range=[1],
+        start_index=0,
+        end_index=0,
+        url_params={},
+        page_title="Finding Models - Finding Model Forge",
+    )
+    mock_service.prepare_list_context.return_value = mock_ctx
 
     app.dependency_overrides[get_finding_model_service] = lambda: mock_service
     try:
@@ -123,7 +150,7 @@ def test_finding_models_detail_not_found(client: TestClient) -> None:
 def test_finding_models_detail_not_found_htmx(client: TestClient) -> None:
     """Test finding model detail with non-existent slug in HTMX request returns 404."""
     mock_service = AsyncMock()
-    mock_service.get_model_by_slug.side_effect = NotFoundError("Model not found")
+    mock_service.prepare_detail_context.side_effect = NotFoundError("Model not found")
 
     app.dependency_overrides[get_finding_model_service] = lambda: mock_service
     try:
@@ -135,20 +162,36 @@ def test_finding_models_detail_not_found_htmx(client: TestClient) -> None:
 
 def test_finding_models_service_integration(client: TestClient) -> None:
     """Test that the router properly uses the FindingModelService."""
+    from app.services.finding_model_service import PaginationContext
+
     mock_service = AsyncMock()
-    mock_service.list_models.return_value = ([], 0)
+    mock_ctx = PaginationContext(
+        models=[],
+        total_count=0,
+        current_page=1,
+        per_page=20,
+        total_pages=1,
+        page_range=[1],
+        start_index=0,
+        end_index=0,
+        url_params={},
+        page_title="Finding Models - Finding Model Forge",
+    )
+    mock_service.prepare_list_context.return_value = mock_ctx
 
     app.dependency_overrides[get_finding_model_service] = lambda: mock_service
     try:
         response = client.get("/finding-models")
         assert response.status_code == 200
-        mock_service.list_models.assert_called_once()
+        mock_service.prepare_list_context.assert_called_once()
     finally:
         app.dependency_overrides.clear()
 
 
 def test_finding_models_service_detail_integration(client: TestClient) -> None:
     """Test that detail route properly uses the FindingModelService."""
+    from app.services.finding_model_service import ModelDetailContext
+
     mock_service = AsyncMock()
     mock_finding_model = MagicMock()
     mock_finding_model.name = "Test Finding Model"
@@ -161,29 +204,48 @@ def test_finding_models_service_detail_integration(client: TestClient) -> None:
     mock_finding_model.last_modified = None
     mock_finding_model.version = None
     mock_finding_model.oifm_id = None
-    # NEW: get_model_by_slug returns FindingModelFull directly, not tuple
-    mock_service.get_model_by_slug.return_value = mock_finding_model
-    mock_service.get_comments_for_model.return_value = None  # No comments for test
+
+    mock_ctx = ModelDetailContext(
+        finding_model=mock_finding_model,
+        thread=None,
+        reference_type="finding_model",
+        reference_id="test-slug",
+    )
+    mock_service.prepare_detail_context.return_value = mock_ctx
 
     app.dependency_overrides[get_finding_model_service] = lambda: mock_service
     try:
         response = client.get("/finding-models/test-slug")
         assert response.status_code == 200
-        mock_service.get_model_by_slug.assert_called_once_with("test-slug")
+        mock_service.prepare_detail_context.assert_called_once_with("test-slug")
     finally:
         app.dependency_overrides.clear()
 
 
 def test_finding_models_search_parameters(client: TestClient) -> None:
     """Test that search parameters are properly passed to the service."""
+    from app.services.finding_model_service import PaginationContext
+
     mock_service = AsyncMock()
-    mock_service.list_models.return_value = ([], 0)
+    mock_ctx = PaginationContext(
+        models=[],
+        total_count=0,
+        current_page=2,
+        per_page=15,
+        total_pages=1,
+        page_range=[1],
+        start_index=0,
+        end_index=0,
+        url_params={"search": "test", "per_page": "15"},
+        page_title="Search: test - Finding Model Forge",
+    )
+    mock_service.prepare_list_context.return_value = mock_ctx
 
     app.dependency_overrides[get_finding_model_service] = lambda: mock_service
     try:
         response = client.get("/finding-models?search=test&page=2&per_page=15")
         assert response.status_code == 200
-        mock_service.list_models.assert_called_once_with("test", 2, 15)
+        mock_service.prepare_list_context.assert_called_once_with("test", 2, 15)
     finally:
         app.dependency_overrides.clear()
 
@@ -205,6 +267,8 @@ def test_finding_models_pagination_validation(client: TestClient) -> None:
 
 def test_finding_models_detail_dynamic_title(client: TestClient) -> None:
     """Test that finding model detail page has dynamic title."""
+    from app.services.finding_model_service import ModelDetailContext
+
     mock_service = AsyncMock()
     mock_finding_model = MagicMock()
     mock_finding_model.name = "Abdominal Abscess"
@@ -217,9 +281,14 @@ def test_finding_models_detail_dynamic_title(client: TestClient) -> None:
     mock_finding_model.last_modified = None
     mock_finding_model.version = None
     mock_finding_model.oifm_id = None
-    # NEW: get_model_by_slug returns FindingModelFull directly, not tuple
-    mock_service.get_model_by_slug.return_value = mock_finding_model
-    mock_service.get_comments_for_model.return_value = None  # No comments for test
+
+    mock_ctx = ModelDetailContext(
+        finding_model=mock_finding_model,
+        thread=None,
+        reference_type="finding_model",
+        reference_id="abdominal-abscess",
+    )
+    mock_service.prepare_detail_context.return_value = mock_ctx
 
     app.dependency_overrides[get_finding_model_service] = lambda: mock_service
     try:
@@ -234,8 +303,22 @@ def test_finding_models_detail_dynamic_title(client: TestClient) -> None:
 
 def test_finding_models_list_search_dynamic_title(client: TestClient) -> None:
     """Test that search results have dynamic title."""
+    from app.services.finding_model_service import PaginationContext
+
     mock_service = AsyncMock()
-    mock_service.list_models.return_value = ([], 0)
+    mock_ctx = PaginationContext(
+        models=[],
+        total_count=0,
+        current_page=1,
+        per_page=20,
+        total_pages=1,
+        page_range=[1],
+        start_index=0,
+        end_index=0,
+        url_params={"search": "abscess"},
+        page_title="Search: abscess - Finding Model Forge",
+    )
+    mock_service.prepare_list_context.return_value = mock_ctx
 
     app.dependency_overrides[get_finding_model_service] = lambda: mock_service
     try:
@@ -250,10 +333,24 @@ def test_finding_models_list_search_dynamic_title(client: TestClient) -> None:
 
 def test_finding_models_error_handling(client: TestClient) -> None:
     """Test error handling for service exceptions."""
+    from app.services.finding_model_service import PaginationContext
+
     mock_service = AsyncMock()
-    mock_service.get_model_by_slug.side_effect = Exception("Database error")
+    mock_service.prepare_detail_context.side_effect = Exception("Database error")
     # For fallback list call
-    mock_service.list_models.return_value = ([], 0)
+    mock_ctx = PaginationContext(
+        models=[],
+        total_count=0,
+        current_page=1,
+        per_page=20,
+        total_pages=1,
+        page_range=[1],
+        start_index=0,
+        end_index=0,
+        url_params={},
+        page_title="Finding Models - Finding Model Forge",
+    )
+    mock_service.prepare_list_context.return_value = mock_ctx
 
     app.dependency_overrides[get_finding_model_service] = lambda: mock_service
     try:
@@ -271,23 +368,64 @@ def test_finding_models_error_handling(client: TestClient) -> None:
 
 def test_finding_models_url_parameters_coverage(client: TestClient) -> None:
     """Test URL parameter handling for complete coverage."""
+    from app.services.finding_model_service import PaginationContext
+
     mock_service = AsyncMock()
-    mock_service.list_models.return_value = ([], 0)
+
+    # Test per_page parameter
+    mock_ctx = PaginationContext(
+        models=[],
+        total_count=0,
+        current_page=1,
+        per_page=10,
+        total_pages=1,
+        page_range=[1],
+        start_index=0,
+        end_index=0,
+        url_params={"per_page": "10"},
+        page_title="Finding Models - Finding Model Forge",
+    )
+    mock_service.prepare_list_context.return_value = mock_ctx
 
     app.dependency_overrides[get_finding_model_service] = lambda: mock_service
     try:
-        # Test per_page parameter in URL building (covers line 92)
         response = client.get("/finding-models?per_page=10", headers={"HX-Request": "true"})
         assert response.status_code == 200
         assert "HX-Push-Url" in response.headers
         assert "per_page=10" in response.headers["HX-Push-Url"]
 
-        # Test page parameter in URL building (covers line 124)
+        # Test page parameter
+        mock_ctx2 = PaginationContext(
+            models=[],
+            total_count=0,
+            current_page=2,
+            per_page=20,
+            total_pages=1,
+            page_range=[1],
+            start_index=0,
+            end_index=0,
+            url_params={},
+            page_title="Finding Models - Finding Model Forge",
+        )
+        mock_service.prepare_list_context.return_value = mock_ctx2
         response = client.get("/finding-models?page=2", headers={"HX-Request": "true"})
         assert response.status_code == 200
         assert "page=2" in response.headers["HX-Push-Url"]
 
-        # Test both page and per_page parameters (covers line 126)
+        # Test both parameters
+        mock_ctx3 = PaginationContext(
+            models=[],
+            total_count=0,
+            current_page=3,
+            per_page=15,
+            total_pages=1,
+            page_range=[1],
+            start_index=0,
+            end_index=0,
+            url_params={"per_page": "15"},
+            page_title="Finding Models - Finding Model Forge",
+        )
+        mock_service.prepare_list_context.return_value = mock_ctx3
         response = client.get("/finding-models?page=3&per_page=15", headers={"HX-Request": "true"})
         assert response.status_code == 200
         assert "page=3" in response.headers["HX-Push-Url"]

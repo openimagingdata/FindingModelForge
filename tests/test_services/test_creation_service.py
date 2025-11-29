@@ -39,9 +39,19 @@ class TestCreationService:
         return db
 
     @pytest.fixture
-    def service(self, mock_index: MagicMock, mock_database: MagicMock) -> CreationService:
+    def mock_draft_repo(self) -> MagicMock:
+        """Mock DraftRepo."""
+        repo = MagicMock()
+        repo.find_editable_by_name = AsyncMock(return_value=None)
+        repo.find_latest_by_name = AsyncMock(return_value=None)
+        return repo
+
+    @pytest.fixture
+    def service(
+        self, mock_index: MagicMock, mock_database: MagicMock, mock_draft_repo: MagicMock
+    ) -> CreationService:
         """CreationService instance with mocked dependencies."""
-        return CreationService(index=mock_index, database=mock_database)
+        return CreationService(index=mock_index, database=mock_database, draft_repo=mock_draft_repo)
 
     @pytest.fixture
     def sample_user(self) -> User:

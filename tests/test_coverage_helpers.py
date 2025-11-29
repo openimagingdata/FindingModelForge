@@ -37,8 +37,9 @@ def test_generate_default_attributes_markdown_contains_sections() -> None:
     # Mock dependencies that CreationService needs
     mock_index = MagicMock()
     mock_database = MagicMock()
+    mock_draft_repo = MagicMock()
 
-    creation_service = CreationService(index=mock_index, database=mock_database)
+    creation_service = CreationService(index=mock_index, database=mock_database, draft_repo=mock_draft_repo)
     md = creation_service.generate_default_attributes_markdown("nodule")
     assert "### presence" in md
     assert "### change from prior" in md

@@ -492,12 +492,7 @@ class TestHTMXStepEndpoints:
         response = authenticated_client_with_cache.post("/create/step/3", data={"session_id": "test-123"})
 
         # Step 3 requires session to have name, so should get validation error
-        assert response.status_code == 500  # Error handling returns 500 with error messages
-        # The error is handled and shows the step template with an error
-        assert (
-            response.status_code == 500
-        )  # Just verify we get the error status  # Error handling returns HTML with error messages
-        # The actual validation is handled inside the endpoint logic
+        assert response.status_code == 422  # Validation error for missing required fields
 
     def test_step_missing_required_fields(
         self, authenticated_client_with_cache: TestClient, mock_cache: MagicMock

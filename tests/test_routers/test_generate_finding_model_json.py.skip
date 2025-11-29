@@ -1,4 +1,4 @@
-"""Tests for generate_finding_model_json helper function."""
+"""Tests for generate_finding_model_json service method."""
 
 import json
 from datetime import UTC, datetime
@@ -7,11 +7,47 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 from app.models import FindingModelDraft, FindingModelInputs, User
-from app.routers.drafts.helpers import generate_finding_model_json
+from app.services.draft_service import DraftService
+
+
+@pytest.fixture
+def draft_service_with_mock_db():
+    """Create DraftService with mocked dependencies for testing."""
+    from app.database import DraftRepo, UserRepo
+
+    # Mock repos
+    draft_repo = Mock(spec=DraftRepo)
+    user_repo = Mock(spec=UserRepo)
+
+    # Mock database
+    mock_database = Mock()
+    mock_database.finding_index = True
+    mock_author = Mock()
+    mock_author.organization_code = "TEST"
+    mock_people_repo = AsyncMock()
+    mock_people_repo.get_by_username.return_value = mock_author
+    mock_database.people_repo = mock_people_repo
+
+    # Mock comment service
+    comment_service = Mock()
+
+    # Mock creation service
+    creation_service = Mock()
+
+    # Create service
+    service = DraftService(
+        draft_repo=draft_repo,
+        user_repo=user_repo,
+        database=mock_database,
+        comment_service=comment_service,
+        creation_service=creation_service,
+    )
+
+    return service
 
 
 @pytest.mark.asyncio
-async def test_generate_mock_model_with_normal_name():
+async def test_generate_mock_model_with_normal_name(draft_service_with_mock_db: DraftService):
     """Test mock generation creates valid structure for names >=5 characters."""
     # Create draft with name that is 5 characters (should not be modified)
     draft = FindingModelDraft(

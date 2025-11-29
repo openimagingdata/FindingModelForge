@@ -58,12 +58,22 @@ class TestDraftService:
         return service
 
     @pytest.fixture
+    def mock_creation_service(self) -> MagicMock:
+        """Mock creation service."""
+        from app.services.creation_service import CreationService
+
+        service = MagicMock(spec=CreationService)
+        service.is_test_user = MagicMock(return_value=False)
+        return service
+
+    @pytest.fixture
     def service(
         self,
         mock_draft_repo: MagicMock,
         mock_user_repo: MagicMock,
         mock_database: MagicMock,
         mock_comment_service: MagicMock,
+        mock_creation_service: MagicMock,
     ) -> DraftService:
         """DraftService instance with mocked dependencies."""
         return DraftService(
@@ -71,6 +81,7 @@ class TestDraftService:
             user_repo=mock_user_repo,
             database=mock_database,
             comment_service=mock_comment_service,
+            creation_service=mock_creation_service,
         )
 
     @pytest.fixture
@@ -337,3 +348,138 @@ class TestDraftService:
         await service.report_draft_comment("draft-1", "comment-1", 123)
 
         mock_comment_service.report_comment.assert_awaited_once_with("draft", "draft-1", "comment-1", 123)
+
+    def test_should_regenerate_model_description_changed(self, service: DraftService):
+        """Test should_regenerate_model returns True when description changes."""
+        draft = FindingModelDraft(
+            id="test-id",
+            user_id=123,
+            name="Test Draft",
+            status=DraftStatus.DRAFT,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            inputs=FindingModelInputs(
+                description="Original description",
+                synonyms=["test"],
+                attributes_markdown="## Test\n- test: value",
+            ),
+            generated_json='{"test": "json"}',
+            action_log=[],
+        )
+        new_inputs = FindingModelInputs(
+            description="Changed description",
+            synonyms=["test"],
+            attributes_markdown="## Test\n- test: value",
+        )
+
+        result = service.should_regenerate_model(draft, new_inputs)
+
+        assert result is True
+
+    def test_should_regenerate_model_synonyms_changed(self, service: DraftService):
+        """Test should_regenerate_model returns True when synonyms change."""
+        draft = FindingModelDraft(
+            id="test-id",
+            user_id=123,
+            name="Test Draft",
+            status=DraftStatus.DRAFT,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            inputs=FindingModelInputs(
+                description="Test description",
+                synonyms=["test1", "test2"],
+                attributes_markdown="## Test\n- test: value",
+            ),
+            generated_json='{"test": "json"}',
+            action_log=[],
+        )
+        new_inputs = FindingModelInputs(
+            description="Test description",
+            synonyms=["test1", "test2", "test3"],
+            attributes_markdown="## Test\n- test: value",
+        )
+
+        result = service.should_regenerate_model(draft, new_inputs)
+
+        assert result is True
+
+    def test_should_regenerate_model_attributes_changed(self, service: DraftService):
+        """Test should_regenerate_model returns True when attributes change."""
+        draft = FindingModelDraft(
+            id="test-id",
+            user_id=123,
+            name="Test Draft",
+            status=DraftStatus.DRAFT,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            inputs=FindingModelInputs(
+                description="Test description",
+                synonyms=["test"],
+                attributes_markdown="## Test\n- test: value",
+            ),
+            generated_json='{"test": "json"}',
+            action_log=[],
+        )
+        new_inputs = FindingModelInputs(
+            description="Test description",
+            synonyms=["test"],
+            attributes_markdown="## Updated Test\n- test: new value",
+        )
+
+        result = service.should_regenerate_model(draft, new_inputs)
+
+        assert result is True
+
+    def test_should_regenerate_model_no_generated_json(self, service: DraftService):
+        """Test should_regenerate_model returns True when no generated JSON exists."""
+        draft = FindingModelDraft(
+            id="test-id",
+            user_id=123,
+            name="Test Draft",
+            status=DraftStatus.DRAFT,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            inputs=FindingModelInputs(
+                description="Test description",
+                synonyms=["test"],
+                attributes_markdown="## Test\n- test: value",
+            ),
+            generated_json=None,
+            action_log=[],
+        )
+        new_inputs = FindingModelInputs(
+            description="Test description",
+            synonyms=["test"],
+            attributes_markdown="## Test\n- test: value",
+        )
+
+        result = service.should_regenerate_model(draft, new_inputs)
+
+        assert result is True
+
+    def test_should_regenerate_model_no_changes(self, service: DraftService):
+        """Test should_regenerate_model returns False when nothing changes."""
+        draft = FindingModelDraft(
+            id="test-id",
+            user_id=123,
+            name="Test Draft",
+            status=DraftStatus.DRAFT,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            inputs=FindingModelInputs(
+                description="Test description",
+                synonyms=["test"],
+                attributes_markdown="## Test\n- test: value",
+            ),
+            generated_json='{"test": "json"}',
+            action_log=[],
+        )
+        new_inputs = FindingModelInputs(
+            description="Test description",
+            synonyms=["test"],
+            attributes_markdown="## Test\n- test: value",
+        )
+
+        result = service.should_regenerate_model(draft, new_inputs)
+
+        assert result is False

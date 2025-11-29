@@ -6,14 +6,12 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 
 from app.auth import CurrentUserDep
 from app.config import logger
-from app.dependencies import CreationSessionDep, DatabaseDep, DraftServiceDep, SessionManagerDep
+from app.dependencies import CreationSessionDep, DraftServiceDep, SessionManagerDep
 from app.models import FindingModelInputs
 from app.routers.drafts.helpers import (
     build_update_htmx_response,
     check_draft_permissions,
     fetch_draft_with_context,
-    generate_finding_model_json,
-    should_regenerate_model,
 )
 from app.templates import templates
 from app.utils.forms import parse_synonyms
@@ -163,7 +161,6 @@ async def update_draft_and_redirect(
     request: Request,
     current_user: CurrentUserDep,
     draft_service: DraftServiceDep,
-    database: DatabaseDep,
     draft_id: str,
     description: str = Form(min_length=10, max_length=1000),
     attributes_markdown: str = Form(min_length=20),
@@ -194,18 +191,17 @@ async def update_draft_and_redirect(
         )
 
         # Check if model needs regeneration
-        should_generate = should_regenerate_model(draft, new_inputs)
+        should_generate = draft_service.should_regenerate_model(draft, new_inputs)
 
         # Generate finding model JSON if needed
         generated_json: str | None
         if should_generate:
-            generated_json = await generate_finding_model_json(
+            generated_json = await draft_service.generate_finding_model_json(
                 draft=draft,
                 description=description,
                 synonyms_list=synonyms_list,
                 attributes_markdown=attributes_markdown,
                 current_user=current_user,
-                database=database,
                 is_test_user=current_user.id == TEST_USER_ID,
             )
         else:

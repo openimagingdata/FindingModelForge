@@ -1,5 +1,6 @@
 """Finding Model service with browsing and slug operations."""
 
+from dataclasses import dataclass
 from typing import Any, cast
 
 from findingmodel import FindingModelFull
@@ -11,6 +12,32 @@ from app.models import Comment, CommentThread, User
 from app.services.comment_service import CommentService
 
 from . import NotFoundError
+
+
+@dataclass
+class PaginationContext:
+    """Complete pagination context for templates."""
+
+    models: list[dict[str, Any]]
+    total_count: int
+    current_page: int
+    per_page: int
+    total_pages: int
+    page_range: list[int]
+    start_index: int
+    end_index: int
+    url_params: dict[str, str]
+    page_title: str
+
+
+@dataclass
+class ModelDetailContext:
+    """Complete detail context for templates."""
+
+    finding_model: FindingModelFull
+    thread: CommentThread | None
+    reference_type: str
+    reference_id: str
 
 
 class FindingModelService:
@@ -185,3 +212,72 @@ class FindingModelService:
             HTTPException: If comment not found or already reported by user
         """
         await self.comment_service.report_comment("finding_model", oifm_id, comment_id, user_id)
+
+    async def prepare_list_context(self, search: str | None, page: int, per_page: int) -> PaginationContext:
+        """Prepare complete pagination context for list view.
+
+        Args:
+            search: Optional search term for filtering
+            page: Page number (1-indexed)
+            per_page: Results per page
+
+        Returns:
+            PaginationContext with all pagination calculations
+        """
+        paginated_models, total_count = await self.list_models(search, page, per_page)
+
+        total_pages = max(1, (total_count + per_page - 1) // per_page)
+        start_index = (page - 1) * per_page
+        end_index = min(start_index + per_page, total_count)
+
+        # Calculate page range (show 5 pages around current)
+        start_page = max(1, page - 2)
+        end_page = min(total_pages, page + 2)
+        page_range = list(range(start_page, end_page + 1))
+
+        # Build URL parameters
+        url_params = {}
+        if search:
+            url_params["search"] = search
+        if per_page != 20:
+            url_params["per_page"] = str(per_page)
+
+        # Generate title
+        page_title = "Finding Models - Finding Model Forge"
+        if search:
+            page_title = f"Search: {search} - Finding Model Forge"
+
+        return PaginationContext(
+            models=paginated_models,
+            total_count=total_count,
+            current_page=page,
+            per_page=per_page,
+            total_pages=total_pages,
+            page_range=page_range,
+            start_index=start_index + 1 if total_count > 0 else 0,
+            end_index=end_index,
+            url_params=url_params,
+            page_title=page_title,
+        )
+
+    async def prepare_detail_context(self, slug: str) -> ModelDetailContext:
+        """Prepare complete detail context for model view.
+
+        Args:
+            slug: URL slug for the finding model
+
+        Returns:
+            ModelDetailContext with model and comments
+
+        Raises:
+            NotFoundError: If model not found
+        """
+        finding_model = await self.get_model_by_slug(slug)
+        thread = await self.get_comments_for_model(finding_model.oifm_id)
+
+        return ModelDetailContext(
+            finding_model=finding_model,
+            thread=thread,
+            reference_type="finding_model",
+            reference_id=slug,
+        )

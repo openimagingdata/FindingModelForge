@@ -1,6 +1,8 @@
 """Creation service for finding model generation and workflow."""
 
 import asyncio
+from dataclasses import dataclass
+from enum import Enum
 from typing import Any
 
 from findingmodel import FindingInfo, FindingModelBase
@@ -14,24 +16,57 @@ from findingmodel.tools import (
 from findingmodel.tools.similar_finding_models import SimilarModelAnalysis
 
 from app.config import logger
-from app.database import Database
-from app.models import User
+from app.database import Database, DraftRepo
+from app.models import FindingModelDraft, User
+from app.utils.draft_formatting import humanize_timestamp
 
 TEST_USER_ID = 999999
+
+
+class WorkflowAction(Enum):
+    """Possible outcomes of name resolution."""
+
+    CREATE_NEW = "create_new"  # No existing draft, proceed with AI generation
+    RESUME_EDITABLE = "resume_editable"  # Found editable draft, redirect to edit
+    VIEW_SUBMITTED = "view_submitted"  # Found submitted draft, redirect to view
+
+
+@dataclass
+class NameResolutionResult:
+    """Result of resolving a name input."""
+
+    action: WorkflowAction
+    draft: FindingModelDraft | None = None
+    redirect_url: str | None = None
+
+
+@dataclass
+class SessionData:
+    """Data needed to populate a session from a draft."""
+
+    name: str
+    description: str
+    synonyms: list[str]
+    attributes_markdown: str
+    draft_id: str | None
+    draft_status: str | None
+    submitted_display_time: str | None
 
 
 class CreationService:
     """Service for finding model creation workflow and generation."""
 
-    def __init__(self, index: Any, database: Database) -> None:
+    def __init__(self, index: Any, database: Database, draft_repo: DraftRepo) -> None:
         """Initialize with required dependencies.
 
         Args:
             index: FindingModel index for database queries
             database: Database instance for contributor lookup
+            draft_repo: DraftRepo instance for draft operations
         """
         self.index = index
         self.database = database
+        self.draft_repo = draft_repo
 
     async def check_name_availability(self, name: str, user_id: int | None = None) -> bool:
         """Check if a finding model name is available.
@@ -223,3 +258,71 @@ How the {finding_name} has changed compared to prior imaging
             True if test user, False otherwise
         """
         return user_id == TEST_USER_ID
+
+    async def resolve_name_input(self, user_id: int, name: str) -> NameResolutionResult:
+        """Determine workflow path for a given name.
+
+        Args:
+            user_id: User ID submitting the name
+            name: Finding model name to resolve
+
+        Returns:
+            NameResolutionResult with action and optional draft/redirect_url:
+            - CREATE_NEW: Name is available, proceed with AI generation
+            - RESUME_EDITABLE: Found editable draft, redirect to edit
+            - VIEW_SUBMITTED: Found submitted draft, redirect to view
+        """
+        # Check for editable draft
+        try:
+            draft = await self.draft_repo.find_editable_by_name(user_id=user_id, name=name)
+        except Exception as e:
+            logger.warning(f"Draft lookup failed for name '{name}': {e}")
+            draft = None
+
+        if draft is not None:
+            logger.info(f"Resuming editable draft {draft.id} for name '{name}'")
+            return NameResolutionResult(
+                action=WorkflowAction.RESUME_EDITABLE,
+                draft=draft,
+                redirect_url=f"/drafts/{draft.id}?mode=edit",
+            )
+
+        # Check for submitted draft
+        try:
+            latest = await self.draft_repo.find_latest_by_name(user_id=user_id, name=name)
+        except Exception:
+            latest = None
+
+        if latest is not None and latest.status == "submitted":
+            logger.info(f"Resuming submitted draft {latest.id} for name '{name}' into review step")
+            return NameResolutionResult(
+                action=WorkflowAction.VIEW_SUBMITTED,
+                draft=latest,
+                redirect_url=f"/drafts/{latest.id}?mode=view",
+            )
+
+        # Name is available for new creation
+        return NameResolutionResult(action=WorkflowAction.CREATE_NEW)
+
+    def extract_session_data(self, draft: FindingModelDraft) -> SessionData:
+        """Extract session data from an existing draft.
+
+        Args:
+            draft: Draft document to extract data from
+
+        Returns:
+            SessionData with all necessary session fields populated
+        """
+        return SessionData(
+            name=draft.name,
+            description=draft.inputs.description if draft.inputs else "",
+            synonyms=(draft.inputs.synonyms if draft.inputs and draft.inputs.synonyms else []),
+            attributes_markdown=(
+                draft.inputs.attributes_markdown
+                if draft.inputs and draft.inputs.attributes_markdown
+                else self.generate_default_attributes_markdown(draft.name)
+            ),
+            draft_id=str(draft.id),
+            draft_status=draft.status,
+            submitted_display_time=humanize_timestamp(draft.updated_at) if draft.updated_at else None,
+        )

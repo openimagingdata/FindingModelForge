@@ -7,19 +7,16 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Form, HTTPException, Path, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
-from app.utils.draft_formatting import humanize_timestamp
-
-
 from findingmodel.tools.similar_finding_models import SimilarModelAnalysis  # noqa: F401
 
 from app.auth import CurrentUserDep
 from app.config import logger
+from app.services.creation_service import SessionData, WorkflowAction
 from app.templates import templates
 from app.vite_manifest import get_vite_asset_path
 from app.dependencies import (
     CreationServiceDep,
     CreationSessionDep,
-    DraftRepoDep,
     DraftServiceDep,
     FindingModelCreationSession,
     SessionManagerDep,
@@ -49,6 +46,17 @@ def render_step_template(
     context = {"request": request, "current_step": step_number, "session_data": session, **extra_context}
 
     return templates.get_template(step_templates[step_number]).render(**context)
+
+
+def _apply_session_data(session: FindingModelCreationSession, data: SessionData) -> None:
+    """Apply extracted session data to a session object."""
+    session.name = data.name
+    session.description = data.description
+    session.synonyms = data.synonyms
+    session.attributes_markdown = data.attributes_markdown
+    session.draft_id = data.draft_id
+    session.draft_status = data.draft_status
+    session.submitted_display_time = data.submitted_display_time
 
 
 router = APIRouter()
@@ -96,8 +104,6 @@ async def process_step_1(
     session: CreationSessionDep,
     session_manager: SessionManagerDep,
     creation_service: CreationServiceDep,
-    draft_service: DraftServiceDep,
-    draft_repo: DraftRepoDep,
     name: str = Form(min_length=3, max_length=200),
 ) -> Response:
     """Process step 1: Check name and generate description."""
@@ -105,55 +111,26 @@ async def process_step_1(
         logger.info(f"Step 1 processing started for user {current_user.login}")
         logger.info(f"Received name: '{name}' (length: {len(name)})")
 
-        # FastAPI + Pydantic already validated the form data
-        # name is already validated by Form() parameter
+        # Resolve what to do with this name
+        resolution = await creation_service.resolve_name_input(current_user.id, name)
 
-        # Auto-resume: if the user has an editable draft with this name, jump to step 4
-        draft = None
-        try:
-            draft = await draft_repo.find_editable_by_name(user_id=current_user.id, name=name)
-        except Exception as e:
-            logger.warning(f"Draft lookup failed for name '{name}': {e}")
-        if draft is not None:
-            logger.info(f"Resuming editable draft {draft.id} for name '{name}'")
-            session.name = draft.name
-            session.description = draft.inputs.description
-            session.synonyms = draft.inputs.synonyms or []
-            session.attributes_markdown = (
-                draft.inputs.attributes_markdown
-                if draft.inputs.attributes_markdown
-                else creation_service.generate_default_attributes_markdown(draft.name)
-            )
-            session.draft_id = draft.id
+        if resolution.action == WorkflowAction.RESUME_EDITABLE:
+            assert resolution.draft is not None
+            assert resolution.redirect_url is not None
+            session_data = creation_service.extract_session_data(resolution.draft)
+            _apply_session_data(session, session_data)
             await session_manager.update_session(session)
-            return RedirectResponse(url=f"/drafts/{draft.id}?mode=edit", status_code=303)
+            return RedirectResponse(url=resolution.redirect_url, status_code=303)
 
-        # If there's a submitted draft with this name, jump to step 5 with read-only view
-        try:
-            latest = await draft_repo.find_latest_by_name(user_id=current_user.id, name=name)
-        except Exception:
-            latest = None
-        if latest is not None and latest.status == "submitted":
-            logger.info(f"Resuming submitted draft {latest.id} for name '{name}' into review step")
-            session.name = latest.name
-            session.description = latest.inputs.description
-            session.synonyms = latest.inputs.synonyms or []
-            session.attributes_markdown = (
-                latest.inputs.attributes_markdown
-                if latest.inputs.attributes_markdown
-                else creation_service.generate_default_attributes_markdown(latest.name)
-            )
-            session.draft_id = latest.id
-            session.draft_status = latest.status
-            # Human-friendly submitted time (UTC)
-            try:
-                session.submitted_display_time = humanize_timestamp(latest.updated_at)
-            except Exception:
-                session.submitted_display_time = None
+        if resolution.action == WorkflowAction.VIEW_SUBMITTED:
+            assert resolution.draft is not None
+            assert resolution.redirect_url is not None
+            session_data = creation_service.extract_session_data(resolution.draft)
+            _apply_session_data(session, session_data)
             await session_manager.update_session(session)
-            return RedirectResponse(url=f"/drafts/{latest.id}?mode=view", status_code=303)
+            return RedirectResponse(url=resolution.redirect_url, status_code=303)
 
-        # Check name availability
+        # CREATE_NEW path
         is_available = await creation_service.check_name_availability(name, current_user.id)
         if not is_available:
             session.error_message = f"Name '{name}' already exists in the index"
@@ -161,28 +138,24 @@ async def process_step_1(
             html_content = render_step_template(request, 1, session, form_data={"name": name})
             return HTMLResponse(content=html_content)
 
-        # Generate finding info (using service layer)
+        # Generate finding info
         test_mode = creation_service.is_test_user(current_user.id)
         finding_info = await creation_service.generate_finding_info(name, test_mode=test_mode)
 
-        # Update session
+        # Update session for step 2
         session.name = name
-        # New name path: ensure we aren't carrying over an old draft id
         session.draft_id = None
         session.description = finding_info.description
         session.synonyms = finding_info.synonyms or []
         session.current_step = 2
         await session_manager.update_session(session)
 
-        # Move to step 2
-        html_content = render_step_template(request, 2, session)
-        return HTMLResponse(content=html_content)
+        return HTMLResponse(content=render_step_template(request, 2, session))
 
     except Exception as e:
         logger.error(f"Error processing step 1: {str(e)}", exc_info=True)
         session.error_message = f"Error generating description: {str(e)}"
         await session_manager.update_session(session)
-
         html_content = render_step_template(
             request, 1, session, form_data={"name": name}, error_message=session.error_message
         )
@@ -373,28 +346,15 @@ async def resume_creation(
         if draft is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Draft not found")
 
-        # Populate session from the draft
-        session.name = draft.name
-        session.description = draft.inputs.description if draft.inputs else ""
-        session.synonyms = draft.inputs.synonyms if draft.inputs and draft.inputs.synonyms else []
-        session.attributes_markdown = (
-            draft.inputs.attributes_markdown
-            if draft.inputs and draft.inputs.attributes_markdown
-            else creation_service.generate_default_attributes_markdown(draft.name)
-        )
-        session.draft_id = draft.id
-        session.draft_status = draft.status
+        # Extract session data from draft
+        session_data = creation_service.extract_session_data(draft)
+        _apply_session_data(session, session_data)
+        await session_manager.update_session(session)
 
+        # Redirect based on draft status
         if draft.status == "submitted":
-            # Human-friendly submitted time (UTC)
-            try:
-                session.submitted_display_time = humanize_timestamp(draft.updated_at)
-            except Exception:
-                session.submitted_display_time = None
-            await session_manager.update_session(session)
             return RedirectResponse(url=f"/drafts/{draft.id}?mode=view", status_code=303)
         else:
-            await session_manager.update_session(session)
             return RedirectResponse(url=f"/drafts/{draft.id}?mode=edit", status_code=303)
 
     except HTTPException:

@@ -275,11 +275,11 @@ def get_finding_model_service(
 FindingModelServiceDep = Annotated["FindingModelService", Depends(get_finding_model_service)]
 
 
-def get_creation_service(index: FindingIndexDep, database: DatabaseDep) -> CreationService:
+def get_creation_service(index: FindingIndexDep, database: DatabaseDep, draft_repo: DraftRepoDep) -> CreationService:
     """Get CreationService instance."""
     from .services.creation_service import CreationService
 
-    return CreationService(index, database)
+    return CreationService(index, database, draft_repo)
 
 
 CreationServiceDep = Annotated["CreationService", Depends(get_creation_service)]
@@ -290,11 +290,12 @@ def get_draft_service(
     user_repo: UserRepoDep,
     database: DatabaseDep,
     comment_service: CommentServiceDep,
+    creation_service: CreationServiceDep,
 ) -> DraftService:
     """Get DraftService instance."""
     from .services.draft_service import DraftService
 
-    return DraftService(draft_repo, user_repo, database, comment_service)
+    return DraftService(draft_repo, user_repo, database, comment_service, creation_service)
 
 
 DraftServiceDep = Annotated["DraftService", Depends(get_draft_service)]

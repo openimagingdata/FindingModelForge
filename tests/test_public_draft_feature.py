@@ -110,6 +110,15 @@ class TestPublicDraftFeature:
         return cache
 
     @pytest.fixture
+    def mock_creation_service(self) -> MagicMock:
+        """Create a mock CreationService."""
+        from app.services.creation_service import CreationService
+
+        service = MagicMock(spec=CreationService)
+        service.is_test_user = MagicMock(return_value=False)
+        return service
+
+    @pytest.fixture
     def mock_draft_service(self, mock_draft_repo: MagicMock, mock_user_repo: MagicMock) -> MagicMock:
         """Create a mock DraftService."""
         service = AsyncMock(spec=DraftService)
@@ -241,6 +250,7 @@ class TestPublicDraftFeature:
         mock_user_repo: MagicMock,
         mock_database: MagicMock,
         mock_comment_service: MagicMock,
+        mock_creation_service: MagicMock,
         sample_draft: FindingModelDraft,
         public_draft: FindingModelDraft,
     ) -> None:
@@ -254,6 +264,7 @@ class TestPublicDraftFeature:
             mock_user_repo,
             mock_database,
             mock_comment_service,
+            mock_creation_service,
         )
 
         result = await service.make_public_draft("507f1f77bcf86cd799439011", 999999)
@@ -273,6 +284,7 @@ class TestPublicDraftFeature:
         mock_user_repo: MagicMock,
         mock_database: MagicMock,
         mock_comment_service: MagicMock,
+        mock_creation_service: MagicMock,
     ) -> None:
         """Test make_public_draft validates ownership."""
         # Mock draft not found (ownership check fails)
@@ -283,6 +295,7 @@ class TestPublicDraftFeature:
             mock_user_repo,
             mock_database,
             mock_comment_service,
+            mock_creation_service,
         )
 
         from app.services import NotFoundError
@@ -297,6 +310,7 @@ class TestPublicDraftFeature:
         mock_user_repo: MagicMock,
         mock_database: MagicMock,
         mock_comment_service: MagicMock,
+        mock_creation_service: MagicMock,
         public_draft: FindingModelDraft,
     ) -> None:
         """Test get_public_drafts returns only PUBLIC status drafts."""
@@ -308,6 +322,7 @@ class TestPublicDraftFeature:
             mock_user_repo,
             mock_database,
             mock_comment_service,
+            mock_creation_service,
         )
 
         result = await service.get_public_drafts()

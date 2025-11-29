@@ -136,3 +136,16 @@ def mock_github_user() -> dict[str, str | int | bool]:
         "type": "User",
         "site_admin": False,
     }
+
+
+@pytest.fixture
+def mock_creation_service() -> MagicMock:
+    """Mock CreationService for testing."""
+    from app.services.creation_service import CreationService
+
+    service = MagicMock(spec=CreationService)
+    service.is_test_user = MagicMock(return_value=False)
+    service.generate_from_inputs = AsyncMock(return_value='{"test": "json"}')
+    service.check_name_availability = AsyncMock(return_value=True)
+    service.generate_default_attributes_markdown = MagicMock(return_value="## Test\n- test: value")
+    return service

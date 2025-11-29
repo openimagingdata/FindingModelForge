@@ -1,15 +1,24 @@
 """Draft service for draft management and display formatting."""
 
+import asyncio
 from typing import TYPE_CHECKING, Any
+
+from findingmodel import FindingInfo, FindingModelBase
+from findingmodel.tools import (
+    add_ids_to_model,
+    add_standard_codes_to_model,
+    create_model_from_markdown,
+)
 
 from app.config import logger
 from app.database import DraftRepo, UserRepo
-from app.models import Comment, CommentThread, User
+from app.models import Comment, CommentThread, FindingModelDraft, FindingModelInputs, User
 from app.services.comment_service import CommentService
 from app.utils.draft_formatting import format_draft_for_display
 
 if TYPE_CHECKING:
     from app.database import Database
+    from app.services.creation_service import CreationService
 
 from . import AuthorizationError, NotFoundError
 
@@ -23,6 +32,7 @@ class DraftService:
         user_repo: UserRepo,
         database: "Database",
         comment_service: CommentService,
+        creation_service: "CreationService",
     ) -> None:
         """Initialize with required dependencies.
 
@@ -31,11 +41,13 @@ class DraftService:
             user_repo: Repository for user operations
             database: Database instance for Person management
             comment_service: Shared comment orchestration service
+            creation_service: Service for finding model generation
         """
         self.draft_repo = draft_repo
         self.user_repo = user_repo
         self.database = database
         self.comment_service = comment_service
+        self.creation_service = creation_service
 
     async def get_drafts_for_user(self, user_id: int) -> list[dict[str, Any]]:
         """Get formatted drafts list for a user.
@@ -293,3 +305,105 @@ class DraftService:
             HTTPException: If comment not found or already reported by user
         """
         await self.comment_service.report_comment("draft", draft_id, comment_id, user_id)
+
+    def should_regenerate_model(
+        self,
+        draft: FindingModelDraft,
+        new_inputs: FindingModelInputs,
+    ) -> bool:
+        """Check if model needs regeneration based on input changes.
+
+        Args:
+            draft: Existing draft
+            new_inputs: New inputs to compare against
+
+        Returns:
+            True if model should be regenerated, False if existing can be reused
+        """
+        inputs_changed = (
+            draft.inputs.description != new_inputs.description
+            or draft.inputs.synonyms != new_inputs.synonyms
+            or draft.inputs.attributes_markdown != new_inputs.attributes_markdown
+        )
+        has_no_json = not draft.generated_json
+        return inputs_changed or has_no_json
+
+    async def generate_finding_model_json(
+        self,
+        draft: FindingModelDraft,
+        description: str,
+        synonyms_list: list[str],
+        attributes_markdown: str,
+        current_user: User,
+        is_test_user: bool,
+    ) -> str:
+        """Generate finding model JSON from inputs.
+
+        Handles both test user mock generation and real AI generation.
+
+        Args:
+            draft: Draft to generate model for
+            description: Finding model description
+            synonyms_list: List of synonyms
+            attributes_markdown: Attributes markdown text
+            current_user: Current user
+            is_test_user: Whether to use mock generation
+
+        Returns:
+            Generated finding model as JSON string
+        """
+        finding_info = FindingInfo(name=draft.name, description=description, synonyms=synonyms_list)
+        complete_markdown = f"""# {draft.name}
+## Description
+{description}
+{attributes_markdown}
+"""
+
+        if is_test_user:
+            # Mock AI response for test user
+            logger.info(
+                f"Update draft: Using MOCK AI response for create_model_from_markdown (test user {current_user.id})"
+            )
+            await asyncio.sleep(2.0)  # Simulate AI processing time
+            mock_model_dict = {
+                "name": draft.name if len(draft.name) >= 5 else f"{draft.name} Test",
+                "description": description,
+                "synonyms": synonyms_list,
+                "tags": None,
+                "contributors": None,
+                "attributes": [
+                    {
+                        "name": "presence",
+                        "description": f"Presence of {draft.name}",
+                        "type": "choice",
+                        "values": [
+                            {"name": "absent", "description": f"{draft.name} is not visible"},
+                            {"name": "present", "description": f"{draft.name} is clearly visible"},
+                        ],
+                        "required": False,
+                        "max_selected": 1,
+                    }
+                ],
+            }
+            finding_model_generated = FindingModelBase.model_validate(mock_model_dict)
+        else:
+            logger.info("Update draft: Using REAL AI response for create_model_from_markdown")
+            finding_model_generated = await create_model_from_markdown(finding_info, markdown_text=complete_markdown)
+
+        # Add IDs and contributors
+        if not self.database.finding_index:
+            raise RuntimeError("FindingIndex must be initialized in the database")
+        if not self.database.people_repo:
+            raise RuntimeError("PeopleRepo must be initialized in the database")
+
+        author = await self.database.people_repo.get_by_username(current_user.login)
+        source = (
+            author.organization_code
+            if author
+            else (current_user.organizations[0] if current_user.organizations else "OIDM")
+        )
+        fm = add_ids_to_model(finding_model_generated, source=source)
+        add_standard_codes_to_model(fm)
+
+        # Convert to JSON
+        return fm.model_dump_json(indent=2)
