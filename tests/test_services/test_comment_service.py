@@ -243,15 +243,24 @@ async def test_add_comment_rate_limited(service: CommentService, mock_draft_repo
 
 @pytest.mark.asyncio
 async def test_add_comment_invalid_content(service: CommentService, mock_draft_repo: MagicMock, user: User) -> None:
+    """Test that invalid content raises ValidationError from Pydantic model.
+
+    Note: Length validation now happens at API boundary (FastAPI Form constraints),
+    but the Pydantic Comment model also validates on creation.
+    """
     mock_draft_repo.get_draft.return_value = MagicMock(status=DraftStatus.PUBLIC, name="Draft")
+
+    # Pydantic ValidationError is raised when Comment model rejects empty content
+    from pydantic import ValidationError
 
     with (
         patch("app.services.comment_service.get_blacklist_user_ids", return_value=[]),
-        pytest.raises(HTTPException) as exc,
+        pytest.raises(ValidationError) as exc,
     ):
         await service.add_comment("draft", "d1", user, " ")
 
-    assert exc.value.status_code == 422
+    # Verify it's a content validation error
+    assert "content" in str(exc.value)
 
 
 @pytest.mark.asyncio

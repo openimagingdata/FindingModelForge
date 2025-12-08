@@ -500,7 +500,8 @@ class TestHTMXCreationWorkflow:
 
         response = authenticated_client.post("/create/step/3", data={})
 
-        assert response.status_code == 500
+        # HTTPException with 400 for missing session name (business logic error)
+        assert response.status_code == 400
 
 
 # ===== DRAFT MANAGEMENT TESTS =====

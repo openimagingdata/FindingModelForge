@@ -1,9 +1,10 @@
 """Draft service for draft management and display formatting."""
 
 import asyncio
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from findingmodel import FindingInfo, FindingModelBase
+from findingmodel import FindingInfo, FindingModelBase, FindingModelFull
 from findingmodel.tools import (
     add_ids_to_model,
     add_standard_codes_to_model,
@@ -21,6 +22,24 @@ if TYPE_CHECKING:
     from app.services.creation_service import CreationService
 
 from . import AuthorizationError, NotFoundError
+
+
+@dataclass
+class DraftViewContext:
+    """Context for rendering unified draft page views.
+
+    This encapsulates all business logic for permission checks, mode resolution,
+    and data fetching needed to render a draft page.
+    """
+
+    draft: FindingModelDraft
+    author_name: str
+    can_edit: bool
+    can_delete: bool
+    resolved_mode: str  # "edit" or "view"
+    thread: CommentThread | None
+    finding_model: FindingModelFull | None
+    needs_redirect_to_edit: bool  # True if viewing draft without JSON in view mode
 
 
 class DraftService:
@@ -48,6 +67,81 @@ class DraftService:
         self.database = database
         self.comment_service = comment_service
         self.creation_service = creation_service
+
+    async def prepare_view_context(self, draft_id: str, user_id: int | None, requested_mode: str) -> DraftViewContext:
+        """Prepare complete context for rendering a draft page.
+
+        This method encapsulates all business logic for:
+        - Fetching draft with author information
+        - Permission checking (can_edit, can_delete)
+        - Mode resolution (edit vs view)
+        - Finding model parsing
+        - Comment thread fetching
+        - Redirect detection (view mode without JSON)
+
+        Args:
+            draft_id: Draft ID to prepare context for
+            user_id: Current user ID (None if not authenticated)
+            requested_mode: Requested mode ("edit" or "view")
+
+        Returns:
+            DraftViewContext with all data needed for rendering
+
+        Raises:
+            NotFoundError: If draft not found or user lacks access
+        """
+        # Fetch draft with author information
+        draft_dict = await self.get_draft_with_author(draft_id=draft_id, user_id=user_id)
+        if draft_dict is None:
+            raise NotFoundError(f"Draft {draft_id} not found")
+
+        author_name = draft_dict.get("author_name") or draft_dict.get("author_username", "Unknown")
+        draft = FindingModelDraft.model_validate(draft_dict)
+
+        # Check permissions
+        is_owner = user_id is not None and draft.user_id == user_id
+
+        # Private drafts require authentication and ownership
+        if draft.status == "draft" and not is_owner:
+            raise NotFoundError(f"Draft {draft_id} not found")
+
+        can_edit = is_owner and draft.status in ["draft", "public"]
+        can_delete = is_owner and draft.status in ["draft", "public"]
+
+        # Validate and resolve mode
+        if requested_mode not in ["view", "edit"]:
+            requested_mode = "view"
+
+        # Force view mode if user can't edit
+        resolved_mode = "edit" if (requested_mode == "edit" and can_edit) else "view"
+
+        # Parse finding model
+        finding_model: FindingModelFull | None = None
+        if draft.generated_json:
+            try:
+                finding_model = FindingModelFull.model_validate_json(draft.generated_json)
+            except Exception:
+                finding_model = None
+
+        # Get comment thread for PUBLIC and SUBMITTED drafts (only if user is authenticated)
+        thread = None
+        if user_id and draft.status in ["public", "submitted"]:
+            thread = await self.get_comments_for_draft(str(draft.id))
+
+        # Check if we need to redirect to edit mode
+        # (trying to view a draft without generated JSON, but user can edit)
+        needs_redirect_to_edit = resolved_mode == "view" and not finding_model and draft.status == "draft" and can_edit
+
+        return DraftViewContext(
+            draft=draft,
+            author_name=author_name,
+            can_edit=can_edit,
+            can_delete=can_delete,
+            resolved_mode=resolved_mode,
+            thread=thread,
+            finding_model=finding_model,
+            needs_redirect_to_edit=needs_redirect_to_edit,
+        )
 
     async def get_drafts_for_user(self, user_id: int) -> list[dict[str, Any]]:
         """Get formatted drafts list for a user.

@@ -491,8 +491,8 @@ class TestHTMXStepEndpoints:
         # Try to access step 3 when on step 1 - session lacks required name
         response = authenticated_client_with_cache.post("/create/step/3", data={"session_id": "test-123"})
 
-        # Step 3 requires session to have name, so should get validation error
-        assert response.status_code == 422  # Validation error for missing required fields
+        # Step 3 requires session to have name - business logic error returns 400
+        assert response.status_code == 400  # Bad Request for missing session name
 
     def test_step_missing_required_fields(
         self, authenticated_client_with_cache: TestClient, mock_cache: MagicMock

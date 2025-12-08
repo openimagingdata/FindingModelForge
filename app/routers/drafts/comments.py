@@ -20,7 +20,7 @@ async def add_draft_comment(
     current_user: CurrentUserDep,
     draft_service: DraftServiceDep,
     cache: CacheDep,
-    content: str = Form(...),
+    content: str = Form(..., min_length=1, max_length=2000),
     parent_comment_id: str | None = Form(None),
 ) -> HTMLResponse | RedirectResponse:
     """Add a comment to a draft (submitted drafts only)."""

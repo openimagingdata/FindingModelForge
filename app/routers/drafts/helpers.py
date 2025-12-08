@@ -248,6 +248,55 @@ def build_htmx_response_with_oob(
     return HTMLResponse(content=combined_content)
 
 
+def handle_draft_view_error(
+    e: Exception,
+    request: Request,
+    templates: Any,
+) -> "HTMLResponse":
+    """Handle draft page errors with HTMX-aware responses.
+
+    Args:
+        e: Exception that was caught
+        request: FastAPI Request object
+        templates: Jinja2 templates instance
+
+    Returns:
+        HTMLResponse for handled errors
+
+    Raises:
+        HTTPException: Re-raised for non-HTMX HTTP errors or 404s
+    """
+    from fastapi.responses import HTMLResponse
+
+    from app.config import logger
+    from app.services import NotFoundError
+
+    is_htmx = request.headers.get("HX-Request") == "true"
+
+    if isinstance(e, NotFoundError):
+        if is_htmx:
+            return HTMLResponse(
+                f'<span class="text-xs text-red-600 dark:text-red-400">{str(e)}</span>',
+                status_code=404,
+            )
+        raise HTTPException(status_code=404, detail=str(e)) from None
+
+    elif isinstance(e, HTTPException):
+        if is_htmx and e.detail:
+            return HTMLResponse(
+                f'<span class="text-xs text-red-600 dark:text-red-400">{e.detail}</span>',
+                status_code=e.status_code,
+            )
+        raise
+
+    else:
+        logger.error(f"Error loading unified draft page: {e}", exc_info=True)
+        error_html = templates.get_template("components/error_display.html").render(
+            request=request, error_message=f"Error loading draft: {str(e)}"
+        )
+        return HTMLResponse(content=error_html, status_code=500)
+
+
 def build_update_htmx_response(
     request: Request,
     draft: FindingModelDraft,

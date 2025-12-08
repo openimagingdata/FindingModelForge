@@ -111,7 +111,7 @@ class Comment(BaseModel):
     user_id: int  # GitHub user ID
     user_name: str  # Cached for display
     user_avatar_url: str | None = None
-    content: str  # 1-2000 chars
+    content: str = Field(min_length=1, max_length=2000)
     created_at: datetime
     replies: list["Comment"] = Field(default_factory=list)  # Single-level only
     reported: bool = False

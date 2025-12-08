@@ -199,7 +199,7 @@ async def add_finding_model_comment(
     request: Request,
     current_user: CurrentUserDep,
     finding_model_service: FindingModelServiceDep,
-    content: str = Form(...),
+    content: str = Form(..., min_length=1, max_length=2000),
     parent_comment_id: str | None = Form(None),
 ) -> HTMLResponse | RedirectResponse:
     """Add a comment to a finding model."""

@@ -58,7 +58,8 @@
       "Bash(awk:*)",
       "WebFetch(domain:github.com)",
       "Bash(uv pip:*)",
-      "Skill(plan-orchestrator)"
+      "Skill(plan-orchestrator)",
+      "Bash(git stash:*)"
     ],
     "deny": [],
     "ask": [],

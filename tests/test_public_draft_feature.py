@@ -528,9 +528,9 @@ class TestPublicDraftFeature:
         app.dependency_overrides[get_session_manager] = lambda: mock_session_manager
 
         try:
-            response = client.post("/drafts/507f1f77bcf86cd799439011/submit")
+            response = client.post("/drafts/507f1f77bcf86cd799439011/submit", follow_redirects=False)
 
-            assert response.status_code in [200, 303]  # Either success content or redirect
+            assert response.status_code == 303  # Redirect to view page
 
             # Verify service was called
             mock_draft_service.submit_draft.assert_called_once_with(draft_id="507f1f77bcf86cd799439011", user_id=999999)
@@ -601,9 +601,9 @@ class TestPublicDraftFeature:
         app.dependency_overrides[get_cache] = lambda: mock_cache
 
         try:
-            response = client.post("/drafts/507f1f77bcf86cd799439011/make-public")
+            response = client.post("/drafts/507f1f77bcf86cd799439011/make-public", follow_redirects=False)
 
-            assert response.status_code in [200, 303]
+            assert response.status_code == 303  # Redirect to view page
 
             # Verify cache invalidation
             mock_cache.delete.assert_called_once_with("public_drafts_list")
@@ -643,9 +643,9 @@ class TestPublicDraftFeature:
         app.dependency_overrides[get_session_manager] = lambda: mock_session_manager
 
         try:
-            response = client.post("/drafts/507f1f77bcf86cd799439011/submit")
+            response = client.post("/drafts/507f1f77bcf86cd799439011/submit", follow_redirects=False)
 
-            assert response.status_code in [200, 303]
+            assert response.status_code == 303  # Redirect to view page
 
             # Verify service was called
             mock_draft_service.submit_draft.assert_called_once_with(draft_id="507f1f77bcf86cd799439011", user_id=999999)

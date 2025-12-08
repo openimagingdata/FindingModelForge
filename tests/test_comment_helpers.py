@@ -11,7 +11,7 @@ from app.models import Comment, CommentThread, User, UserCommentEntry
 from app.services.comment_helpers import (
     check_rate_limit,
     get_blacklist_user_ids,
-    validate_comment_content,
+    sanitize_comment_content,
     validate_parent_comment,
 )
 
@@ -361,30 +361,29 @@ class TestGetBlacklistUserIds:
             assert result == []
 
 
-class TestValidateCommentContent:
-    """Tests for validate_comment_content."""
+class TestSanitizeCommentContent:
+    """Tests for sanitize_comment_content.
 
-    def test_valid_content_returned(self):
+    Note: Length validation is now handled by FastAPI Form() constraints,
+    so we only test XSS sanitization here.
+    """
+
+    def test_valid_content_sanitized(self):
+        """Test that valid content is trimmed and returned."""
         content = " Valid comment "
-        assert validate_comment_content(content) == "Valid comment"
-
-    def test_empty_content_raises(self):
-        with pytest.raises(ValueError, match="cannot be empty"):
-            validate_comment_content("   ")
-
-    def test_content_too_long_raises(self):
-        with pytest.raises(ValueError, match="cannot exceed"):
-            validate_comment_content("x" * 2001)
+        assert sanitize_comment_content(content) == "Valid comment"
 
     def test_script_tags_removed(self):
+        """Test that script tags are removed for XSS protection."""
         dirty = "<script>alert(1)</script>Safe"
-        cleaned = validate_comment_content(dirty)
+        cleaned = sanitize_comment_content(dirty)
         assert "script" not in cleaned.lower()
         assert cleaned == "Safe"
 
     def test_event_handlers_removed(self):
+        """Test that event handlers are removed for XSS protection."""
         dirty = '<p onclick="do()">Hello</p>'
-        cleaned = validate_comment_content(dirty)
+        cleaned = sanitize_comment_content(dirty)
         assert "onclick" not in cleaned.lower()
 
 

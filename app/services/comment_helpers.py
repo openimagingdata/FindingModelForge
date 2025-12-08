@@ -52,27 +52,18 @@ def get_blacklist_user_ids() -> list[int]:
         return []
 
 
-def validate_comment_content(content: str) -> str:
-    """Validate and sanitize comment content.
+def sanitize_comment_content(content: str) -> str:
+    """Sanitize comment content (XSS prevention).
+
+    Note: Length validation is handled by FastAPI Form() constraints.
 
     Args:
-        content: Raw comment content
+        content: Raw comment content (already validated for length)
 
     Returns:
-        Cleaned content
-
-    Raises:
-        ValueError: If content is invalid
+        Sanitized content with XSS patterns removed
     """
-    if not content or not content.strip():
-        raise ValueError("Comment content cannot be empty")
-
     content = content.strip()
-
-    if len(content) < 1:
-        raise ValueError("Comment must be at least 1 character")
-    if len(content) > 2000:
-        raise ValueError("Comment cannot exceed 2000 characters")
 
     # Basic XSS prevention - remove script tags and event handlers
     # This is a simple sanitization. In production, use a library like bleach

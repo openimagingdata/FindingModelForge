@@ -278,6 +278,8 @@ async def process_step_3(
         else:
             raise HTTPException(status_code=400, detail="Missing session name")
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error processing step 3: {str(e)}", exc_info=True)
         session.error_message = f"Error creating draft: {str(e)}"

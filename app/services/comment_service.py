@@ -12,7 +12,7 @@ from app.models import Comment, CommentThread, DraftStatus, User, UserCommentEnt
 from app.services.comment_helpers import (
     check_rate_limit,
     get_blacklist_user_ids,
-    validate_comment_content,
+    sanitize_comment_content,
     validate_parent_comment,
 )
 
@@ -59,10 +59,8 @@ class CommentService:
         if not allowed:
             raise HTTPException(status_code=429, detail=error_msg)
 
-        try:
-            cleaned_content = validate_comment_content(content)
-        except ValueError as exc:
-            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        # Sanitize content (length already validated by FastAPI Form() constraints)
+        cleaned_content = sanitize_comment_content(content)
 
         draft_name: str | None = None
         if reference_type == "draft":

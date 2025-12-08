@@ -2,9 +2,11 @@
 
 ## Overview
 
-This plan completes the service layer refactoring started in `tasks/done/router_cleanup.md`. The goal is to move all remaining business logic from routers to services, creating truly thin controllers.
+This plan completes the service layer refactoring started in `tasks/done/router_cleanup.md`. The goal is to move all
+remaining business logic from routers to services, creating truly thin controllers.
 
 **Related Documents:**
+
 - Assessment: [`backend_complexity_assessment.md`](backend_complexity_assessment.md)
 - Previous work: [`done/router_cleanup.md`](done/router_cleanup.md)
 
@@ -16,9 +18,9 @@ This plan completes the service layer refactoring started in `tasks/done/router_
 
 **Goal**: Move all business logic from routers to services
 
-### Task 1.1: FindingModelService Context Methods
+### Task 1.1: FindingModelService Context Methods ✅ COMPLETE
 
-**Priority**: P1 | **Effort**: 2-3 hours | **Risk**: Low
+**Priority**: P1 | **Effort**: 2-3 hours | **Risk**: Low | **Status**: Complete
 
 **Problem**: Pagination context built twice in `finding_models_browse.py` (lines 79-95 and 193-209).
 
@@ -115,21 +117,23 @@ class FindingModelService:
 Router becomes ~80 lines, just handling HTTP concerns and HTMX branching.
 
 **Testing**:
-- [ ] Add unit tests for `prepare_list_context()`
-- [ ] Add unit tests for `prepare_detail_context()`
-- [ ] Verify existing router tests still pass
+
+- [x] Add unit tests for `prepare_list_context()`
+- [x] Add unit tests for `prepare_detail_context()`
+- [x] Verify existing router tests still pass
 - [ ] Manual test: search, pagination, detail view
 
 **Success Criteria**:
-- [ ] No pagination calculation in router
-- [ ] Router under 100 lines
-- [ ] All tests pass
+
+- [x] No pagination calculation in router
+- [x] Router under 100 lines
+- [x] All tests pass
 
 ---
 
-### Task 1.2: Move JSON Generation to DraftService
+### Task 1.2: Move JSON Generation to DraftService ✅ COMPLETE
 
-**Priority**: P1 | **Effort**: 1-2 hours | **Risk**: Low
+**Priority**: P1 | **Effort**: 1-2 hours | **Risk**: Low | **Status**: Complete
 
 **Problem**: `generate_finding_model_json()` and `should_regenerate_model()` in `drafts/helpers.py` are business logic.
 
@@ -212,20 +216,22 @@ Wire up `CreationService` dependency into `DraftService`.
 - Update callers to use `draft_service.generate_finding_model_json()`
 
 **Testing**:
-- [ ] Move existing tests from `test_generate_finding_model_json.py` to service tests
-- [ ] Update mock patterns in router tests
-- [ ] Verify all draft workflows still work
+
+- [x] Move existing tests from `test_generate_finding_model_json.py` to service tests
+- [x] Update mock patterns in router tests
+- [x] Verify all draft workflows still work
 
 **Success Criteria**:
-- [ ] No JSON generation logic in helpers.py
-- [ ] helpers.py under 350 lines
-- [ ] All tests pass
+
+- [x] No JSON generation logic in helpers.py
+- [x] helpers.py under 350 lines
+- [x] All tests pass
 
 ---
 
-### Task 1.3: Creation Workflow Methods in CreationService
+### Task 1.3: Creation Workflow Methods in CreationService ✅ COMPLETE
 
-**Priority**: P1 | **Effort**: 3-4 hours | **Risk**: Medium
+**Priority**: P1 | **Effort**: 3-4 hours | **Risk**: Medium | **Status**: Complete
 
 **Problem**: Draft resume logic scattered across `process_step_1()`, `process_step_2()`, and `resume_creation()`.
 
@@ -407,16 +413,18 @@ def _apply_session_data(session: CreationSession, data: SessionData) -> None:
 ```
 
 **Testing**:
-- [ ] Add unit tests for `resolve_name_input()` (all 3 paths)
-- [ ] Add unit tests for `extract_session_data()`
-- [ ] Update router tests to mock service methods
+
+- [x] Add unit tests for `resolve_name_input()` (all 3 paths)
+- [x] Add unit tests for `extract_session_data()`
+- [x] Update router tests to mock service methods
 - [ ] Manual test: new creation, resume draft, view submitted
 
 **Success Criteria**:
-- [ ] Draft resolution logic in service
-- [ ] `process_step_1()` under 50 lines
-- [ ] `process_step_2()` under 50 lines
-- [ ] All tests pass
+
+- [x] Draft resolution logic in service
+- [x] `process_step_1()` under 50 lines
+- [x] `process_step_2()` under 50 lines
+- [x] All tests pass
 
 ---
 
@@ -507,71 +515,129 @@ class DraftService:
 Router becomes much simpler - just handles HTMX branching and template selection.
 
 **Testing**:
+
 - [ ] Add unit tests for `prepare_view_context()` (all permission scenarios)
 - [ ] Update router tests
 - [ ] Manual test: owner vs non-owner, draft vs submitted
 
 **Success Criteria**:
+
 - [ ] No permission logic in router
 - [ ] `unified_draft_page()` under 60 lines
 - [ ] All tests pass
 
 ---
 
-### Task 1.5: Move Validation to Services
+### Task 1.5: Consolidate Validation at API Boundary (Pydantic/FastAPI)
 
-**Priority**: P2 | **Effort**: 1 hour | **Risk**: Low
+**Priority**: P2 | **Effort**: 1-2 hours | **Risk**: Low
 
-**Problem**: Validation in `save_draft()` router.
+**Problem**: Hand-rolled validation in service layer duplicates what Pydantic/FastAPI handles natively. Validation
+should be at the API boundary, not in services.
 
-**Changes**:
+**Principle**:
 
-#### 1.5.1 Update `app/services/__init__.py`:
+- **Input validation** (length, format, required fields) → Pydantic models & FastAPI Form()/Query() constraints
+- **Business rules** (rate limiting, ownership, state transitions) → Service layer
+- **Sanitization** (XSS prevention) → Service layer (transformation, not validation)
 
-```python
-class ValidationError(ServiceError):
-    """Raised when input validation fails."""
-    pass
-```
+**Locations requiring fixes**:
 
-#### 1.5.2 Update `app/services/draft_service.py` `save_draft()`:
+#### 1.5.1 Comment content validation - DUPLICATED
 
-```python
-async def save_draft(
-    self,
-    user_id: int,
-    name: str,
-    inputs: FindingModelInputs,
-    draft_id: str | None = None,
-    user: User | None = None,
-) -> FindingModelDraftDocument:
-    """Save or update a draft with validation."""
-    # Validate inputs
-    if len(inputs.description.strip()) < 10:
-        raise ValidationError("Description must be at least 10 characters")
-    if len(inputs.attributes_markdown.strip()) < 20:
-        raise ValidationError("Attributes must be at least 20 characters")
-
-    # ... rest of existing logic
-```
-
-#### 1.5.3 Update `app/routers/drafts/mutations.py`:
+**Current state** (`app/services/comment_helpers.py:55-82`):
 
 ```python
-try:
-    draft = await draft_service.save_draft(...)
-except ValidationError as e:
-    raise HTTPException(status_code=422, detail=str(e))
+# Hand-rolled validation that duplicates what Pydantic should do
+if not content or not content.strip():
+    raise ValueError("Comment content cannot be empty")
+if len(content) < 1:
+    raise ValueError("Comment must be at least 1 character")
+if len(content) > 2000:
+    raise ValueError("Comment cannot exceed 2000 characters")
 ```
+
+**Fix**:
+
+1. Add constraints to Form() in routers:
+   - `app/routers/drafts/comments.py:23`: `content: str = Form(..., min_length=1, max_length=2000)`
+   - `app/routers/finding_models_browse.py:202`: `content: str = Form(..., min_length=1, max_length=2000)`
+
+2. Update `validate_comment_content()` to sanitization-only:
+
+```python
+def sanitize_comment_content(content: str) -> str:
+    """Sanitize comment content (XSS prevention).
+
+    Note: Length validation handled by FastAPI Form() constraints.
+    """
+    content = content.strip()
+    # XSS prevention - remove script tags and event handlers
+    content = re.sub(r"<script[^>]*>.*?</script>", "", content, flags=re.IGNORECASE | re.DOTALL)
+    content = re.sub(r'on\w+\s*=\s*["\'][^"\']*["\']', "", content, flags=re.IGNORECASE)
+    return content
+```
+
+#### 1.5.2 Comment model has no validation
+
+**Current state** (`app/models.py:114`):
+
+```python
+content: str  # 1-2000 chars  <-- Just a comment, no actual constraint!
+```
+
+**Fix**:
+
+```python
+from pydantic import Field
+
+content: str = Field(min_length=1, max_length=2000)
+```
+
+#### 1.5.3 FindingModelInputs has no validation
+
+**Current state** (`app/models.py:185-190`):
+
+```python
+class FindingModelInputs(BaseModel):
+    description: str  # No constraints
+    synonyms: list[str] | None = None
+    attributes_markdown: str | None = None
+```
+
+**Fix** (if min lengths are needed):
+
+```python
+class FindingModelInputs(BaseModel):
+    description: str = Field(min_length=10)
+    synonyms: list[str] | None = None
+    attributes_markdown: str | None = Field(default=None, min_length=20)
+```
+
+#### 1.5.4 Remove custom ValidationError from services
+
+**DO NOT ADD** the originally planned `ValidationError` exception class. FastAPI's built-in `RequestValidationError`
+(triggered by Pydantic) already returns 422 responses with proper error details.
+
+**What stays in services** (correctly placed):
+
+- `check_rate_limit()` - business rule, not input validation ✅
+- `validate_parent_comment()` - structural/business rule ✅
+- XSS sanitization - transformation, not validation ✅
 
 **Testing**:
-- [ ] Add unit tests for validation in service
-- [ ] Update router tests to expect validation from service
-- [ ] All tests pass
+
+- [ ] Verify Form() constraints return 422 for invalid input
+- [ ] Verify Pydantic Field() constraints work on models
+- [ ] Remove redundant length checks from `validate_comment_content()`
+- [ ] All existing tests still pass
+- [ ] Add tests for boundary validation (empty, too long, just right)
 
 **Success Criteria**:
-- [ ] No validation logic in router
-- [ ] ValidationError properly handled
+
+- [ ] No hand-rolled length/format validation in services
+- [ ] All input validation uses Pydantic Field() or FastAPI Form()/Query() constraints
+- [ ] Services only contain business rules and sanitization
 - [ ] All tests pass
 
 ---
@@ -686,11 +752,13 @@ HTMXResponseServiceDep = Annotated[HTMXResponseService, Depends(get_htmx_respons
 ```
 
 **Testing**:
+
 - [ ] Add unit tests for `HTMXResponseService`
 - [ ] Test OOB swap rendering
 - [ ] Test URL building
 
 **Success Criteria**:
+
 - [ ] Service handles all HTMX response patterns
 - [ ] Clean interface for routers
 - [ ] All tests pass
@@ -702,15 +770,18 @@ HTMXResponseServiceDep = Annotated[HTMXResponseService, Depends(get_htmx_respons
 **Priority**: P2 | **Effort**: 2-3 hours | **Risk**: Low
 
 **Changes**:
+
 - Update `finding_models_browse.py` to use service
 - Update `drafts/views.py` to use service
 - Update `drafts/helpers.py` - remove `build_htmx_response_with_oob()`
 
 **Testing**:
+
 - [ ] All existing UI tests pass
 - [ ] Manual test of HTMX interactions
 
 **Success Criteria**:
+
 - [ ] No direct HTMX response building in routers
 - [ ] `drafts/helpers.py` under 200 lines
 - [ ] All tests pass
@@ -720,18 +791,21 @@ HTMXResponseServiceDep = Annotated[HTMXResponseService, Depends(get_htmx_respons
 ## Summary Checklist
 
 ### Phase 1 Tasks
-- [ ] 1.1: FindingModelService context methods (2-3h)
-- [ ] 1.2: Move JSON generation to DraftService (1-2h)
-- [ ] 1.3: Creation workflow methods in CreationService (3-4h)
+
+- [x] 1.1: FindingModelService context methods (2-3h) ✅ Complete
+- [x] 1.2: Move JSON generation to DraftService (1-2h) ✅ Complete
+- [x] 1.3: Creation workflow methods in CreationService (3-4h) ✅ Complete
 - [ ] 1.4: DraftService view context method (1-2h)
-- [ ] 1.5: Move validation to services (1h)
+- [ ] 1.5: Consolidate validation at API boundary (1-2h)
 
 ### Phase 2 Tasks
+
 - [ ] 2.1: Create HTMXResponseService (2-3h)
 - [ ] 2.2: Migrate routers to use service (2-3h)
 
 ### Final Verification
-- [ ] All unit tests pass
+
+- [x] All unit tests pass (522 passed, 6 skipped as of Task 1.3 completion)
 - [ ] All UI tests pass
 - [ ] Coverage >= 85%
 - [ ] No business logic in routers
