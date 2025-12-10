@@ -1150,12 +1150,13 @@ class TestCriticalHappyPaths:
         assert "test-finding" in response.text
         assert "Edit Finding Model Draft" in response.text
 
-    @pytest.mark.skip(
-        reason="TODO: Refactor - test is too complex and tests multiple concerns. The endpoint works in production."
-    )
     def test_update_draft_and_redirect(self, authenticated_client: TestClient, mock_database: Database):
-        """Test update_draft_and_redirect endpoint - update draft and generate model."""
-        # Mock existing draft
+        """Test update_draft_and_redirect endpoint - update draft and redirect to view mode."""
+        from app.dependencies import get_draft_service
+        from app.main import app
+        from app.services.draft_service import DraftService
+
+        # Create mock drafts for the service responses
         mock_draft = FindingModelDraft(
             id="test-draft-id",
             user_id=123,
@@ -1171,7 +1172,6 @@ class TestCriticalHappyPaths:
             author_username="testuser",
         )
 
-        # Create updated draft for save_draft return
         updated_draft = FindingModelDraft(
             id="test-draft-id",
             user_id=123,
@@ -1190,63 +1190,41 @@ class TestCriticalHappyPaths:
             author_username="testuser",
         )
 
-        # Mock get_draft to return the draft object
-        mock_database.draft_repo.get_draft = AsyncMock(return_value=mock_draft)
-        # Mock get_draft_with_author to return draft as dict without author_info aggregation
+        # Mock DraftService via dependency override
+        mock_draft_service = MagicMock(spec=DraftService)
         mock_draft_dict = mock_draft.model_dump()
-        mock_draft_dict["id"] = mock_draft.id  # Ensure id is string
-        mock_database.draft_repo.get_draft_with_author = AsyncMock(return_value=mock_draft_dict)
-        # Fix: save_draft should return a draft object, not None or 0
-        mock_database.draft_repo.save_draft = AsyncMock(return_value=updated_draft)
-
-        # Mock finding model generation
-        mock_finding_model = {
-            "name": "test-finding",
-            "description": "Updated description",
-            "attributes": [{"name": "presence", "values": ["absent", "present"]}],
-        }
-
-        # Mock creation service for step 4
-        from app.dependencies import get_creation_service
-        from app.main import app
-        from app.services.creation_service import CreationService
-
-        mock_creation_service = MagicMock(spec=CreationService)
-        mock_creation_service.is_test_user = MagicMock(return_value=False)
-        mock_creation_service.generate_full_finding_model = AsyncMock(
-            return_value=MagicMock(model_dump_json=MagicMock(return_value=json.dumps(mock_finding_model)))
+        mock_draft_dict["id"] = mock_draft.id
+        mock_draft_dict["author_name"] = "Test User"
+        mock_draft_service.get_draft_with_author = AsyncMock(return_value=mock_draft_dict)
+        mock_draft_service.should_regenerate_model = MagicMock(return_value=True)
+        mock_draft_service.generate_finding_model_json = AsyncMock(
+            return_value='{"name": "test-finding", "description": "Updated"}'
         )
+        mock_draft_service.save_draft = AsyncMock(return_value=updated_draft)
 
-        app.dependency_overrides[get_creation_service] = lambda: mock_creation_service
+        app.dependency_overrides[get_draft_service] = lambda: mock_draft_service
 
-        # Mock database components
-        mock_database.finding_index = MagicMock()
+        try:
+            response = authenticated_client.post(
+                "/drafts/test-draft-id/update-and-redirect",
+                data={
+                    "description": "Updated description",
+                    "synonyms": '["test", "updated"]',
+                    "attributes_markdown": "## presence\n- absent: Not visible\n- present: Clearly visible",
+                },
+                follow_redirects=False,
+            )
 
-        # Mock people_repo with async method
-        mock_author = MagicMock(organization_code="TEST")
-        mock_people_repo = AsyncMock()
-        mock_people_repo.get_by_username = AsyncMock(return_value=mock_author)
-        mock_database.people_repo = mock_people_repo
+            # Should redirect to view mode
+            assert response.status_code == 303
+            assert "/drafts/test-draft-id" in response.headers["location"]
+            assert "mode=view" in response.headers["location"]
 
-        response = authenticated_client.post(
-            "/drafts/test-draft-id/update-and-redirect",
-            data={
-                "description": "Updated description",
-                "synonyms": '["test", "updated"]',
-                "attributes_markdown": "## presence\n- absent: Not visible\n- present: Clearly visible",
-            },
-        )
-
-        # Should redirect to view mode or return preview content
-        assert response.status_code in [200, 303]
-
-        # Verify model generation was called due to changed inputs
-        # Note: These methods are now part of the creation service
-        # mock_create_model.assert_called_once()
-        # mock_add_ids.assert_called_once()
-
-        # Verify draft was saved with new data
-        mock_database.draft_repo.save_draft.assert_called()
+            # Verify service methods were called
+            mock_draft_service.get_draft_with_author.assert_called_once()
+            mock_draft_service.save_draft.assert_called_once()
+        finally:
+            app.dependency_overrides.pop(get_draft_service, None)
 
 
 # ===== PRIORITY 2: DRAFT STATE TRANSITIONS =====
@@ -1453,11 +1431,10 @@ class TestDraftStateTransitions:
         assert "drafts/test-draft-id" in response.headers["location"]
         assert "mode=edit" in response.headers["location"]
 
-    @pytest.mark.skip(reason="Complex session handling, needs refactoring")
     def test_resume_creation_submitted_status(
         self, authenticated_client: TestClient, mock_database: Database, mock_cache: MagicMock
     ):
-        """Test resuming creation from a submitted draft."""
+        """Test resuming creation from a submitted draft redirects to view mode."""
         # Mock session
         session_data = {"session_id": "test-session"}
         mock_cache.get.return_value = json.dumps(session_data)
@@ -1480,11 +1457,14 @@ class TestDraftStateTransitions:
         )
         mock_database.draft_repo.get_draft = AsyncMock(return_value=draft)
 
-        response = authenticated_client.post("/create/resume", data={"draft_id": "test-draft-id"})
+        response = authenticated_client.post(
+            "/create/resume", data={"draft_id": "test-draft-id"}, follow_redirects=False
+        )
 
-        assert response.status_code == 200
-        # Should render step 5 for submitted status
-        assert "test-finding" in response.text
+        # Should redirect to unified draft view page for submitted drafts
+        assert response.status_code == 303
+        assert "drafts/test-draft-id" in response.headers["location"]
+        assert "mode=view" in response.headers["location"]
 
 
 # ===== PRIORITY 3: ERROR HANDLING & EDGE CASES =====
@@ -1536,11 +1516,19 @@ class TestErrorHandlingAndEdgeCases:
         # Verify draft lookup was attempted
         mock_database.draft_repo.find_editable_by_name.assert_called_once_with(user_id=123, name="test-finding")
 
-    @pytest.mark.skip(reason="Complex session handling, needs refactoring")
     def test_process_step_1_resume_submitted_draft(
         self, authenticated_client: TestClient, mock_database: Database, mock_cache: MagicMock
     ):
-        """Test process_step_1 resume submitted draft to step 5."""
+        """Test process_step_1 with submitted draft redirects to view mode."""
+        from app.dependencies import get_creation_service
+        from app.main import app
+        from app.services.creation_service import (
+            CreationService,
+            NameResolutionResult,
+            SessionData,
+            WorkflowAction,
+        )
+
         # Mock session
         session_data = {"session_id": "test-session"}
         mock_cache.get.return_value = json.dumps(session_data)
@@ -1564,86 +1552,43 @@ class TestErrorHandlingAndEdgeCases:
             author_username="testuser",
         )
 
-        # Mock no editable draft but has submitted draft
-        mock_database.draft_repo.find_editable_by_name = AsyncMock(return_value=None)
-        mock_database.draft_repo.find_latest_by_name = AsyncMock(return_value=submitted_draft)
-        mock_database.finding_index.get = AsyncMock(return_value=None)
-
-        response = authenticated_client.post("/create/step/1", data={"name": "test-finding"})
-
-        assert response.status_code == 200
-        # Should render step 5 when resuming submitted draft
-        assert "test-finding" in response.text
-
-    @pytest.mark.skip(reason="Complex session handling, needs refactoring")
-    def test_process_step_4_reuse_existing_json(
-        self, authenticated_client: TestClient, mock_database: Database, mock_cache: MagicMock
-    ):
-        """Test process_step_4 optimization path for unchanged inputs."""
-        # Mock session
-        session_data = {
-            "session_id": "test-session",
-            "name": "test-finding",
-            "description": "Test description",
-            "synonyms": ["test"],
-            "attributes_markdown": "## test\n- value: test",
-            "draft_id": "test-draft-id",
-            "draft_status": "draft",
-        }
-        mock_cache.get.return_value = json.dumps(session_data)
-
-        # Mock existing draft with generated JSON and SAME inputs
-        existing_model = {"name": "test-finding", "description": "Test description"}
-
-        existing_draft = FindingModelDraft(
-            id="test-draft-id",
-            user_id=123,
-            name="test-finding",
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
-            inputs=FindingModelInputs(
-                description="Test description",  # Same as form input
-                synonyms=["test"],  # Same as form input
-                attributes_markdown="## test\n- value: test",  # Same as form input
-            ),
-            status="draft",
-            generated_json=json.dumps(existing_model),
-            action_log=[],
-            author_name="Test User",
-            author_username="testuser",
-        )
-
-        mock_database.draft_repo.get_draft = AsyncMock(return_value=existing_draft)
-        mock_database.draft_repo.save_draft = AsyncMock(return_value=existing_draft)
-
-        # Mock creation service
-        from app.dependencies import get_creation_service
-        from app.main import app
-        from app.services.creation_service import CreationService
-
+        # Mock CreationService.resolve_name_input to return VIEW_SUBMITTED action
         mock_creation_service = MagicMock(spec=CreationService)
-        mock_creation_service.is_test_user = MagicMock(return_value=False)
-        mock_creation_service.generate_full_finding_model = AsyncMock(return_value=MagicMock())
+        mock_creation_service.resolve_name_input = AsyncMock(
+            return_value=NameResolutionResult(
+                action=WorkflowAction.VIEW_SUBMITTED,
+                draft=submitted_draft,
+                redirect_url="/drafts/submitted-draft-id?mode=view",
+            )
+        )
+        mock_creation_service.extract_session_data = MagicMock(
+            return_value=SessionData(
+                name="test-finding",
+                description="Submitted description",
+                synonyms=["submitted"],
+                attributes_markdown="## submitted\n- value: submitted",
+                draft_id="submitted-draft-id",
+                draft_status="submitted",
+                submitted_display_time=None,
+            )
+        )
 
         app.dependency_overrides[get_creation_service] = lambda: mock_creation_service
 
-        response = authenticated_client.post(
-            "/create/step/4",
-            data={
-                "description": "Test description",  # Identical to existing
-                "synonyms": '["test"]',  # Identical to existing
-                "attributes_markdown": "## test\n- value: test",  # Identical to existing
-                "draft_id": "test-draft-id",
-            },
-        )
+        try:
+            response = authenticated_client.post(
+                "/create/step/1", data={"name": "test-finding"}, follow_redirects=False
+            )
 
-        assert response.status_code == 200
-        assert "X-Model-Reused" in response.headers
-        assert response.headers["X-Model-Reused"] == "1"
+            # Should redirect to unified draft view page for submitted drafts
+            assert response.status_code == 303
+            assert "drafts/submitted-draft-id" in response.headers["location"]
+            assert "mode=view" in response.headers["location"]
+        finally:
+            app.dependency_overrides.pop(get_creation_service, None)
 
-        # Should NOT call model generation since inputs unchanged
-        # Note: mock_create_model is no longer available since we're using the service layer
-        # mock_create_model.assert_not_called()
+    # NOTE: test_process_step_4_reuse_existing_json was deleted - Step 4 endpoint no longer exists.
+    # Model reuse optimization is now tested via /drafts/{id}/update-and-redirect endpoint.
 
     def test_unified_draft_page_mode_switching(self, authenticated_client: TestClient, mock_database: Database):
         """Test unified draft page HTMX mode switching."""
@@ -1676,19 +1621,27 @@ class TestErrorHandlingAndEdgeCases:
         assert len(response.text) > 0
         assert "<!DOCTYPE html>" not in response.text  # Should not be full page
 
-    @pytest.mark.skip(reason="Complex session handling, needs refactoring")
     def test_restart_creation_with_new_session(self, authenticated_client: TestClient, mock_cache: MagicMock):
         """Test restart creation workflow with new session."""
-        # Mock session manager
-        with patch("app.dependencies.session_manager") as mock_session_manager:
-            mock_session_manager.create_session = AsyncMock(return_value="new-session-id")
-            mock_session_manager.get_session = AsyncMock(return_value=None)  # No existing session
+        from app.dependencies import SessionManager, get_session_manager
+        from app.main import app
 
+        # Mock SessionManager via dependency override
+        mock_session_manager = MagicMock(spec=SessionManager)
+        mock_session_manager.create_session = AsyncMock(return_value="new-session-id")
+        mock_session_manager.get_session = AsyncMock(return_value=None)  # Falls back to creating fresh session
+
+        app.dependency_overrides[get_session_manager] = lambda: mock_session_manager
+
+        try:
             response = authenticated_client.post("/create/restart")
 
             assert response.status_code == 200
             # Should set new session cookie
-            assert "creation_session_id=new-session-id" in response.headers.get("Set-Cookie", "")
+            set_cookie = response.headers.get("Set-Cookie", "")
+            assert "creation_session_id=new-session-id" in set_cookie
+        finally:
+            app.dependency_overrides.pop(get_session_manager, None)
 
 
 # ===== PRIORITY 4: ACCESS CONTROL & VALIDATION =====

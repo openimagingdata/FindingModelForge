@@ -270,15 +270,45 @@ class TestCreationService:
     async def test_generate_from_inputs_no_finding_index(
         self, service: CreationService, sample_user: User, sample_inputs: FindingModelInputs, mock_database: MagicMock
     ):
-        """Test generating finding model when finding_index is not initialized."""
+        """Test generating finding model when finding_index is not initialized.
+
+        Note: We must mock create_model_from_markdown to avoid calling real OpenAI API.
+        The finding_index check happens AFTER the AI call in the real code.
+        """
         # Setup: No finding index
         mock_database.finding_index = None
 
-        # Test
-        with pytest.raises(RuntimeError, match="FindingIndex must be initialized"):
-            await service.generate_from_inputs(
-                name="Test Finding", inputs=sample_inputs, user=sample_user, test_mode=False
+        # Mock the AI call to prevent real OpenAI API calls
+        with patch("app.services.creation_service.create_model_from_markdown", new=AsyncMock()) as mock_create:
+            from findingmodel import FindingModelBase
+
+            mock_model = FindingModelBase(
+                name="Test Finding",
+                description="Test description",
+                synonyms=["synonym"],
+                tags=None,
+                contributors=None,
+                attributes=[
+                    {
+                        "name": "presence",
+                        "description": "Test attribute",
+                        "type": "choice",
+                        "values": [
+                            {"name": "absent", "description": "Not visible"},
+                            {"name": "present", "description": "Visible"},
+                        ],
+                        "required": False,
+                        "max_selected": 1,
+                    }
+                ],
             )
+            mock_create.return_value = mock_model
+
+            # Test
+            with pytest.raises(RuntimeError, match="FindingIndex must be initialized"):
+                await service.generate_from_inputs(
+                    name="Test Finding", inputs=sample_inputs, user=sample_user, test_mode=False
+                )
 
     def test_generate_default_attributes_markdown(self, service: CreationService):
         """Test generating default attributes markdown."""

@@ -25,12 +25,12 @@ class TestImportsResolve:
         """Verify dependencies.py imports without NameError."""
         # This import exercises all the Annotated[...] type aliases
         from app.dependencies import (
+            CacheDep,
+            CommentServiceDep,
             CreationServiceDep,
+            DatabaseDep,
             DraftServiceDep,
             FindingModelServiceDep,
-            CommentServiceDep,
-            DatabaseDep,
-            CacheDep,
         )
 
         # If we get here, all forward references resolved
@@ -43,9 +43,8 @@ class TestImportsResolve:
 
     def test_all_routers_import(self):
         """Verify all routers can be imported without errors."""
-        from app.routers import creation, home, profile, auth_pages
-        from app.routers import finding_models_browse
-        from app.routers.drafts import views, mutations, workflows, comments
+        from app.routers import auth_pages, creation, finding_models_browse, home, profile
+        from app.routers.drafts import comments, mutations, views, workflows
 
         assert creation.router is not None
         assert home.router is not None
@@ -59,10 +58,10 @@ class TestImportsResolve:
 
     def test_all_services_import(self):
         """Verify all services can be imported without errors."""
+        from app.services.comment_service import CommentService
         from app.services.creation_service import CreationService
         from app.services.draft_service import DraftService
         from app.services.finding_model_service import FindingModelService
-        from app.services.comment_service import CommentService
 
         assert CreationService is not None
         assert DraftService is not None

@@ -213,6 +213,10 @@ class TestHTMXStepEndpoints:
 
     def test_step_1_valid_name(self, authenticated_client_with_cache: TestClient, mock_cache: MagicMock) -> None:
         """Test step 1 with valid name input."""
+        from unittest.mock import patch
+
+        from findingmodel import FindingInfo
+
         # Mock session retrieval and update
         session_data = '{"session_id": "test-123", "current_step": 1}'
         mock_cache.get = AsyncMock(return_value=session_data)
@@ -221,9 +225,19 @@ class TestHTMXStepEndpoints:
         # Mock index check to return None (name available)
         app.state.database.finding_index.get = AsyncMock(return_value=None)
 
-        response = authenticated_client_with_cache.post(
-            "/create/step/1", data={"session_id": "test-123", "name": "test-finding"}
+        # Mock generate_finding_info to avoid calling real OpenAI API
+        mock_finding_info = FindingInfo(
+            name="test-finding",
+            description="A test finding for unit testing purposes.",
+            synonyms=["test synonym"],
         )
+        with patch(
+            "app.services.creation_service.CreationService.generate_finding_info",
+            new=AsyncMock(return_value=mock_finding_info),
+        ):
+            response = authenticated_client_with_cache.post(
+                "/create/step/1", data={"session_id": "test-123", "name": "test-finding"}
+            )
 
         assert response.status_code == 200
         content = response.text
@@ -416,56 +430,8 @@ class TestHTMXStepEndpoints:
         assert "mode=edit" in response.headers["location"]
         assert "created=true" in response.headers["location"]
 
-    @pytest.mark.skip(reason="Complex mock needed for FindingModelFull - requires detailed model structure")
-    def test_step_4_success(self, authenticated_client_with_cache: TestClient, mock_cache: MagicMock) -> None:
-        """Test step 4 with valid attributes markdown."""
-        session_data = """
-        {
-            "session_id": "test-123",
-            "current_step": 4,
-            "name": "test-finding",
-            "description": "A test finding description",
-            "synonyms": ["synonym1"],
-            "similar_models": []
-        }
-        """
-        mock_cache.get = AsyncMock(return_value=session_data)
-        mock_cache.set = AsyncMock(return_value=None)
-
-        # Mock model creation - just use a MagicMock since FindingModelFull is complex
-        mock_model = MagicMock()
-        mock_model.name = "test-finding"
-        mock_model.description = "A test finding description"
-        mock_model.attributes = []
-        mock_model.model_dump.return_value = {"name": "test-finding", "description": "A test finding"}
-        mock_model.model_dump_json.return_value = '{"name": "test-finding"}'
-        # mock_create_model.return_value = mock_model  # This line causes F821
-
-        attributes_markdown = """
-        ## Attributes
-
-        ### presence
-        Whether the finding is present or absent.
-
-        **Options:** present, absent, indeterminate
-        """
-
-        response = authenticated_client_with_cache.post(
-            "/create/step/4",
-            data={
-                "session_id": "test-123",
-                "description": "A test finding description",
-                "synonyms": '["synonym1"]',  # JSON string
-                "attributes_markdown": attributes_markdown,
-            },
-        )
-
-        assert response.status_code == 200
-        content = response.text
-        assert "Your Finding Model is Ready!" in content
-        assert "test-finding" in content
-
-    # NOTE: Step 4 POST endpoint has been removed - this functionality is now in the draft system
+    # NOTE: test_step_4_success was deleted - Step 4 POST endpoint has been removed.
+    # The functionality is now in the unified draft system at /drafts/{id}/update-and-redirect
 
     def test_step_invalid_session(self, authenticated_client_with_cache: TestClient, mock_cache: MagicMock) -> None:
         """Test step endpoint with invalid session."""
