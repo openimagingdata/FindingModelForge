@@ -134,8 +134,9 @@ class TestCreationService:
 
     async def test_generate_finding_info_test_mode(self, service: CreationService):
         """Test generating finding info in test mode."""
-        # Test
-        result = await service.generate_finding_info("Test Finding", test_mode=True)
+        # Test - patch sleep to avoid 2s delay in unit tests
+        with patch("asyncio.sleep", new=AsyncMock()):
+            result = await service.generate_finding_info("Test Finding", test_mode=True)
 
         # Assertions
         assert result.name == "Test Finding"
@@ -162,10 +163,11 @@ class TestCreationService:
 
     async def test_find_similar_models_test_mode(self, service: CreationService):
         """Test finding similar models in test mode."""
-        # Test
-        result = await service.find_similar_models(
-            name="Test Finding", description="Test description", synonyms=["synonym"], test_mode=True
-        )
+        # Test - patch sleep to avoid 2s delay in unit tests
+        with patch("asyncio.sleep", new=AsyncMock()):
+            result = await service.find_similar_models(
+                name="Test Finding", description="Test description", synonyms=["synonym"], test_mode=True
+            )
 
         # Assertions
         assert result.similar_models == []
@@ -225,6 +227,7 @@ class TestCreationService:
     ):
         """Test generating finding model from inputs in test mode."""
         with (
+            patch("asyncio.sleep", new=AsyncMock()),  # Avoid 2s delay in unit tests
             patch("app.services.creation_service.add_ids_to_model") as mock_add_ids,
             patch("app.services.creation_service.add_standard_codes_to_model"),
         ):

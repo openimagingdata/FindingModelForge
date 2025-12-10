@@ -122,7 +122,7 @@ FindingModelForge/
 
 ### 4. Testing Philosophy
 
-- **100% test success rate** (144 tests passing: 71 unit tests + 73 integration/UI tests)
+- **100% test success rate**: All tests must pass before committing
 - **High-performance test suite**: UI tests complete in 2.5 minutes (2x speedup from optimization)
 - **No Schrödinger's Tests**: Tests must fail when they can't verify their intended behavior
 - **Comprehensive coverage**: Unit tests for backend logic, Playwright tests for UI workflows
