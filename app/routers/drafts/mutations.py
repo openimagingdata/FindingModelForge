@@ -7,12 +7,8 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from app.auth import CurrentUserDep
 from app.config import logger
 from app.dependencies import CreationSessionDep, DraftServiceDep, SessionManagerDep
-from app.models import FindingModelInputs
-from app.routers.drafts.helpers import (
-    build_update_htmx_response,
-    check_draft_permissions,
-    fetch_draft_with_context,
-)
+from app.models import FindingModelDraft, FindingModelInputs
+from app.routers.drafts.helpers import build_update_htmx_response
 from app.templates import templates
 from app.utils.forms import parse_synonyms
 
@@ -168,14 +164,16 @@ async def update_draft_and_redirect(
 ) -> Response:
     """Update draft and redirect to unified draft page - used when coming from creation workflow."""
     try:
-        # Fetch draft with author information using helper
-        draft, author_name = await fetch_draft_with_context(draft_id, current_user.id, draft_service)
+        # Fetch draft with author information using service directly
+        draft_dict = await draft_service.get_draft_with_author(draft_id, current_user.id)
+        if draft_dict is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Draft not found")
 
-        # Check permissions using helper (will raise 403 if not editable)
-        check_draft_permissions(draft, current_user)
+        author_name = draft_dict.get("author_name") or draft_dict.get("author_username", "Unknown")
+        draft = FindingModelDraft.model_validate(draft_dict)
 
-        # This route can be called for draft and public statuses (owned by user)
-        # Submitted drafts are locked and cannot be edited
+        # Ownership verified by get_draft_with_author passing user_id
+        # Now check if editable status
         if draft.status not in ["draft", "public"]:
             logger.error(f"Draft not editable: draft_id={draft_id}, status={draft.status}, user_id={current_user.id}")
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Draft is not editable")

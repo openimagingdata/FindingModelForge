@@ -9,7 +9,7 @@ from app.database import DraftRepo, UserRepo
 from app.models import Comment, DraftStatus, FindingModelDraft, FindingModelInputs, User
 from app.services import NotFoundError
 from app.services.comment_service import CommentService
-from app.services.draft_service import DraftService
+from app.services.draft_service import DraftService, DraftViewContext
 
 
 class TestDraftService:
@@ -21,6 +21,7 @@ class TestDraftService:
         repo = MagicMock(spec=DraftRepo)
         repo.list_for_user = AsyncMock()
         repo.get_draft = AsyncMock()
+        repo.get_draft_with_author = AsyncMock()
         repo.delete_draft = AsyncMock()
         repo.submit = AsyncMock()
         return repo
@@ -483,3 +484,211 @@ class TestDraftService:
         result = service.should_regenerate_model(draft, new_inputs)
 
         assert result is False
+
+    # --- Tests for prepare_view_context() ---
+
+    @pytest.fixture
+    def draft_with_json(self, sample_draft: FindingModelDraft) -> FindingModelDraft:
+        """Sample draft with generated JSON for view mode tests."""
+        # Minimal valid FindingModelFull JSON
+        sample_draft.generated_json = '{"id": "test-id", "names": ["Test"], "description": "Test", "attributes": []}'
+        return sample_draft
+
+    @pytest.mark.asyncio
+    async def test_prepare_view_context_owner_own_draft(
+        self,
+        service: DraftService,
+        mock_draft_repo: MagicMock,
+        sample_draft: FindingModelDraft,
+    ):
+        """Owner viewing their own draft can edit and delete."""
+        sample_draft.status = DraftStatus.DRAFT
+        sample_draft.generated_json = '{"id": "test-id", "names": ["Test"], "description": "Test", "attributes": []}'
+        mock_draft_repo.get_draft_with_author.return_value = sample_draft.model_dump()
+
+        result = await service.prepare_view_context(
+            draft_id=str(sample_draft.id),
+            user_id=sample_draft.user_id,
+            requested_mode="view",
+        )
+
+        assert isinstance(result, DraftViewContext)
+        assert result.can_edit is True
+        assert result.can_delete is True
+        assert result.draft.id == sample_draft.id
+
+    @pytest.mark.asyncio
+    async def test_prepare_view_context_owner_public_draft(
+        self,
+        service: DraftService,
+        mock_draft_repo: MagicMock,
+        sample_draft: FindingModelDraft,
+    ):
+        """Owner viewing their own public draft can edit and delete."""
+        sample_draft.status = DraftStatus.PUBLIC
+        sample_draft.generated_json = '{"id": "test-id", "names": ["Test"], "description": "Test", "attributes": []}'
+        mock_draft_repo.get_draft_with_author.return_value = sample_draft.model_dump()
+
+        result = await service.prepare_view_context(
+            draft_id=str(sample_draft.id),
+            user_id=sample_draft.user_id,
+            requested_mode="view",
+        )
+
+        assert result.can_edit is True
+        assert result.can_delete is True
+        assert result.resolved_mode == "view"
+
+    @pytest.mark.asyncio
+    async def test_prepare_view_context_owner_submitted_draft(
+        self,
+        service: DraftService,
+        mock_draft_repo: MagicMock,
+        mock_comment_service: MagicMock,
+        sample_draft: FindingModelDraft,
+    ):
+        """Owner viewing their submitted draft cannot edit or delete."""
+        sample_draft.status = DraftStatus.SUBMITTED
+        sample_draft.generated_json = '{"id": "test-id", "names": ["Test"], "description": "Test", "attributes": []}'
+        mock_draft_repo.get_draft_with_author.return_value = sample_draft.model_dump()
+        mock_comment_service.get_thread.return_value = None  # No comments
+
+        result = await service.prepare_view_context(
+            draft_id=str(sample_draft.id),
+            user_id=sample_draft.user_id,
+            requested_mode="edit",  # Request edit mode
+        )
+
+        assert result.can_edit is False
+        assert result.can_delete is False
+        # Mode should be forced to view since can_edit is False
+        assert result.resolved_mode == "view"
+
+    @pytest.mark.asyncio
+    async def test_prepare_view_context_non_owner_public_draft(
+        self,
+        service: DraftService,
+        mock_draft_repo: MagicMock,
+        mock_comment_service: MagicMock,
+        sample_draft: FindingModelDraft,
+    ):
+        """Non-owner viewing public draft cannot edit or delete."""
+        sample_draft.status = DraftStatus.PUBLIC
+        sample_draft.generated_json = '{"id": "test-id", "names": ["Test"], "description": "Test", "attributes": []}'
+        mock_draft_repo.get_draft_with_author.return_value = sample_draft.model_dump()
+        mock_comment_service.get_thread.return_value = None  # No comments
+
+        other_user_id = sample_draft.user_id + 1  # Different user
+
+        result = await service.prepare_view_context(
+            draft_id=str(sample_draft.id),
+            user_id=other_user_id,
+            requested_mode="view",
+        )
+
+        assert result.can_edit is False
+        assert result.can_delete is False
+        assert result.resolved_mode == "view"
+
+    @pytest.mark.asyncio
+    async def test_prepare_view_context_non_owner_private_draft_raises(
+        self,
+        service: DraftService,
+        mock_draft_repo: MagicMock,
+        sample_draft: FindingModelDraft,
+    ):
+        """Non-owner accessing private draft raises NotFoundError."""
+        sample_draft.status = DraftStatus.DRAFT  # Private
+        mock_draft_repo.get_draft_with_author.return_value = sample_draft.model_dump()
+
+        other_user_id = sample_draft.user_id + 1  # Different user
+
+        with pytest.raises(NotFoundError):
+            await service.prepare_view_context(
+                draft_id=str(sample_draft.id),
+                user_id=other_user_id,
+                requested_mode="view",
+            )
+
+    @pytest.mark.asyncio
+    async def test_prepare_view_context_unauthenticated_private_draft_raises(
+        self,
+        service: DraftService,
+        mock_draft_repo: MagicMock,
+        sample_draft: FindingModelDraft,
+    ):
+        """Unauthenticated user accessing private draft raises NotFoundError."""
+        sample_draft.status = DraftStatus.DRAFT  # Private
+        mock_draft_repo.get_draft_with_author.return_value = sample_draft.model_dump()
+
+        with pytest.raises(NotFoundError):
+            await service.prepare_view_context(
+                draft_id=str(sample_draft.id),
+                user_id=None,  # Not authenticated
+                requested_mode="view",
+            )
+
+    @pytest.mark.asyncio
+    async def test_prepare_view_context_edit_mode_forced_to_view(
+        self,
+        service: DraftService,
+        mock_draft_repo: MagicMock,
+        mock_comment_service: MagicMock,
+        sample_draft: FindingModelDraft,
+    ):
+        """Edit mode requested but user can't edit resolves to view mode."""
+        sample_draft.status = DraftStatus.PUBLIC
+        sample_draft.generated_json = '{"id": "test-id", "names": ["Test"], "description": "Test", "attributes": []}'
+        mock_draft_repo.get_draft_with_author.return_value = sample_draft.model_dump()
+        mock_comment_service.get_thread.return_value = None  # No comments
+
+        other_user_id = sample_draft.user_id + 1  # Different user, can't edit
+
+        result = await service.prepare_view_context(
+            draft_id=str(sample_draft.id),
+            user_id=other_user_id,
+            requested_mode="edit",  # Request edit mode
+        )
+
+        # Edit mode should be forced to view since user can't edit
+        assert result.resolved_mode == "view"
+        assert result.can_edit is False
+
+    @pytest.mark.asyncio
+    async def test_prepare_view_context_view_mode_without_json_needs_redirect(
+        self,
+        service: DraftService,
+        mock_draft_repo: MagicMock,
+        sample_draft: FindingModelDraft,
+    ):
+        """View mode without JSON triggers needs_redirect_to_edit for owner's draft."""
+        sample_draft.status = DraftStatus.DRAFT
+        sample_draft.generated_json = None  # No JSON
+        mock_draft_repo.get_draft_with_author.return_value = sample_draft.model_dump()
+
+        result = await service.prepare_view_context(
+            draft_id=str(sample_draft.id),
+            user_id=sample_draft.user_id,
+            requested_mode="view",  # Request view mode
+        )
+
+        # Should indicate redirect needed (view mode, no JSON, can edit)
+        assert result.needs_redirect_to_edit is True
+        assert result.resolved_mode == "view"
+        assert result.finding_model is None
+
+    @pytest.mark.asyncio
+    async def test_prepare_view_context_draft_not_found_raises(
+        self,
+        service: DraftService,
+        mock_draft_repo: MagicMock,
+    ):
+        """Non-existent draft raises NotFoundError."""
+        mock_draft_repo.get_draft_with_author.return_value = None
+
+        with pytest.raises(NotFoundError):
+            await service.prepare_view_context(
+                draft_id="nonexistent-id",
+                user_id=12345,
+                requested_mode="view",
+            )

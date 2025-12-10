@@ -642,6 +642,64 @@ class FindingModelInputs(BaseModel):
 
 ---
 
+### Task 1.6: Remove Duplicate Helper Functions and Add Service Tests ✅ COMPLETE
+
+**Priority**: P1 | **Effort**: 1 hour | **Risk**: Low | **Status**: Complete
+
+**Problem**: Task 1.4 added `prepare_view_context()` to DraftService but left duplicate logic in helpers.py
+(`fetch_draft_with_context`, `check_draft_permissions`). This creates maintenance burden and the service method lacks
+unit tests.
+
+**Changes**:
+
+#### 1.6.1 Write unit tests for `DraftService.prepare_view_context()`
+
+Add to `tests/test_services/test_draft_service.py`:
+
+- [x] Owner viewing own draft (can_edit=True, can_delete=True)
+- [x] Owner viewing own public draft (can_edit=True, can_delete=True)
+- [x] Owner viewing own submitted draft (can_edit=False, can_delete=False)
+- [x] Non-owner viewing public draft (can_edit=False, can_delete=False)
+- [x] Non-owner accessing private draft (raises NotFoundError)
+- [x] Unauthenticated accessing private draft (raises NotFoundError)
+- [x] Edit mode requested but can't edit (resolved_mode="view")
+- [x] View mode without JSON triggers needs_redirect_to_edit=True
+- [x] Draft not found raises NotFoundError
+
+#### 1.6.2 Delete duplicate helpers from `app/routers/drafts/helpers.py`:
+
+- [x] Delete `fetch_draft_with_context()`
+- [x] Delete `check_draft_permissions()`
+- [x] Remove unused imports (`status`, `DraftServiceDep`)
+
+#### 1.6.3 Update `app/routers/drafts/mutations.py`:
+
+- [x] Replace helper calls with direct service calls
+- [x] Update imports to remove deleted helpers
+- [x] Add `FindingModelDraft` import for model validation
+
+#### 1.6.4 Delete obsolete tests from `tests/test_routers/test_drafts_helpers.py`:
+
+- [x] Delete `test_fetch_draft_with_context_*` tests (3 tests)
+- [x] Delete `test_check_draft_permissions_*` tests (6 tests)
+- [x] Keep all other helper tests (render, build, htmx context)
+- [x] Remove unused imports (`AsyncMock`, `HTTPException`, `pytest`)
+
+**Testing**:
+
+- [x] New `prepare_view_context()` tests pass (9 tests added)
+- [x] `task test-unit` passes
+- [ ] `task test-integration` passes (not run yet)
+
+**Success Criteria**:
+
+- [x] No duplicate permission logic between helpers.py and draft_service.py
+- [x] `prepare_view_context()` has comprehensive unit tests
+- [x] All unit tests pass
+- [x] helpers.py reduced by ~50 lines
+
+---
+
 ## Phase 2: HTMX Response Service
 
 **Goal**: Standardize HTMX response patterns across all routers
@@ -797,6 +855,7 @@ HTMXResponseServiceDep = Annotated[HTMXResponseService, Depends(get_htmx_respons
 - [x] 1.3: Creation workflow methods in CreationService (3-4h) ✅ Complete
 - [x] 1.4: DraftService view context method (1-2h) ✅ Complete
 - [x] 1.5: Consolidate validation at API boundary (1-2h) ✅ Complete
+- [ ] 1.6: Remove duplicate helpers and add service tests (1h)
 
 ### Phase 2 Tasks
 

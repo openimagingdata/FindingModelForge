@@ -2,10 +2,9 @@
 
 from typing import TYPE_CHECKING, Any
 
-from fastapi import HTTPException, Request, status
+from fastapi import HTTPException, Request
 from findingmodel import FindingModelFull
 
-from app.dependencies import DraftServiceDep
 from app.models import FindingModelDraft, User
 
 if TYPE_CHECKING:
@@ -41,58 +40,6 @@ def get_htmx_context(request: Request) -> dict[str, Any]:
         "current_url": request.headers.get("HX-Current-URL", ""),
         "from_public": request.query_params.get("from") == "public",
     }
-
-
-async def fetch_draft_with_context(
-    draft_id: str,
-    user_id: int | None,
-    draft_service: DraftServiceDep,
-) -> tuple[FindingModelDraft, str]:
-    """Fetch draft with author info, raising 404 if not found.
-
-    Args:
-        draft_id: Draft ID to fetch
-        user_id: Current user ID (None if not authenticated)
-        draft_service: Draft service dependency
-
-    Returns:
-        Tuple of (draft, author_name)
-
-    Raises:
-        HTTPException: 404 if draft not found
-    """
-    draft_dict = await draft_service.get_draft_with_author(draft_id=draft_id, user_id=user_id)
-    if draft_dict is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Draft not found")
-
-    author_name = draft_dict.get("author_name") or draft_dict.get("author_username", "Unknown")
-    draft = FindingModelDraft.model_validate(draft_dict)
-    return draft, author_name
-
-
-def check_draft_permissions(
-    draft: FindingModelDraft,
-    current_user: User | None,
-) -> tuple[bool, bool]:
-    """Check edit and delete permissions for a draft.
-
-    Args:
-        draft: Draft to check permissions for
-        current_user: Current user (None if not authenticated)
-
-    Returns:
-        Tuple of (can_edit, can_delete)
-
-    Raises:
-        HTTPException: 404 if trying to access private draft without ownership
-    """
-    # Private drafts require authentication and ownership
-    if draft.status == "draft" and (not current_user or draft.user_id != current_user.id):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Draft not found")
-
-    can_edit = current_user is not None and draft.status in ["draft", "public"] and draft.user_id == current_user.id
-    can_delete = current_user is not None and draft.status in ["draft", "public"] and draft.user_id == current_user.id
-    return can_edit, can_delete
 
 
 def parse_finding_model_from_draft(draft: FindingModelDraft) -> FindingModelFull | None:
