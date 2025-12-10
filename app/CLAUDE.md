@@ -32,13 +32,33 @@ The backend follows a layered architecture:
 
 ### Service Layer
 
-- `services/comment_service.py` - Centralized comment business logic (rate limiting, validation, persistence)
-- `services/draft_service.py` - Draft operations (formatting, comment delegation)
-- `services/finding_model_service.py` - Finding model operations (comment delegation)
-- `services/comment_helpers.py` - Shared validation and rate limit helpers
+- `services/creation_service.py` - Creation workflow (AI generation, name resolution, session data)
+- `services/draft_service.py` - Draft operations (view context, JSON generation, CRUD)
+- `services/finding_model_service.py` - Model browsing (pagination context, detail context)
+- `services/comment_service.py` - Comment business logic (rate limiting, validation)
+- `services/comment_helpers.py` - Shared validation and sanitization helpers
 
-**Service Pattern**: Services encapsulate business logic and coordinate between repositories. Routers delegate to
-services, services use repositories.
+**Service Pattern**: Services encapsulate business logic and return complete context objects. Routers are thin HTTP
+handlers that delegate to services.
+
+**Key Context Dataclasses**:
+
+- `PaginationContext` - Complete pagination state for list views
+- `DraftViewContext` - Draft with permissions, mode, and comments
+- `NameResolutionResult` - Workflow routing (CREATE_NEW, RESUME_EDITABLE, VIEW_SUBMITTED)
+
+**Service Method Patterns**:
+
+```python
+# Services return complete context objects
+context = await draft_service.prepare_view_context(draft_id, user_id, mode)
+# context.draft, context.can_edit, context.resolved_mode, context.thread
+
+# Routers just handle HTTP concerns
+if context.needs_redirect_to_edit:
+    return RedirectResponse(url=f"/drafts/{draft_id}?mode=edit")
+return templates.render("draft.html", **context.__dict__)
+```
 
 ### Authentication
 

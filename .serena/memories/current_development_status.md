@@ -1,54 +1,41 @@
 # Current Development Status
 
-## Service Layer Completion (November 2025)
+## Service Layer Refactoring (December 2025)
 
-### Status: 🔄 PLANNED - Ready for Implementation
+### Status: ✅ PHASE 1 COMPLETE
 
-**Project**: Complete the service layer refactoring to move all remaining business logic from routers to services.
+**Project**: Service layer refactoring - move business logic from routers to services.
 
-**Related Documents:**
+**Documentation**: `tasks/service_layer_completion_plan.md`
 
-- Assessment: `tasks/backend_complexity_assessment.md`
-- Implementation Plan: `tasks/service_layer_completion_plan.md`
-- Previous Work: `tasks/done/router_cleanup.md`
+#### Phase 1 Completed (December 2025)
 
-#### Problem Statement
+All 6 tasks complete:
 
-The October 2025 router cleanup successfully broke up monolithic files, but:
+| Task | Description | Key Methods |
+|------|-------------|-------------|
+| 1.1 | FindingModelService context | `prepare_list_context()`, `prepare_detail_context()` |
+| 1.2 | DraftService JSON generation | `generate_finding_model_json()`, `should_regenerate_model()` |
+| 1.3 | CreationService workflow | `resolve_name_input()`, `extract_session_data()` |
+| 1.4 | DraftService view context | `prepare_view_context()` |
+| 1.5 | API boundary validation | Pydantic Field(), FastAPI Form() constraints |
+| 1.6 | Cleanup & tests | Removed duplicate helpers, 9 new service tests |
 
-- Business logic still leaks into routers (~40% of logic)
-- HTMX response patterns duplicated across files
-- Services don't provide complete context objects
+#### Key Patterns Established
 
-#### Planned Changes
+1. **Context Dataclasses**: Services return complete context objects (`PaginationContext`, `DraftViewContext`, `NameResolutionResult`)
+2. **Thin Routers**: Routers handle HTTP only, delegate business logic to services
+3. **API Boundary Validation**: Input validation via Pydantic/FastAPI, sanitization in services
 
-**Phase 1: Service Layer Completion** (8-11 hours)
+#### Results
 
-- 1.1: Add `prepare_list_context()` and `prepare_detail_context()` to `FindingModelService`
-- 1.2: Move `generate_finding_model_json()` to `DraftService`
-- 1.3: Add workflow resolution methods to `CreationService`
-- 1.4: Add `prepare_view_context()` to `DraftService`
-- 1.5: Move validation logic to services
+- **547 unit tests passing, 0 skipped**
+- **All router functions < 80 lines**
+- **No business logic in routers**
 
-**Phase 2: HTMX Response Service** (4-6 hours)
+#### Phase 2 (Deferred)
 
-- 2.1: Create `HTMXResponseService` for standardized response building
-- 2.2: Migrate routers to use the service
-
-#### Success Metrics
-
-| Metric                     | Current   | Target     |
-| -------------------------- | --------- | ---------- |
-| Max router function length | 220 lines | <80 lines  |
-| Business logic in routers  | ~40%      | 0%         |
-| Test coverage              | 81%       | 85%+       |
-| `drafts/helpers.py`        | 448 lines | <200 lines |
-
-#### Architectural Decisions
-
-1. **Merge workflow into CreationService** - No separate `CreationWorkflowService`
-2. **HTMX patterns → `HTMXResponseService`** - Service pattern, not utility
-3. **Validation in services** - Centralized, testable, single source of truth
+`HTMXResponseService` for standardized response building - optional cleanup
 
 ---
 

@@ -9,6 +9,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Changed
 
+#### Service Layer Refactoring Phase 1 (December 2025)
+
+- **Context dataclasses**: Services now return complete context objects (`PaginationContext`, `DraftViewContext`, `NameResolutionResult`) instead of raw data
+- **Business logic migration**: Moved workflow logic from routers to services:
+  - `CreationService.resolve_name_input()` - draft lookup and workflow routing
+  - `DraftService.prepare_view_context()` - permission checks, mode resolution
+  - `FindingModelService.prepare_list_context()` - pagination calculations
+- **Validation consolidation**: Input validation at API boundary (Pydantic/FastAPI), sanitization in services
+- **Duplicate code removal**: Deleted `fetch_draft_with_context()`, `check_draft_permissions()` from helpers.py
+- **Service tests**: Added 9 unit tests for `DraftService.prepare_view_context()`
+
+#### Unit Test Quality Fixes (December 2025)
+
+- **Fixed real API calls**: Tests were calling actual OpenAI API - now properly mocked
+- **Removed skipped tests**: Fixed 4 skipped tests, deleted 2 obsolete step-4 tests
+- **Test performance**: `test_step_1_valid_name` reduced from 15s to 0.04s via mocking
+- **API mocking requirement**: All external API calls (OpenAI, etc.) must be mocked in unit tests
+
 #### UI Test Suite Performance and Quality Improvements (November 2025)
 
 - **Test performance optimization**: UI test suite now runs in 2.5 minutes (down from 5+ minutes, 2x speedup)

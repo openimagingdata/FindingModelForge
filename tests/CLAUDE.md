@@ -15,6 +15,45 @@ Tests are organized into **unit tests** and **integration tests**:
 
 **Why?** It gives false confidence. You think you're testing something, but you're not.
 
+## ⚠️ CRITICAL: External API Mocking Requirement
+
+**Unit tests MUST NEVER call real external APIs** (OpenAI, GitHub, etc.). All external calls must be mocked.
+
+### Why This Matters
+
+- **Cost**: Real API calls cost money and slow down tests
+- **Flakiness**: Network issues cause false failures
+- **Determinism**: AI responses vary, making assertions unreliable
+
+### Required Mocking Pattern
+
+```python
+# ✅ CORRECT: Mock the AI service call
+from unittest.mock import AsyncMock, patch
+
+async def test_something_that_uses_ai(service):
+    with patch("app.services.creation_service.create_model_from_markdown", new=AsyncMock()) as mock:
+        mock.return_value = mock_finding_model  # Use realistic mock data
+        result = await service.generate_from_inputs(...)
+        # Test assertions
+
+# ❌ WRONG: Calling real AI API in unit test
+async def test_something_that_uses_ai(service):
+    result = await service.generate_from_inputs(..., test_mode=False)  # REAL API CALL!
+```
+
+### Key Services Requiring Mocks
+
+- `create_model_from_markdown` - OpenAI model generation
+- `create_info_from_name` - OpenAI description generation
+- `find_similar_models` - OpenAI similarity detection
+- `CreationService.generate_finding_info` - Wraps AI calls
+
+### Test Mode vs Proper Mocking
+
+The `test_mode=True` parameter adds artificial delays to simulate AI. **This is NOT a substitute for mocking** when
+testing `test_mode=False` code paths. Always mock the underlying AI calls.
+
 ### Example of Schrödinger's Test:
 
 ```python

@@ -855,21 +855,33 @@ HTMXResponseServiceDep = Annotated[HTMXResponseService, Depends(get_htmx_respons
 - [x] 1.3: Creation workflow methods in CreationService (3-4h) ✅ Complete
 - [x] 1.4: DraftService view context method (1-2h) ✅ Complete
 - [x] 1.5: Consolidate validation at API boundary (1-2h) ✅ Complete
-- [ ] 1.6: Remove duplicate helpers and add service tests (1h)
+- [x] 1.6: Remove duplicate helpers and add service tests (1h) ✅ Complete
 
-### Phase 2 Tasks
+### Phase 2 Tasks (Deferred)
 
 - [ ] 2.1: Create HTMXResponseService (2-3h)
 - [ ] 2.2: Migrate routers to use service (2-3h)
 
 ### Final Verification
 
-- [x] All unit tests pass (558 passed, 6 skipped as of Task 1.5 completion)
+- [x] All unit tests pass (547 passed, 0 skipped as of Task 1.6 completion)
 - [x] UI tests pass (creation workflow: 8 passed, draft management: 20 passed)
 - [ ] Coverage >= 85%
 - [x] No business logic in routers (moved to services)
 - [x] All router functions < 80 lines
 - [ ] `drafts/helpers.py` < 200 lines (Phase 2 will address this)
+
+---
+
+## Phase 1 Completion Summary (December 2025)
+
+**All Phase 1 tasks complete.** Key accomplishments:
+
+1. **Service Context Objects**: Services now return complete context dataclasses (`PaginationContext`, `ModelDetailContext`, `DraftViewContext`) instead of raw data
+2. **Business Logic Migration**: All workflow logic moved from routers to services (`CreationService.resolve_name_input()`, `DraftService.prepare_view_context()`)
+3. **Validation Consolidation**: Input validation at API boundary (Pydantic/FastAPI), sanitization in services
+4. **Code Cleanup**: Removed duplicate helpers, added comprehensive service tests (9 tests for `prepare_view_context`)
+5. **Test Quality**: Fixed tests calling real OpenAI API, removed all skipped tests
 
 ---
 
