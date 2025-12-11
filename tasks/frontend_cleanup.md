@@ -82,6 +82,13 @@ element.className = 'bg-primary-600 text-white';
 
 **File**: `tests/ui/test_profile.py`
 
+**Important Template Details** (verified from actual `profile.html`):
+- Profile info is inside a **collapsed Flowbite accordion** (`aria-expanded="false"`) - must expand first
+- Edit button text is just "Edit" (not "Edit Profile") - located at line 195
+- Name input uses `id="full_name"` (not `name='name'`) - line 128
+- Organization input has `placeholder="e.g., ACR, RSNA, SIIM"` - line 210
+- Save/Cancel buttons are inside the accordion body when in edit mode
+
 **Add this test class**:
 
 ```python
@@ -95,13 +102,22 @@ class TestProfileEditing:
         page, errors, warnings = authenticated_page_with_console
         await navigate_to_profile_page(page)
 
-        # Find and click edit button
-        edit_button = page.locator("button:has-text('Edit Profile')")
+        # Expand the Profile Information accordion first
+        accordion_button = page.locator("[data-accordion-target='#profile-info-accordion-body-1']")
+        await expect(accordion_button).to_be_visible(timeout=5000)
+        await accordion_button.click()
+
+        # Wait for accordion to expand
+        accordion_body = page.locator("#profile-info-accordion-body-1")
+        await expect(accordion_body).to_be_visible(timeout=5000)
+
+        # Find and click edit button (text is just "Edit", not "Edit Profile")
+        edit_button = page.locator("button:has-text('Edit')")
         await expect(edit_button).to_be_visible(timeout=5000)
         await edit_button.click()
 
-        # Should now see form fields
-        await expect(page.locator("input[name='name']")).to_be_visible()
+        # Should now see form fields (name input uses id="full_name")
+        await expect(page.locator("input#full_name")).to_be_visible()
         await expect(page.locator("button:has-text('Save')")).to_be_visible()
         await expect(page.locator("button:has-text('Cancel')")).to_be_visible()
 
@@ -114,22 +130,25 @@ class TestProfileEditing:
         page, errors, warnings = authenticated_page_with_console
         await navigate_to_profile_page(page)
 
-        # Enter edit mode
-        await page.locator("button:has-text('Edit Profile')").click()
-        await expect(page.locator("input[name='name']")).to_be_visible()
+        # Expand accordion and enter edit mode
+        await page.locator("[data-accordion-target='#profile-info-accordion-body-1']").click()
+        await expect(page.locator("#profile-info-accordion-body-1")).to_be_visible(timeout=5000)
+        await page.locator("button:has-text('Edit')").click()
+        await expect(page.locator("input#full_name")).to_be_visible()
 
-        # Add organization
-        org_input = page.locator("input[placeholder*='organization' i], input[name*='org' i]")
+        # Add organization (placeholder is "e.g., ACR, RSNA, SIIM")
+        org_input = page.locator("input[placeholder*='ACR']")
         await org_input.fill("TEST")
         await page.locator("button:has-text('Add')").click()
 
-        # Verify organization badge appears
-        await expect(page.locator("span:has-text('TEST')")).to_be_visible()
+        # Verify organization badge appears (inside edit mode org list)
+        org_badge = page.locator("#profile-info-accordion-body-1 span:has-text('TEST')")
+        await expect(org_badge).to_be_visible(timeout=5000)
 
-        # Remove organization
-        remove_button = page.locator("span:has-text('TEST')").locator("button")
+        # Remove organization (button is inside the badge span)
+        remove_button = org_badge.locator("button")
         await remove_button.click()
-        await expect(page.locator("span:has-text('TEST')")).to_have_count(0)
+        await expect(org_badge).to_have_count(0)
 
         await verify_no_console_errors(errors, warnings)
 
@@ -140,18 +159,23 @@ class TestProfileEditing:
         page, errors, warnings = authenticated_page_with_console
         await navigate_to_profile_page(page)
 
-        # Enter edit mode
-        await page.locator("button:has-text('Edit Profile')").click()
+        # Expand accordion and enter edit mode
+        await page.locator("[data-accordion-target='#profile-info-accordion-body-1']").click()
+        await expect(page.locator("#profile-info-accordion-body-1")).to_be_visible(timeout=5000)
+        await page.locator("button:has-text('Edit')").click()
 
-        # Make a change
-        name_input = page.locator("input[name='name']")
+        # Make a change (name input uses id="full_name")
+        name_input = page.locator("input#full_name")
+        await expect(name_input).to_be_visible()
         await name_input.fill("Updated Test Name")
 
         # Save
         await page.locator("button:has-text('Save')").click()
 
-        # Should see success alert
-        await expect(page.locator("[role='alert']:has-text('success'), .alert-success, [class*='green']")).to_be_visible(timeout=5000)
+        # Should see success alert (green styling indicates success)
+        # The alert div has class containing 'green' when type='success'
+        success_alert = page.locator("[class*='bg-green']")
+        await expect(success_alert).to_be_visible(timeout=5000)
 
         await verify_no_console_errors(errors, warnings)
 ```
