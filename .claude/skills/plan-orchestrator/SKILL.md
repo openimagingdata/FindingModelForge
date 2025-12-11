@@ -1,7 +1,7 @@
 ---
 name: plan-orchestrator
-description: Orchestrate multi-phase plan implementation via implement-evaluate cycles with specialized subagents. Use when implementing plans, executing roadmaps, or coordinating phased development tasks.
-allowed-tools: Read, Grep, TodoWrite, mcp__serena__read_memory, mcp__serena__write_memory, mcp__serena__list_memories
+description: Orchestrate multi-phase plan implementation by delegating to specialized subagents (backend-implementer, frontend-implementer, test-ui-updater, etc.) through implement-evaluate cycles. Use when executing task plans from tasks/*.md, coordinating phased development, or managing implement-review workflows.
+allowed-tools: Task, TaskOutput, Read, Grep, TodoWrite, AskUserQuestion, mcp__serena__read_memory, mcp__serena__write_memory, mcp__serena__list_memories
 ---
 
 # Plan Orchestrator
@@ -45,23 +45,35 @@ For each phase:
    - Mark phase in TodoWrite
    - Update Serena memories with key architectural decisions only (not one-off fixes)
 
+## Agent Selection (MANDATORY before each delegation)
+
+**STOP and answer these questions before EVERY Task delegation:**
+
+1. **What am I changing?**
+   - Backend code (Python in `app/`) → backend-implementer
+   - Frontend templates/UI (`templates/`) → frontend-implementer
+   - Unit tests (`tests/test_*.py`, NOT `tests/ui/`) → test-unit-updater
+   - UI/Playwright tests (`tests/ui/`) → test-ui-updater
+   - Refactoring existing code → refactor-implementer
+
+2. **What tools does this task need?**
+   - Playwright browser automation → MUST use test-ui-updater or test-ui-reviewer
+   - FastAPI/database operations → backend agents
+   - Flowbite component lookup → frontend agents
+
+3. **Am I matching file location to agent?**
+   - `tests/ui/*.py` = UI tests = `test-ui-updater` / `test-ui-reviewer`
+   - `tests/test_*.py` = Unit tests = `test-unit-updater` / `test-unit-reviewer`
+
 ## Implementer/Reviewer Mapping
 
-### Backend Development
-- **Implementer**: `backend-implementer` - FastAPI endpoints, services, repositories, database operations
-- **Reviewer**: `backend-reviewer` - Validates FastAPI patterns, type safety, async best practices
-- **Test Updater**: `test-unit-updater` - Fixes broken imports/mocks after refactoring
-- **Test Reviewer**: `test-unit-reviewer` - Validates unit tests pass with 75%+ coverage
-
-### Frontend/UI Development
-- **Implementer**: `frontend-implementer` - Flowbite + Alpine.js + HTMX UI components
-- **Reviewer**: `frontend-reviewer` - STRICT Flowbite/Alpine.js/HTMX adherence validation
-- **Test Updater**: `test-ui-updater` - Updates HTMX and Playwright tests after URL changes
-- **Test Reviewer**: `test-ui-reviewer` - Validates end-to-end workflows and browser tests
-
-### Refactoring
-- **Implementer**: `refactor-implementer` - Extracting services, reorganizing routers per `tasks/router_cleanup.md`
-- **Reviewer**: `refactor-reviewer` - Quality verification before committing
+| Domain | Implementer | Reviewer | Files |
+|--------|-------------|----------|-------|
+| Backend API | `backend-implementer` | `backend-reviewer` | `app/routers/`, `app/services/` |
+| Frontend UI | `frontend-implementer` | `frontend-reviewer` | `templates/` |
+| Unit Tests | `test-unit-updater` | `test-unit-reviewer` | `tests/test_*.py` |
+| UI Tests | `test-ui-updater` | `test-ui-reviewer` | `tests/ui/*.py` |
+| Refactoring | `refactor-implementer` | `refactor-reviewer` | Any restructuring |
 
 ## Phase Sequencing
 
