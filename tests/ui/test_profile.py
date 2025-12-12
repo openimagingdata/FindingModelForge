@@ -290,17 +290,18 @@ class TestProfileEditing:
         add_button = page.locator("button:has-text('Add')").first
         await add_button.click()
 
-        # Wait for Alpine.js to render the badge by looking for the Remove button
-        # The Remove button only exists in edit-mode badges and proves the badge was created
-        # (There are two org badge lists in the DOM - view mode has no remove buttons)
-        remove_button = page.get_by_role("button", name="Remove organization").first
-        await expect(remove_button).to_be_visible(timeout=5000)
+        # Wait for Alpine.js to render the ACR badge
+        acr_badge = page.locator('span:has-text("ACR")').filter(
+            has=page.get_by_role("button", name="Remove organization")
+        )
+        await expect(acr_badge).to_be_visible(timeout=5000)
 
-        # Remove the organization by clicking its remove button
-        await remove_button.click()
+        # Find the remove button within the ACR badge and click it
+        acr_remove_button = acr_badge.get_by_role("button", name="Remove organization")
+        await acr_remove_button.click()
 
-        # Verify organization badge is removed (remove button should no longer be visible)
-        await expect(remove_button).not_to_be_visible(timeout=5000)
+        # Verify ACR badge is removed
+        await expect(acr_badge).not_to_be_visible(timeout=5000)
 
         await verify_no_console_errors(errors, warnings)
 

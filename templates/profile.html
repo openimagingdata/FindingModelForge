@@ -2,7 +2,128 @@
 {% from "macros/flowbite_components.html" import flowbite_icon_button, flowbite_badge, flowbite_button %}
 
 {% block content %}
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900" x-data="profileManager()">
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900" x-data='{
+    profile: {
+        id: {{ user.id }},
+        login: "{{ user.login }}",
+        name: "{{ user.name or "" }}",
+        email: "{{ user.email or "" }}",
+        avatar_url: "{{ user.avatar_url or "" }}",
+        html_url: "{{ user.html_url }}",
+        organizations: {{ user.organizations | tojson if user.organizations else "[]" }}
+    },
+    drafts: {{ drafts | tojson }},
+    originalProfile: {},
+    isEditing: false,
+    isSaving: false,
+    newOrganization: "",
+    showWelcome: false,
+    selectedDraftId: null,
+    selectedRowId: null,
+    alert: {
+        show: false,
+        type: "success",
+        message: ""
+    },
+    query: "",
+    statusFilter: "all",
+
+    init() {
+        this.originalProfile = JSON.parse(JSON.stringify(this.profile));
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get("welcome") === "true") {
+            this.showWelcome = true;
+            this.isEditing = true;
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    },
+
+    dismissWelcome() {
+        this.showWelcome = false;
+    },
+
+    startEdit() {
+        this.isEditing = true;
+        this.originalProfile = JSON.parse(JSON.stringify(this.profile));
+    },
+
+    cancelEdit() {
+        this.profile = JSON.parse(JSON.stringify(this.originalProfile));
+        this.isEditing = false;
+        this.newOrganization = "";
+    },
+
+    async saveProfile() {
+        this.isSaving = true;
+        try {
+            const response = await fetch("/api/users/profile", {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${this.getAccessToken()}`
+                },
+                body: JSON.stringify({
+                    name: this.profile.name || null,
+                    email: this.profile.email || null,
+                    avatar_url: this.profile.avatar_url || null,
+                    organizations: this.profile.organizations
+                })
+            });
+            if (response.ok) {
+                const updatedUser = await response.json();
+                this.profile = { ...this.profile, ...updatedUser };
+                this.originalProfile = JSON.parse(JSON.stringify(this.profile));
+                this.isEditing = false;
+                this.showAlert("success", "Profile updated successfully!");
+            } else {
+                const error = await response.json();
+                this.showAlert("error", error.detail || "Failed to update profile");
+            }
+        } catch (error) {
+            this.showAlert("error", "Network error: " + error.message);
+        } finally {
+            this.isSaving = false;
+        }
+    },
+
+    addOrganization() {
+        const org = this.newOrganization.trim().toUpperCase();
+        if (!org) return;
+        if (!/^[A-Z]{3,4}$/.test(org)) {
+            this.showAlert("error", "Organization code must be 3-4 uppercase letters");
+            return;
+        }
+        if (!this.profile.organizations) {
+            this.profile.organizations = [];
+        }
+        if (this.profile.organizations.includes(org)) {
+            this.showAlert("error", "Organization already added");
+            return;
+        }
+        this.profile.organizations.push(org);
+        this.newOrganization = "";
+    },
+
+    removeOrganization(index) {
+        this.profile.organizations.splice(index, 1);
+    },
+
+    getAccessToken() {
+        return document.cookie
+            .split("; ")
+            .find(row => row.startsWith("access_token="))
+            ?.split("=")[1] || "";
+    },
+
+    showAlert(type, message) {
+        this.alert = { show: true, type, message };
+        setTimeout(() => this.hideAlert(), 5000);
+    },
+
+    hideAlert() {
+        this.alert.show = false;
+    }
+}'>
     <div class="container mx-auto px-4 py-8 pb-16 max-w-5xl">
         <!-- Page header -->
         <div class="mb-8">
@@ -380,157 +501,7 @@
         </div>
     </div>
     </div>
-
-<script>
-function profileManager() {
-    return {
-        profile: {
-            id: {{ user.id }},
-            login: '{{ user.login }}',
-            name: '{{ user.name or "" }}',
-            email: '{{ user.email or "" }}',
-            avatar_url: '{{ user.avatar_url or "" }}',
-            html_url: '{{ user.html_url }}',
-            organizations: {{ user.organizations | tojson if user.organizations else '[]' }}
-        },
-    drafts: {{ drafts | tojson }},
-        originalProfile: {},
-        isEditing: false,
-        isSaving: false,
-        newOrganization: '',
-        showWelcome: false,
-        selectedDraftId: null,
-        selectedRowId: null,
-        alert: {
-            show: false,
-            type: 'success',
-            message: ''
-        },
-    query: '',
-    statusFilter: 'all',
-
-    init() {
-            this.originalProfile = JSON.parse(JSON.stringify(this.profile));
-
-            // Check for welcome parameter in URL
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get('welcome') === 'true') {
-                this.showWelcome = true;
-                this.isEditing = true; // Auto-start edit mode for new users
-                // Clean up URL without reloading
-                window.history.replaceState({}, document.title, window.location.pathname);
-            }
-
-            // Observe drafts grid for changes and toggle placeholder accordingly
-            // No MutationObserver needed; server drives UI state with HTMX OOB swaps
-        },
-
-        dismissWelcome() {
-            this.showWelcome = false;
-        },
-
-        startEdit() {
-            this.isEditing = true;
-            this.originalProfile = JSON.parse(JSON.stringify(this.profile));
-        },
-
-        cancelEdit() {
-            this.profile = JSON.parse(JSON.stringify(this.originalProfile));
-            this.isEditing = false;
-            this.newOrganization = '';
-        },
-
-        async saveProfile() {
-            this.isSaving = true;
-
-            try {
-                const response = await fetch('/api/users/profile', {
-                    method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${this.getAccessToken()}`
-                    },
-                    body: JSON.stringify({
-                        name: this.profile.name || null,
-                        email: this.profile.email || null,
-                        avatar_url: this.profile.avatar_url || null,
-                        organizations: this.profile.organizations
-                    })
-                });
-
-                if (response.ok) {
-                    const updatedUser = await response.json();
-                    this.profile = {
-                        ...this.profile,
-                        ...updatedUser
-                    };
-                    this.originalProfile = JSON.parse(JSON.stringify(this.profile));
-                    this.isEditing = false;
-                    this.showAlert('success', 'Profile updated successfully!');
-                } else {
-                    const error = await response.json();
-                    this.showAlert('error', error.detail || 'Failed to update profile');
-                }
-            } catch (error) {
-                this.showAlert('error', 'Network error: ' + error.message);
-            } finally {
-                this.isSaving = false;
-            }
-        },
-
-        addOrganization() {
-            const org = this.newOrganization.trim().toUpperCase();
-
-            if (!org) return;
-
-            // Validate organization code (3-4 uppercase letters)
-            if (!/^[A-Z]{3,4}$/.test(org)) {
-                this.showAlert('error', 'Organization code must be 3-4 uppercase letters');
-                return;
-            }
-
-            if (!this.profile.organizations) {
-                this.profile.organizations = [];
-            }
-
-            if (this.profile.organizations.includes(org)) {
-                this.showAlert('error', 'Organization already added');
-                return;
-            }
-
-            this.profile.organizations.push(org);
-            this.newOrganization = '';
-        },
-
-        removeOrganization(index) {
-            this.profile.organizations.splice(index, 1);
-        },
-
-        getAccessToken() {
-            // Get token from cookie or localStorage depending on your implementation
-            return document.cookie
-                .split('; ')
-                .find(row => row.startsWith('access_token='))
-                ?.split('=')[1] || '';
-        },
-
-        showAlert(type, message) {
-            this.alert = { show: true, type, message };
-            setTimeout(() => this.hideAlert(), 5000);
-        },
-
-        hideAlert() {
-            this.alert.show = false;
-        },
-
-    // No client-side polling or placeholder toggling; handled via OOB swaps on delete
-
-        // no table init needed for card grid
-    }
-}
-</script>
-
-<!-- Drafts placeholder/grid visibility is updated by server via HTMX out-of-band swaps after delete. -->
+</div>
 
 {% block scripts %}{% endblock %}
 {% endblock %}
