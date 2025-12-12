@@ -5,6 +5,7 @@ Tests for the Profile/My Forge page functionality including:
 - Card action buttons (View, Edit, Delete)
 - Delete modal functionality
 - Empty state handling
+- Profile editing (view/edit mode toggle, organization management, save success)
 """
 
 from __future__ import annotations
@@ -218,6 +219,131 @@ class TestEmptyState:
         # Card should be removed and placeholder should show
         await expect(page.locator(f"#draft-card-{draft_id}")).to_have_count(0)
         await expect(page.locator("#no-drafts")).to_be_visible()
+
+        await verify_no_console_errors(errors, warnings)
+
+
+class TestProfileEditing:
+    """Test profile editing functionality."""
+
+    async def test_profile_edit_mode_toggle(
+        self, authenticated_page_with_console: tuple[Page, list[str], list[str]]
+    ) -> None:
+        """Test toggling between view and edit mode."""
+        page, errors, warnings = authenticated_page_with_console
+
+        await navigate_to_profile_page(page)
+
+        # Expand the profile accordion first (collapsed by default)
+        accordion_button = page.locator('[data-accordion-target="#profile-info-accordion-body-1"]')
+        await accordion_button.click()
+
+        # Wait for accordion to expand
+        accordion_body = page.locator("#profile-info-accordion-body-1")
+        await expect(accordion_body).to_be_visible(timeout=5000)
+
+        # Click Edit button to enter edit mode
+        edit_button = accordion_body.locator("button:has-text('Edit')")
+        await expect(edit_button).to_be_visible(timeout=5000)
+        await edit_button.click()
+
+        # Verify we're in edit mode - form fields should be visible
+        name_input = page.locator("input#full_name")
+        await expect(name_input).to_be_visible(timeout=5000)
+
+        # Verify Save and Cancel buttons are visible
+        await expect(page.locator("button:has-text('Save Changes')")).to_be_visible()
+        cancel_button = accordion_body.locator("button:has-text('Cancel')")
+        await expect(cancel_button).to_be_visible()
+
+        # Click Cancel to return to view mode
+        await cancel_button.click()
+
+        # Verify Edit button is visible again (back in view mode)
+        await expect(edit_button).to_be_visible(timeout=5000)
+
+        await verify_no_console_errors(errors, warnings)
+
+    async def test_profile_organization_add_remove(
+        self, authenticated_page_with_console: tuple[Page, list[str], list[str]]
+    ) -> None:
+        """Test adding and removing organizations."""
+        page, errors, warnings = authenticated_page_with_console
+
+        await navigate_to_profile_page(page)
+
+        # Expand accordion
+        accordion_button = page.locator('[data-accordion-target="#profile-info-accordion-body-1"]')
+        await accordion_button.click()
+        accordion_body = page.locator("#profile-info-accordion-body-1")
+        await expect(accordion_body).to_be_visible(timeout=5000)
+
+        # Enter edit mode
+        edit_button = accordion_body.locator("button:has-text('Edit')")
+        await edit_button.click()
+
+        # Add an organization
+        org_input = page.locator('input[placeholder="e.g., ACR, RSNA, SIIM"]')
+        await expect(org_input).to_be_visible(timeout=5000)
+        await org_input.fill("ACR")
+
+        add_button = page.locator("button:has-text('Add')").first
+        await add_button.click()
+
+        # Wait for Alpine.js to render the badge by looking for the Remove button
+        # The Remove button only exists in edit-mode badges and proves the badge was created
+        # (There are two org badge lists in the DOM - view mode has no remove buttons)
+        remove_button = page.get_by_role("button", name="Remove organization").first
+        await expect(remove_button).to_be_visible(timeout=5000)
+
+        # Remove the organization by clicking its remove button
+        await remove_button.click()
+
+        # Verify organization badge is removed (remove button should no longer be visible)
+        await expect(remove_button).not_to_be_visible(timeout=5000)
+
+        await verify_no_console_errors(errors, warnings)
+
+    async def test_profile_save_success(
+        self, authenticated_page_with_console: tuple[Page, list[str], list[str]]
+    ) -> None:
+        """Test saving profile changes shows success message."""
+        page, errors, warnings = authenticated_page_with_console
+
+        await navigate_to_profile_page(page)
+
+        # Expand accordion
+        accordion_button = page.locator('[data-accordion-target="#profile-info-accordion-body-1"]')
+        await accordion_button.click()
+        accordion_body = page.locator("#profile-info-accordion-body-1")
+        await expect(accordion_body).to_be_visible(timeout=5000)
+
+        # Enter edit mode
+        edit_button = accordion_body.locator("button:has-text('Edit')")
+        await edit_button.click()
+
+        # Add an organization to make a change
+        org_input = page.locator('input[placeholder="e.g., ACR, RSNA, SIIM"]')
+        await expect(org_input).to_be_visible(timeout=5000)
+        await org_input.fill("RSNA")
+
+        add_button = page.locator("button:has-text('Add')").first
+        await add_button.click()
+
+        # Save changes
+        save_button = page.locator("button:has-text('Save Changes')")
+        await save_button.click()
+
+        # Verify success message appears
+        success_alert = page.locator("text=Profile updated successfully!")
+        await expect(success_alert).to_be_visible(timeout=5000)
+
+        # Verify the alert has the success styling (green background)
+        alert_container = page.locator(".bg-green-50").first
+        await expect(alert_container).to_be_visible()
+
+        # Verify we're back in view mode
+        await expect(edit_button).to_be_visible(timeout=5000)
 
         await verify_no_console_errors(errors, warnings)
 
