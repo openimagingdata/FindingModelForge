@@ -96,6 +96,11 @@ async def unified_draft_page(
 ) -> Response:
     """Unified draft page that handles both view and edit modes."""
     try:
+        logger.info(
+            f"unified_draft_page called: draft_id={draft_id}, "
+            f"HX-Request={request.headers.get('HX-Request')}, "
+            f"from={request.query_params.get('from')}"
+        )
         # Prepare view context via service (all business logic)
         user_id = current_user.id if current_user else None
         ctx = await draft_service.prepare_view_context(draft_id, user_id, mode)
@@ -119,23 +124,50 @@ async def unified_draft_page(
             from_public = request.query_params.get("from") == "public"
             from_creation = request.query_params.get("from") == "creation"
             show_success = request.query_params.get("success") == "made_public"
+            logger.info(
+                f"HTMX request detected. from_public={from_public}, from_creation={from_creation}, draft_id={draft_id}"
+            )
 
             # Render content based on mode
             if ctx.resolved_mode == "edit":
                 content = render_draft_edit_content(request, current_user, ctx.draft, templates)
             else:
-                content = render_draft_preview_content(
-                    request,
-                    current_user,
-                    ctx.draft,
-                    ctx.finding_model,
-                    ctx.thread,
-                    ctx.author_name,
-                    ctx.can_edit,
-                    ctx.can_delete,
-                    templates,
-                    show_success,
-                )
+                # Use special template with breadcrumb OOB when coming from public drafts
+                if from_public:
+                    from fastapi.responses import HTMLResponse
+
+                    content = str(
+                        templates.get_template("components/draft_preview_with_breadcrumb.html").render(
+                            request=request,
+                            user=current_user,
+                            draft=ctx.draft,
+                            finding_model=ctx.finding_model,
+                            thread=ctx.thread,
+                            reference_type="draft",
+                            reference_id=str(ctx.draft.id),
+                            current_user=current_user,
+                            show_ids=bool(ctx.draft.status == "submitted"),
+                            show_json=bool(ctx.draft.status == "submitted"),
+                            author_name=ctx.author_name,
+                            can_edit=ctx.can_edit,
+                            can_delete=ctx.can_delete,
+                            show_success_message=show_success,
+                        )
+                    )
+                    return HTMLResponse(content=content)
+                else:
+                    content = render_draft_preview_content(
+                        request,
+                        current_user,
+                        ctx.draft,
+                        ctx.finding_model,
+                        ctx.thread,
+                        ctx.author_name,
+                        ctx.can_edit,
+                        ctx.can_delete,
+                        templates,
+                        show_success,
+                    )
 
             include_oob = not from_public and not from_creation
             return build_htmx_response_with_oob(
@@ -143,6 +175,7 @@ async def unified_draft_page(
             )
 
         # Full page for direct navigation
+        is_htmx = request.headers.get("HX-Request") == "true"
         return templates.TemplateResponse(
             request=request,
             name="draft_unified.html",
@@ -161,6 +194,7 @@ async def unified_draft_page(
                 "show_ids": ctx.draft.status == "submitted",
                 "show_json": ctx.draft.status == "submitted",
                 "author_name": ctx.author_name,
+                "is_htmx_request": is_htmx,
             },
         )
     except Exception as e:

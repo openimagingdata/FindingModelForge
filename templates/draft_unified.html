@@ -18,6 +18,7 @@
             </svg>
         {% endset %}
 
+        <nav id="breadcrumb-container">
         {% if request.query_params.get('from') == 'public' %}
             {{ breadcrumb([
                 {"text": "Home", "href": url_for('index'), "icon": home_icon},
@@ -31,6 +32,7 @@
                 {"text": draft.name }
             ]) }}
         {% endif %}
+        </nav>
 
         {% if request.query_params.get('created') == 'true' %}
         <!-- Success Message -->
@@ -88,4 +90,23 @@
 </div>
 
 <!-- Flowbite component reinitialization now handled by main.js -->
+
+<!-- OOB swap for breadcrumb when navigating via HTMX -->
+{% if is_htmx_request %}
+<nav id="breadcrumb-container" hx-swap-oob="true">
+  {% if request.query_params.get('from') == 'public' %}
+    {{ breadcrumb([
+      {"text": "Home", "href": url_for('index'), "icon": home_icon},
+      {"text": "Public Drafts", "href": url_for('drafts_table'), "icon": folder_icon},
+      {"text": draft.name }
+    ]) }}
+  {% else %}
+    {{ breadcrumb([
+      {"text": "Home", "href": url_for('index'), "icon": home_icon},
+      {"text": (user.name or user.login) ~ "'s Drafts", "href": url_for('profile'), "icon": folder_icon},
+      {"text": draft.name }
+    ]) }}
+  {% endif %}
+</nav>
+{% endif %}
 {% endblock %}
