@@ -1,5 +1,67 @@
 # Frontend UI Patterns - FindingModelForge
 
+## Button Standards Reference
+
+When creating buttons throughout the application, use the appropriate macro based on the button's purpose and element type.
+
+| Button Type | Macro | Use Case |
+|-------------|-------|----------|
+| Navigation Link | `flowbite_button()` | Links to other pages (`<a>` element) |
+| Form Submit | `action_button()` | Form submissions (`<button type="submit">`) |
+| Action Trigger | `action_button()` | JavaScript actions, modals (`<button type="button">`) |
+| Icon Only | `flowbite_icon_button()` | Compact actions in tables/cards |
+
+### Macro Locations
+
+- **`flowbite_button()`**: `templates/macros/flowbite_components.html` - Use for navigation links
+- **`action_button()`**: `templates/macros/flowbite_components.html` - Use for form buttons and triggers
+- **`flowbite_icon_button()`**: `templates/macros/flowbite_components.html` - Use for icon-only buttons
+- **`submit_button()`**: `templates/macros/create_workflow_elements.html` - Special submit button with HTMX indicator (creation workflow only)
+- **`back_button()`**: `templates/macros/create_workflow_elements.html` - Special back navigation button (creation workflow only)
+
+### Usage Examples
+
+```jinja
+{# Navigation link #}
+{% from "macros/flowbite_components.html" import flowbite_button %}
+{{ flowbite_button("View Details", href="/finding-models/123", type="primary") }}
+
+{# Form submit button #}
+{% from "macros/flowbite_components.html" import action_button %}
+<form>
+    {{ action_button("Save Changes", type="success", attributes='type="submit"') }}
+</form>
+
+{# HTMX action button #}
+{{ action_button(
+    "Delete",
+    type="danger",
+    size="sm",
+    attributes='hx-post="/drafts/123/delete" hx-target="#result" hx-swap="outerHTML"'
+) }}
+
+{# Icon-only button #}
+{% from "macros/flowbite_components.html" import flowbite_icon_button %}
+{% set edit_icon %}<svg>...</svg>{% endset %}
+{{ flowbite_icon_button(edit_icon, color="blue", title="Edit") }}
+```
+
+### Special Workflow Buttons
+
+The creation workflow uses specialized button macros that include HTMX loading indicators:
+
+```jinja
+{# Submit button with loading state #}
+{% from "macros/create_workflow_elements.html" import submit_button %}
+{{ submit_button(text="Continue", loading_text="Processing...") }}
+
+{# Back navigation button #}
+{% from "macros/create_workflow_elements.html" import back_button %}
+{{ back_button(step_number=1) }}
+```
+
+**Note**: These workflow-specific macros preserve the HTMX indicator pattern and should only be used in the creation workflow templates.
+
 ## Clickable Table Rows Pattern
 
 When making entire table rows clickable for navigation, use HTMX attributes directly on the `<tr>` element. This is the

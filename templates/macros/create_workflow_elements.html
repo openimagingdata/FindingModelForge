@@ -13,9 +13,12 @@
 {% endmacro %}
 
 {# Submit button with HTMX indicator #}
-{% macro submit_button(text="Continue", loading_text="Processing...", extra_classes="", disabled=false) %}
-<button type="submit"
-        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed {{ extra_classes }}"
+{% macro submit_button(text="Continue", loading_text="Processing...", extra_classes="", disabled=false, button_type="submit", hx_post=none, hx_target=none, hx_swap=none) %}
+<button type="{{ button_type }}"
+        {% if hx_post %}hx-post="{{ hx_post }}"{% endif %}
+        {% if hx_target %}hx-target="{{ hx_target }}"{% endif %}
+        {% if hx_swap %}hx-swap="{{ hx_swap }}"{% endif %}
+        class="inline-flex items-center font-medium rounded-lg text-center transition-colors focus:outline-none focus:ring-4 px-5 py-2.5 text-sm text-white bg-blue-700 hover:bg-blue-800 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 disabled:opacity-50 disabled:cursor-not-allowed {{ extra_classes }}"
         {% if disabled %}disabled{% endif %}>
     <span class="htmx-indicator">
         <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24">
@@ -37,7 +40,7 @@
         {% endif %}
         hx-target="#main-content"
         hx-swap="innerHTML"
-        class="px-4 py-2 text-gray-600 dark:text-gray-400 font-medium rounded-md border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors {{ extra_classes }}">
+        class="inline-flex items-center font-medium rounded-lg text-center transition-colors focus:outline-none focus:ring-4 px-5 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 focus:ring-gray-200 dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-600 dark:focus:ring-gray-700 {{ extra_classes }}">
     {{ text }}
 </button>
 {% endmacro %}
