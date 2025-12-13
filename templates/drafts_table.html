@@ -26,7 +26,9 @@
             </thead>
             <tbody>
                 {% for draft in drafts %}
-                <tr onclick="window.location.href='/drafts/{{ draft.id }}?from=public'"
+                <tr hx-get="/drafts/{{ draft.id }}?from=public"
+                    hx-target="#main-content"
+                    hx-push-url="true"
                     class="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer">
                     <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
                         {{ draft.name }}
