@@ -45,36 +45,6 @@
 </button>
 {% endmacro %}
 
-{# Standard form input field #}
-{% macro input_field(name, label, value="", type="text", placeholder="", required=false, extra_classes="") %}
-<div>
-    <label for="{{ name }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-        {{ label }}
-    </label>
-    <input type="{{ type }}"
-           id="{{ name }}"
-           name="{{ name }}"
-           value="{{ value }}"
-           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white {{ extra_classes }}"
-           {% if placeholder %}placeholder="{{ placeholder }}"{% endif %}
-           {% if required %}required{% endif %}>
-</div>
-{% endmacro %}
-
-{# Standard textarea field #}
-{% macro textarea_field(name, label, value="", rows=4, placeholder="", required=false, extra_classes="") %}
-<div>
-    <label for="{{ name }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-        {{ label }}
-    </label>
-    <textarea id="{{ name }}"
-              name="{{ name }}"
-              rows="{{ rows }}"
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white {{ extra_classes }}"
-              {% if placeholder %}placeholder="{{ placeholder }}"{% endif %}
-              {% if required %}required{% endif %}>{{ value }}</textarea>
-</div>
-{% endmacro %}
 
 {# Navigation button group #}
 {% macro navigation_buttons(back_step=none, back_text="← Back", submit_text="Continue", submit_loading="Processing...") %}
