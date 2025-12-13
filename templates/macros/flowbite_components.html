@@ -8,18 +8,20 @@
 {# ===== BUTTONS ===== #}
 
 {# Flowbite Button with Icon #}
-{% macro flowbite_button(text, href="#", type="primary", size="default", icon=none, icon_position="left", disabled=false, target_blank=false) -%}
+{% macro flowbite_button(text, href="#", type="primary", size="default", icon=none, icon_position="left", disabled=false, target_blank=false, extra_classes="", attributes="") -%}
     {% set base_classes = "inline-flex items-center font-medium rounded-lg text-center transition-colors" %}
 
     {% set size_classes = {
         "xs": "px-3 py-2 text-xs",
         "sm": "px-3 py-2 text-sm",
         "default": "px-5 py-2.5 text-sm",
-        "lg": "px-8 py-4 text-lg"
+        "lg": "px-8 py-4 text-lg",
+        "xl": "px-6 py-4 text-xl"
     } %}
 
     {% set type_classes = {
         "primary": "text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800",
+        "primary-outline": "bg-white border border-primary-600 text-primary-600 hover:bg-primary-50 focus:ring-4 focus:outline-none focus:ring-primary-300 dark:bg-gray-800 dark:border-primary-500 dark:text-primary-400 dark:hover:bg-gray-700 dark:focus:ring-primary-800",
         "secondary": "text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-600 dark:focus:ring-gray-700",
         "success": "text-white bg-green-700 hover:bg-green-800 focus:ring-4 focus:outline-none focus:ring-green-300 dark:bg-green-600 dark:hover:bg-green-700 dark:focus:ring-green-800",
         "warning": "text-gray-800 bg-yellow-200 border border-yellow-300 hover:bg-yellow-300 focus:ring-4 focus:outline-none focus:ring-yellow-500 dark:bg-yellow-600 dark:text-white dark:border-yellow-700 dark:hover:bg-yellow-700",
@@ -28,12 +30,13 @@
     } %}
 
     {% set disabled_classes = "cursor-not-allowed opacity-50" if disabled else "" %}
-    {% set classes = [base_classes, size_classes[size], type_classes[type], disabled_classes]|join(" ") %}
+    {% set classes = [base_classes, size_classes[size], type_classes[type], disabled_classes, extra_classes]|join(" ") %}
 
     <a href="{{ href }}"
        class="{{ classes }}"
        {% if target_blank %}target="_blank" rel="noopener noreferrer"{% endif %}
-       {% if disabled %}aria-disabled="true"{% endif %}>
+       {% if disabled %}aria-disabled="true"{% endif %}
+       {{ attributes|safe }}>
 
         {% if icon and icon_position == "left" %}
             {{ icon|safe }}
@@ -81,18 +84,21 @@
 {%- endmacro %}
 
 {# Action Button (for forms and JS actions) #}
-{% macro action_button(text, type="primary", size="default", icon=none, icon_position="left", disabled=false, classes="", attributes="") -%}
-    {% set base_classes = "inline-flex items-center font-medium rounded-md text-center transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2" %}
+{% macro action_button(text, type="primary", size="default", icon=none, icon_position="left", disabled=false, classes="", attributes="", rounded="md") -%}
+    {% set base_classes = "inline-flex items-center font-medium text-center transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2" %}
+    {% set rounded_class = "rounded-" + rounded %}
 
     {% set size_classes = {
         "xs": "px-2.5 py-1.5 text-xs",
         "sm": "px-3 py-2 text-sm",
         "default": "px-4 py-2 text-sm",
-        "lg": "px-6 py-3 text-lg"
+        "lg": "px-6 py-3 text-lg",
+        "xl": "px-6 py-4 text-xl"
     } %}
 
     {% set type_classes = {
         "primary": "text-white bg-primary-600 hover:bg-primary-700 focus:ring-primary-500",
+        "primary-outline": "bg-white border border-primary-600 text-primary-600 hover:bg-primary-50 focus:ring-primary-300 dark:bg-gray-800 dark:border-primary-500 dark:text-primary-400 dark:hover:bg-gray-700 dark:focus:ring-primary-800",
         "secondary": "text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 focus:ring-primary-500",
         "success": "text-white bg-green-600 hover:bg-green-700 focus:ring-green-500",
         "warning": "text-yellow-800 bg-yellow-200 border border-yellow-300 hover:bg-yellow-300 focus:ring-yellow-500 dark:bg-yellow-600 dark:text-white dark:border-yellow-700 dark:hover:bg-yellow-700",
@@ -101,7 +107,7 @@
     } %}
 
     {% set disabled_classes = "disabled:opacity-50 disabled:cursor-not-allowed" if disabled else "" %}
-    {% set all_classes = [base_classes, size_classes[size], type_classes[type], disabled_classes, classes]|join(" ") %}
+    {% set all_classes = [base_classes, rounded_class, size_classes[size], type_classes[type], disabled_classes, classes]|join(" ") %}
 
     <button type="button"
             class="{{ all_classes }}"
@@ -123,7 +129,7 @@
 {# ===== BADGES ===== #}
 
 {# Standard Flowbite badge with proper styling #}
-{% macro flowbite_badge(text, color="default", size="default", pill=false, href=none) -%}
+{% macro flowbite_badge(text, color="default", size="default", pill=false, href=none, attributes="") -%}
     {% set base_classes = "inline-flex items-center font-medium" %}
     {% set size_classes = {
         "xs": "px-2.5 py-0.5 text-xs",
@@ -146,9 +152,9 @@
     {% set classes = [base_classes, size_classes[size], color_classes[color], rounded_classes]|join(" ") %}
 
     {% if href %}
-        <a href="{{ href }}" class="{{ classes }}">{{ text }}</a>
+        <a href="{{ href }}" class="{{ classes }}" {{ attributes|safe }}>{{ text }}</a>
     {% else %}
-        <span class="{{ classes }}">{{ text }}</span>
+        <span class="{{ classes }}" {{ attributes|safe }}>{{ text }}</span>
     {% endif %}
 {%- endmacro %}
 

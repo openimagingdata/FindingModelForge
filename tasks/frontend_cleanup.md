@@ -1,6 +1,6 @@
 # Frontend Code Cleanup Plan
 
-**Status**: In Progress (Phase 3 next)
+**Status**: COMPLETED ✅
 **Created**: December 2025
 **Updated**: December 13, 2025
 **Priority**: High - Maintainability and Consistency
@@ -14,9 +14,15 @@
   - Converted `drafts_table.html` row navigation to HTMX
   - Converted `json_accordion.html` buttons to Alpine.js `@click`
   - **Additional fix**: Added OOB breadcrumb swap for public drafts HTMX navigation (commits `d95ff03`, `455b734`)
-- [ ] Phase 3: Standardize Badge Usage
-- [ ] Phase 4: Consolidate Duplicate Components
-- [ ] Phase 5: Final Cleanup and Audit
+- [x] Phase 3: Standardize Badge Usage - Completed (combined with Phase 5)
+- [x] Phase 4: Consolidate Duplicate Components - N/A (no duplicates found)
+- [x] Phase 5: Final Cleanup and Audit - Completed
+  - Fixed all ad hoc button patterns in `index.html` (4 buttons → macros)
+  - Fixed all ad hoc badge patterns in `profile.html` (2 badges → Flowbite standard)
+  - Fixed ad hoc patterns in component templates (5 files)
+  - Enhanced `flowbite_button` macro with `xl` size and `primary-outline` type
+  - Enhanced `action_button` macro with `xl` size, `primary-outline` type, and configurable rounding
+  - All 523 unit tests passing ✅
 
 ### Technical Debt Identified
 

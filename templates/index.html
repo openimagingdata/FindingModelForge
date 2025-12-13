@@ -1,38 +1,66 @@
 {% extends "base.html" %}
-{% from 'macros/flowbite_components.html' import flowbite_button, flowbite_card, flowbite_icon_list %}
+{% from 'macros/flowbite_components.html' import flowbite_button, flowbite_card, flowbite_icon_list, action_button %}
 {% from 'macros/app_components.html' import github_icon %}
 {% from 'macros/layout_components.html' import hero_section, content_section %}
 
 {% block content %}
 <div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900">
     <!-- Hero Section -->
+    {% set plus_icon %}
+        <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+        </svg>
+    {% endset %}
+    {% set document_icon %}
+        <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+    {% endset %}
+    {% set lightbulb_icon %}
+        <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+        </svg>
+    {% endset %}
+    {% set github_icon_markup %}{{ github_icon("w-6 h-6 mr-2") }}{% endset %}
+
     {% set cta_button %}
         <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center">
             {% if user %}
-                <a href="{{ url_for('create_finding_model_page') }}" class="w-full sm:w-48 inline-flex items-center justify-center px-6 py-4 text-xl font-medium text-center transition-colors text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 rounded-lg dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
-                    <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                    </svg>
-                    Create
-                </a>
+                {{ flowbite_button(
+                    text="Create",
+                    href=url_for('create_finding_model_page'),
+                    type="primary",
+                    size="xl",
+                    icon=plus_icon,
+                    extra_classes="w-full sm:w-48 justify-center"
+                ) }}
             {% else %}
-                <a href="{{ url_for('login_page') }}" class="w-full sm:w-48 inline-flex items-center justify-center px-6 py-4 text-xl font-medium text-center transition-colors text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 rounded-lg dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
-                    {{ github_icon("w-6 h-6 mr-2") }}
-                    Sign in
-                </a>
+                {{ flowbite_button(
+                    text="Sign in",
+                    href=url_for('login_page'),
+                    type="primary",
+                    size="xl",
+                    icon=github_icon_markup,
+                    extra_classes="w-full sm:w-48 justify-center"
+                ) }}
             {% endif %}
-            <a href="{{ url_for('finding_models') }}" class="w-full sm:w-48 inline-flex items-center justify-center px-6 py-4 text-xl font-medium text-center transition-colors bg-white border border-gray-300 text-gray-900 rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 dark:focus:ring-gray-700">
-                <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                </svg>
-                Browse
-            </a>
-            <button type="button" data-modal-target="suggestion-modal" data-modal-toggle="suggestion-modal" class="w-full sm:w-48 inline-flex items-center justify-center px-6 py-4 text-xl font-medium text-center transition-colors bg-white border border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 focus:ring-4 focus:outline-none focus:ring-primary-300 dark:bg-gray-800 dark:border-primary-500 dark:text-primary-400 dark:hover:bg-gray-700 dark:focus:ring-primary-800">
-                <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
-                </svg>
-                Suggest
-            </button>
+            {{ flowbite_button(
+                text="Browse",
+                href=url_for('finding_models'),
+                type="secondary",
+                size="xl",
+                icon=document_icon,
+                extra_classes="w-full sm:w-48 justify-center"
+            ) }}
+            {{ action_button(
+                text="Suggest",
+                type="primary-outline",
+                size="xl",
+                icon=lightbulb_icon,
+                rounded="lg",
+                classes="w-full sm:w-48 justify-center",
+                attributes='data-modal-target="suggestion-modal" data-modal-toggle="suggestion-modal"'
+            ) }}
         </div>
     {% endset %}
 

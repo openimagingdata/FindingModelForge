@@ -1,5 +1,5 @@
 {# Small fragment showing delete result and toggling UI if needed #}
-{% from "macros/flowbite_components.html" import flowbite_badge %}
+{% from "macros/flowbite_components.html" import flowbite_badge, flowbite_button %}
 <div class="flex items-center gap-3">
   {% if deleted %}
   {{ flowbite_badge("Draft deleted", color="gray", size="sm") }}
@@ -15,11 +15,17 @@
     <h4 class="text-base font-medium text-gray-900 dark:text-white">No drafts yet</h4>
     <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Start by creating a new finding model.</p>
     <div class="mt-4">
-      <a href="{{ url_for('create_finding_model_page') }}"
-         class="inline-flex items-center px-6 py-3 text-base font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg focus:outline-none focus:ring-4 focus:ring-primary-300 dark:focus:ring-primary-800">
+      {% set plus_icon %}
         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12m6-6H6"/></svg>
-        Create Model
-      </a>
+      {% endset %}
+      {{ flowbite_button(
+          text="Create Model",
+          href=url_for('create_finding_model_page'),
+          type="primary",
+          size="default",
+          icon=plus_icon,
+          extra_classes="focus:ring-4"
+      ) }}
     </div>
   </div>
 </div>
