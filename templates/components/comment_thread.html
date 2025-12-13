@@ -18,7 +18,7 @@
    - HTMX integration for form submission
 #}
 
-{% from "macros/flowbite_components.html" import user_avatar, action_button, form_textarea %}
+{% from "macros/flowbite_components.html" import user_avatar, action_button, form_textarea, flowbite_badge %}
 
 {# Main comment thread container #}
 <div id="comment-thread-{{ reference_type }}-{{ reference_id }}" class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
@@ -27,9 +27,7 @@
     <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Comments</h3>
         {% if thread and thread.comment_count > 0 %}
-            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
-                {{ thread.comment_count }} {{ 'comment' if thread.comment_count == 1 else 'comments' }}
-            </span>
+            {{ flowbite_badge("{} {}".format(thread.comment_count, 'comment' if thread.comment_count == 1 else 'comments'), color="blue", size="xs", pill=true) }}
         {% endif %}
     </div>
 

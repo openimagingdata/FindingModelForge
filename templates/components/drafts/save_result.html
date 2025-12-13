@@ -1,9 +1,7 @@
 {# Small fragment showing draft saved status and actions #}
-{% from "macros/flowbite_components.html" import action_button %}
+{% from "macros/flowbite_components.html" import action_button, flowbite_badge %}
 <div class="flex items-center gap-3">
-  <span class="inline-flex items-center gap-1 rounded-md bg-blue-100 px-2 py-1 text-sm font-medium text-blue-800 dark:bg-blue-900/30 dark:text-blue-200">
-    Saved draft
-  </span>
+  {{ flowbite_badge("Saved draft", color="blue", size="sm") }}
   <span class="text-xs text-gray-500">Updated: {{ draft.updated_at.strftime('%Y-%m-%d %H:%M') }}</span>
   <div class="flex items-center gap-2">
     {% if draft.status == 'draft' %}

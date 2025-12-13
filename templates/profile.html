@@ -437,10 +437,10 @@
                         {% if d.attribute_names and d.attribute_names|length %}
                         <div class="flex flex-wrap gap-1">
                             {% for a in d.attribute_names[:3] %}
-                                <span class="px-2 py-0.5 rounded text-[10px] bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">{{ a }}</span>
+                                {{ flowbite_badge(a, color="blue", size="xs") }}
                             {% endfor %}
                             {% if d.attribute_names|length > 3 %}
-                                <span class="px-2 py-0.5 rounded text-[10px] bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300">+{{ d.attribute_names|length - 3 }} more</span>
+                                {{ flowbite_badge("+{} more".format(d.attribute_names|length - 3), color="gray", size="xs") }}
                             {% endif %}
                         </div>
                         {% else %}

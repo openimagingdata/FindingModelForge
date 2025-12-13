@@ -9,7 +9,7 @@
 
 {# ===== DOMAIN-SPECIFIC BADGES ===== #}
 
-{# Required badge with icon #}
+{# Required badge with icon - uses flowbite_badge with custom icon #}
 {% macro required_badge() -%}
     <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">
         <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
@@ -19,7 +19,7 @@
     </span>
 {%- endmacro %}
 
-{# ID badge for identifiers #}
+{# ID badge for identifiers - uses flowbite_badge with monospace font #}
 {% macro id_badge(id_value) -%}
     <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium font-mono bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
         {{ id_value }}

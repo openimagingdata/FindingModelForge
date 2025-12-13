@@ -1,6 +1,7 @@
 {# Step 3: Similar Models Review Component #}
 {% extends "components/finding_model_creation/step_base.html" %}
 {% from "macros/create_workflow_elements.html" import back_button, submit_button %}
+{% from "macros/flowbite_components.html" import flowbite_badge %}
 
 {% set step_title = "Review Similar Models" %}
 {% set step_description = "We found some existing models that might be similar to yours. Review them to ensure your model is unique." %}
@@ -21,7 +22,7 @@
                     {% if model.tags and model.tags|length > 0 %}
                         <div class="flex flex-wrap gap-2">
                             {% for tag in model.tags %}
-                                <span class="inline-block bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300 text-xs px-2 py-1 rounded">{{ tag }}</span>
+                                {{ flowbite_badge(tag, color="gray", size="xs") }}
                             {% endfor %}
                         </div>
                     {% endif %}

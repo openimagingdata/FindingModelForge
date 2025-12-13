@@ -2,7 +2,7 @@
 
 **Status**: In Progress (Phase 3 next)
 **Created**: December 2025
-**Updated**: December 2025
+**Updated**: December 13, 2025
 **Priority**: High - Maintainability and Consistency
 
 ### Progress
@@ -11,9 +11,18 @@
 - [x] Phase 1: Eliminate Custom JavaScript (`<script>` blocks) - Completed
 - [x] Phase 2: Standardize Button Usage - Completed
 - [x] Phase 2.5: Cleanup - Remaining Inline JavaScript (`onclick` handlers) - Completed
+  - Converted `drafts_table.html` row navigation to HTMX
+  - Converted `json_accordion.html` buttons to Alpine.js `@click`
+  - **Additional fix**: Added OOB breadcrumb swap for public drafts HTMX navigation (commits `d95ff03`, `455b734`)
 - [ ] Phase 3: Standardize Badge Usage
 - [ ] Phase 4: Consolidate Duplicate Components
 - [ ] Phase 5: Final Cleanup and Audit
+
+### Technical Debt Identified
+
+During Phase 2.5, code smell assessment identified router functions needing refactoring:
+- See `tasks/router_refactoring.md` for details
+- `finding_models()` and `unified_draft_page()` are highest priority
 
 ## Executive Summary
 
