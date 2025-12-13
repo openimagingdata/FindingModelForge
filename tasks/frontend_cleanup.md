@@ -1,8 +1,18 @@
 # Frontend Code Cleanup Plan
 
-**Status**: Ready for Implementation
+**Status**: In Progress (Phase 2.5 next)
 **Created**: December 2025
+**Updated**: December 2025
 **Priority**: High - Maintainability and Consistency
+
+### Progress
+- [x] Phase 0: Prerequisites (Profile edit tests) - Completed
+- [x] Phase 1: Eliminate Custom JavaScript (`<script>` blocks) - Completed
+- [x] Phase 2: Standardize Button Usage - Completed
+- [ ] Phase 2.5: Cleanup - Remaining Inline JavaScript (`onclick` handlers)
+- [ ] Phase 3: Standardize Badge Usage
+- [ ] Phase 4: Consolidate Duplicate Components
+- [ ] Phase 5: Final Cleanup and Audit
 
 ## Executive Summary
 
@@ -21,6 +31,9 @@ The cleanup is complete when ALL of the following are true:
    ```bash
    grep -rn "<script>" templates/ --include="*.html" | grep -v "main.js"
    # Should return zero results
+
+   grep -rn "onclick=" templates/ --include="*.html"
+   # Should return zero results (use Alpine.js @click or HTMX instead)
    ```
 
 2. **All buttons use macros** (no inline button styling):
@@ -448,6 +461,86 @@ Create a reference section in `templates/PATTERNS.md` (or update existing) docum
 ```
 
 **HTMX Note**: These buttons use `hx-post`, `hx-target`, `hx-swap` - preserve these attributes via the `attributes` parameter.
+
+---
+
+## Phase 2.5: Cleanup - Remaining Inline JavaScript
+
+*Added during implementation when reviewer discovered pre-existing `onclick` handlers not covered by Phase 1.*
+
+### Task 2.5.1: Convert Table Row Navigation
+
+**File**: `templates/drafts_table.html` (line 29)
+
+**Problem**: Uses inline `onclick` for row navigation instead of proper link or HTMX pattern.
+
+**Current**:
+```html
+<tr onclick="window.location.href='/drafts/{{ draft.id }}?from=public'" ...>
+```
+
+**Solution**: Convert to HTMX navigation pattern or wrap content in `<a>` tag.
+
+**Option A - HTMX approach** (recommended):
+```html
+<tr hx-get="/drafts/{{ draft.id }}?from=public"
+    hx-target="#main-content"
+    hx-push-url="true"
+    class="... cursor-pointer">
+```
+
+**Option B - Anchor wrapper**:
+```html
+<tr class="...">
+    <td colspan="4">
+        <a href="/drafts/{{ draft.id }}?from=public" class="block w-full">
+            <!-- Row content restructured as flex -->
+        </a>
+    </td>
+</tr>
+```
+
+### Task 2.5.2: Convert JSON Accordion Buttons
+
+**File**: `templates/macros/json_accordion.html` (lines 44, 52)
+
+**Problem**: Uses inline `onclick` handlers to call global functions from `main.js`.
+
+**Current**:
+```html
+<button onclick="downloadJSON(`{{ finding_model.model_dump_json(...) }}`, '{{ filename }}')" ...>
+<button onclick="copyToClipboard(`{{ finding_model.model_dump_json(...) }}`)" ...>
+```
+
+**Solution**: Convert to Alpine.js with `@click` directives.
+
+**Updated pattern**:
+```html
+<div x-data="{ jsonData: `{{ finding_model.model_dump_json(indent=2, exclude_none=True) | replace('`', '\\`') }}` }">
+    <!-- Download button -->
+    <button type="button"
+            @click="downloadJSON(jsonData, '{{ finding_model.name | replace(' ', '_') | lower }}.fm.json')"
+            class="...">
+        Download
+    </button>
+
+    <!-- Copy button -->
+    <button type="button"
+            @click="copyToClipboard(jsonData)"
+            class="...">
+        Copy
+    </button>
+</div>
+```
+
+**Note**: The `downloadJSON()` and `copyToClipboard()` functions remain in `main.js` as global utilities. The change is using Alpine.js `@click` instead of inline `onclick` handlers.
+
+### Phase 2.5 Verification
+
+```bash
+# Should return ZERO results after completion
+grep -rn "onclick=" templates/ --include="*.html"
+```
 
 ---
 
