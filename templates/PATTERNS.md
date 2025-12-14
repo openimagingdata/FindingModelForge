@@ -29,7 +29,7 @@ When creating buttons throughout the application, use the appropriate macro base
 {# Form submit button #}
 {% from "macros/flowbite_components.html" import action_button %}
 <form>
-    {{ action_button("Save Changes", type="success", attributes='type="submit"') }}
+    {{ action_button("Save Changes", type="success", button_type="submit") }}
 </form>
 
 {# HTMX action button #}

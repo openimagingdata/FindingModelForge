@@ -84,7 +84,7 @@
 {%- endmacro %}
 
 {# Action Button (for forms and JS actions) #}
-{% macro action_button(text, type="primary", size="default", icon=none, icon_position="left", disabled=false, classes="", attributes="", rounded="md") -%}
+{% macro action_button(text, type="primary", size="default", icon=none, icon_position="left", disabled=false, classes="", attributes="", rounded="md", button_type="button") -%}
     {% set base_classes = "inline-flex items-center font-medium text-center transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2" %}
     {% set rounded_class = "rounded-" + rounded %}
 
@@ -109,7 +109,7 @@
     {% set disabled_classes = "disabled:opacity-50 disabled:cursor-not-allowed" if disabled else "" %}
     {% set all_classes = [base_classes, rounded_class, size_classes[size], type_classes[type], disabled_classes, classes]|join(" ") %}
 
-    <button type="button"
+    <button type="{{ button_type }}"
             class="{{ all_classes }}"
             {% if disabled %}disabled{% endif %}
             {{ attributes|safe }}>

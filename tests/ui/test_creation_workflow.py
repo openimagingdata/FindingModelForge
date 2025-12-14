@@ -142,8 +142,8 @@ class TestBasicCreationFlow:
         await expect(page.locator("text=Status: Public")).to_be_visible(timeout=5000)
         print("DEBUG: Status changed to Public")
 
-        # Test success alert dismissal
-        close_button = success_alert.locator('[data-dismiss-target="#success-alert"]')
+        # Test success alert dismissal (uses Alpine.js @click="show = false")
+        close_button = success_alert.locator("button")
         await close_button.click()
         await expect(success_alert).not_to_be_visible(timeout=5000)
         print("DEBUG: Success alert dismissed")
