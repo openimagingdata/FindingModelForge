@@ -54,6 +54,7 @@ Migrate to `.claude/rules/*.md` pattern which:
 - Match tools to problems (Playwright for browser/HTMX, not curl)
 - Delegate to specialist agents instead of doing implementation work directly
 - When implementer reports "done but failing", delegate to reviewer immediately
+- **Full test suite before commit**: Run both `task test-unit` AND `task test-ui` before committing changes that affect user-facing behavior - UI tests are end-to-end and catch regressions in routes, services, templates, and their integration (note: `task test` excludes UI tests)
 
 ## Priority
 
