@@ -1,14 +1,18 @@
 """Authentication helpers for Playwright tests."""
 
+import os
 from datetime import UTC, datetime, timedelta
 
 from playwright.async_api import Page
+
+# Base URL for tests - respects PORT environment variable (default: 8000)
+BASE_URL = f"http://localhost:{os.environ.get('PORT', '8000')}"
 
 
 class PlaywrightAuthHelper:
     """Helper class for handling authentication in Playwright tests."""
 
-    def __init__(self, base_url: str = "http://localhost:8000"):
+    def __init__(self, base_url: str = BASE_URL):
         self.base_url = base_url
 
     async def create_test_user_session(self, page: Page) -> dict:
@@ -106,7 +110,7 @@ async def setup_authenticated_page(page: Page) -> dict:
 
 async def verify_authentication_works(page: Page) -> bool:
     """Verify that authentication is working by checking a protected route."""
-    await page.goto("http://localhost:8000/create-finding-model")
+    await page.goto(f"{BASE_URL}/create-finding-model")
     await page.wait_for_load_state("networkidle")
 
     # If authenticated, should NOT see login page

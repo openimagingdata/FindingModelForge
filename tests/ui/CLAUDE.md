@@ -75,10 +75,11 @@ PLAYWRIGHT_HEADLESS=false uv run pytest tests/ui/test_profile.py::TestDraftCards
 
 ## Test Requirements
 
-1. **Development Server**: Tests require the development server running on `localhost:8000`
+1. **Development Server**: Tests require the development server running (default `localhost:8000`, configurable via `PORT` env var)
 
    ```bash
    task dev  # In separate terminal
+   # Or with custom port: PORT=3000 task dev
    ```
 
 2. **Database**: Tests use MongoDB for test data seeding and cleanup

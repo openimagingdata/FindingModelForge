@@ -441,6 +441,8 @@ This is critical for any UI test that:
 
 #### Authentication Pattern for Playwright Tests
 
+**Note**: Tests use `BASE_URL` from `tests/ui/utils.py`, which defaults to `localhost:8000` but can be configured via the `PORT` environment variable.
+
 ```python
 import pytest
 from playwright.async_api import async_playwright
@@ -474,6 +476,8 @@ async def test_authenticated_workflow():
 ```
 
 #### Test Data Setup for Playwright
+
+**Note**: UI tests use `BASE_URL` constant from `tests/ui/utils.py`, which reads from `PORT` env var (default: 8000).
 
 When testing with database data, ensure the user ID matches the test-auth system:
 

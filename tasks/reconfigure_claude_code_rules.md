@@ -55,6 +55,8 @@ Migrate to `.claude/rules/*.md` pattern which:
 - Delegate to specialist agents instead of doing implementation work directly
 - When implementer reports "done but failing", delegate to reviewer immediately
 - **Full test suite before commit**: Run both `task test-unit` AND `task test-ui` before committing changes that affect user-facing behavior - UI tests are end-to-end and catch regressions in routes, services, templates, and their integration (note: `task test` excludes UI tests)
+- **Template changes REQUIRE UI tests**: Any modification to files in `templates/` MUST be followed by running `task test-ui` before committing. Template refactoring can break form submissions, button behaviors, and HTMX interactions in ways that unit tests cannot detect.
+- **PORT variable for testing**: Dev server and UI tests respect the `PORT` environment variable (default: 8000). Use `PORT=8001 task dev` and `PORT=8001 task test-ui` to test on alternate ports.
 
 ## Priority
 
