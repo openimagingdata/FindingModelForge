@@ -17,7 +17,13 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from playwright.async_api import Page, expect
 
 from app.config import settings
-from tests.ui.utils import click_and_wait_for_htmx, seed_comment, verify_no_console_errors, wait_for_htmx_settled
+from tests.ui.utils import (
+    BASE_URL,
+    click_and_wait_for_htmx,
+    seed_comment,
+    verify_no_console_errors,
+    wait_for_htmx_settled,
+)
 
 pytestmark = [pytest.mark.integration, pytest.mark.slow, pytest.mark.playwright]
 
@@ -38,7 +44,7 @@ class TestAuthenticatedComments:
         client.close()
 
         # Navigate to a finding model without comments
-        await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
+        await page.goto(f"{BASE_URL}/finding-models/abdominal-abscess")
         # Playwright auto-waits for elements - no need for networkidle
 
         # Verify comment section is present
@@ -63,7 +69,7 @@ class TestAuthenticatedComments:
         page, errors, warnings = authenticated_page_with_console
 
         # Navigate to finding model
-        await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
+        await page.goto(f"{BASE_URL}/finding-models/abdominal-abscess")
         # Playwright auto-waits for elements - no need for networkidle
 
         # Scope to the comment thread container to avoid finding suggestion modal elements
@@ -114,7 +120,7 @@ class TestAuthenticatedComments:
         """Test character limit validation with Alpine.js."""
         page, errors, warnings = authenticated_page_with_console
 
-        await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
+        await page.goto(f"{BASE_URL}/finding-models/abdominal-abscess")
         # Playwright auto-waits for elements - no need for networkidle
 
         comment_textarea = page.locator('textarea[name="content"]').last
@@ -145,7 +151,7 @@ class TestAuthenticatedComments:
         """Test adding a comment via HTMX submission."""
         page, errors, warnings = authenticated_page_with_console
 
-        await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
+        await page.goto(f"{BASE_URL}/finding-models/abdominal-abscess")
         # Playwright auto-waits for elements - no need for networkidle
 
         # Fill out comment form with a unique comment text
@@ -192,7 +198,7 @@ class TestAuthenticatedComments:
         """Test reply functionality with Alpine.js show/hide."""
         page, errors, warnings = authenticated_page_with_console
 
-        await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
+        await page.goto(f"{BASE_URL}/finding-models/abdominal-abscess")
         # Playwright auto-waits for elements - no need for networkidle
 
         # Find the first comment with a Reply button
@@ -247,7 +253,7 @@ class TestAuthenticatedComments:
         """Test canceling reply form clears content and hides form."""
         page, errors, warnings = authenticated_page_with_console
 
-        await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
+        await page.goto(f"{BASE_URL}/finding-models/abdominal-abscess")
         # Playwright auto-waits for elements - no need for networkidle
 
         # Click Reply button
@@ -292,7 +298,7 @@ class TestAuthenticatedComments:
         )
 
         # 2. Navigate to the finding model page
-        await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
+        await page.goto(f"{BASE_URL}/finding-models/abdominal-abscess")
         # Playwright auto-waits for elements - no need for networkidle
 
         # 3. Wait for comments to load and find the report button
@@ -381,7 +387,7 @@ class TestAuthenticatedComments:
         )
 
         # 2. Navigate to the finding model page and find the parent comment
-        await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
+        await page.goto(f"{BASE_URL}/finding-models/abdominal-abscess")
         # Playwright auto-waits for elements - no need for networkidle
 
         # 3. Wait for comments to load and find parent comment
@@ -453,7 +459,7 @@ class TestAuthenticatedComments:
         )
 
         # 2. Navigate to the finding model page
-        await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
+        await page.goto(f"{BASE_URL}/finding-models/abdominal-abscess")
         # Playwright auto-waits for elements - no need for networkidle
 
         # 3. Wait for comments to load and find the comment
@@ -555,7 +561,7 @@ class TestAuthenticatedComments:
         timestamp = str(int(time.time()))
         test_comment = f"Test own comment {timestamp} - should not have report button"
 
-        await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
+        await page.goto(f"{BASE_URL}/finding-models/abdominal-abscess")
         # Playwright auto-waits for elements - no need for networkidle
 
         # 2. Add comment as authenticated user
@@ -613,7 +619,7 @@ class TestAuthenticatedComments:
         )
 
         # 2. Navigate to page
-        await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
+        await page.goto(f"{BASE_URL}/finding-models/abdominal-abscess")
         # Playwright auto-waits for elements - no need for networkidle
 
         # 3. Wait for comments to load
@@ -654,7 +660,7 @@ class TestAnonymousUsers:
         )
 
         # Navigate without authentication
-        await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
+        await page.goto(f"{BASE_URL}/finding-models/abdominal-abscess")
         # Playwright auto-waits for elements - no need for networkidle
 
         # Should see existing comments
@@ -682,7 +688,7 @@ class TestAnonymousUsers:
         page, errors, warnings = page_with_console_tracking
 
         # Navigate without authentication
-        await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
+        await page.goto(f"{BASE_URL}/finding-models/abdominal-abscess")
         # Playwright auto-waits for elements - no need for networkidle
 
         # Should see empty state with login prompt
@@ -710,7 +716,7 @@ class TestAnonymousUsers:
         """Test anonymous users see 'Sign in with GitHub to join discussion' prompt."""
         page, errors, warnings = page_with_console_tracking
 
-        await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
+        await page.goto(f"{BASE_URL}/finding-models/abdominal-abscess")
         # Playwright auto-waits for elements - no need for networkidle
 
         # Should see GitHub login prompt at bottom instead of comment form
@@ -740,7 +746,7 @@ class TestAnonymousUsers:
         )
 
         # Navigate without authentication
-        await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
+        await page.goto(f"{BASE_URL}/finding-models/abdominal-abscess")
         # Playwright auto-waits for elements - no need for networkidle
 
         # Should see existing comments
@@ -782,7 +788,7 @@ class TestCommentDisplay:
             content="Testing comment structure display",
         )
 
-        await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
+        await page.goto(f"{BASE_URL}/finding-models/abdominal-abscess")
         # Playwright auto-waits for elements - no need for networkidle
 
         # WAIT for seeded comment to appear FIRST (required by task)
@@ -849,7 +855,7 @@ class TestCommentDisplay:
         )
         client.close()
 
-        await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
+        await page.goto(f"{BASE_URL}/finding-models/abdominal-abscess")
         # Playwright auto-waits for elements - no need for networkidle
 
         # WAIT for both seeded comments to appear FIRST (required by task)

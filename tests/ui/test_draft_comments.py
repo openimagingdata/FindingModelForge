@@ -14,6 +14,7 @@ import pytest
 from playwright.async_api import Page, expect
 
 from tests.ui.utils import (
+    BASE_URL,
     TEST_USER_ID,
     generate_valid_generated_json,
     seed_comment,
@@ -50,7 +51,7 @@ class TestDraftComments:
         )
 
         # 2. Navigate to draft page
-        await page.goto(f"http://localhost:8000/drafts/{draft_id}")
+        await page.goto(f"{BASE_URL}/drafts/{draft_id}")
         # Playwright auto-waits for elements in expect() - no networkidle needed
 
         # 3. Verify comment section is visible (comment section ID: comment-thread-draft-{draft_id})
@@ -103,7 +104,7 @@ class TestDraftComments:
         )
 
         # 2. Navigate to draft page
-        await page.goto(f"http://localhost:8000/drafts/{draft_id}")
+        await page.goto(f"{BASE_URL}/drafts/{draft_id}")
         # Playwright auto-waits for elements in expect() - no networkidle needed
 
         # 3. Should redirect to edit mode or not show comments
@@ -138,7 +139,7 @@ class TestDraftComments:
         )
 
         # 2. Add a comment with unique identifier
-        await page.goto(f"http://localhost:8000/drafts/{draft_id}")
+        await page.goto(f"{BASE_URL}/drafts/{draft_id}")
         # Playwright auto-waits for elements in expect() - no networkidle needed
 
         comment_timestamp = str(int(time.time()))
@@ -157,11 +158,11 @@ class TestDraftComments:
         await page.wait_for_selector(f"text={test_comment}", timeout=10000)
 
         # 3. Navigate away to home page
-        await page.goto("http://localhost:8000/")
+        await page.goto(f"{BASE_URL}/")
         # Playwright auto-waits for elements in expect() - no networkidle needed
 
         # 4. Navigate back to draft
-        await page.goto(f"http://localhost:8000/drafts/{draft_id}")
+        await page.goto(f"{BASE_URL}/drafts/{draft_id}")
         # Playwright auto-waits for elements in expect() - no networkidle needed
 
         # 5. Verify the comment is still visible
@@ -199,7 +200,7 @@ class TestDraftComments:
         )
 
         # 3. Navigate to draft page
-        await page.goto(f"http://localhost:8000/drafts/{draft_id}")
+        await page.goto(f"{BASE_URL}/drafts/{draft_id}")
         # Playwright auto-waits for elements in expect() - no networkidle needed
 
         # 4. Wait for comment section to load
@@ -285,7 +286,7 @@ class TestDraftComments:
         )
 
         # 2. Navigate to draft and add own comment
-        await page.goto(f"http://localhost:8000/drafts/{draft_id}")
+        await page.goto(f"{BASE_URL}/drafts/{draft_id}")
         # Playwright auto-waits for elements in expect() - no networkidle needed
 
         comment_timestamp = str(int(time.time()))
@@ -345,7 +346,7 @@ class TestDraftComments:
         )
 
         # 3. Navigate to draft page
-        await page.goto(f"http://localhost:8000/drafts/{draft_id}")
+        await page.goto(f"{BASE_URL}/drafts/{draft_id}")
         # Playwright auto-waits for elements in expect() - no networkidle needed
 
         # 4. Wait for comment section to load
@@ -464,7 +465,7 @@ class TestDraftComments:
 
         # 2. Navigate as anonymous user (new page context without auth)
         # This simulates what would happen for anonymous users
-        await page.goto(f"http://localhost:8000/drafts/{draft_id}")
+        await page.goto(f"{BASE_URL}/drafts/{draft_id}")
         # Playwright auto-waits for elements in expect() - no networkidle needed
 
         # If the draft is accessible to anonymous users and has comments,

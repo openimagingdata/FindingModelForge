@@ -16,6 +16,7 @@ import pytest
 from playwright.async_api import Page, expect
 
 from .utils import (
+    BASE_URL,
     TEST_USER_ID,
     generate_valid_generated_json,
     navigate_to_profile_page,
@@ -50,7 +51,7 @@ class TestUnifiedDraftPage:
         )
 
         # Navigate to draft in edit mode (explicit since drafts with generated_json default to view mode)
-        await page.goto(f"http://localhost:8000/drafts/{draft_id}?mode=edit")
+        await page.goto(f"{BASE_URL}/drafts/{draft_id}?mode=edit")
 
         # Should be in edit mode
         await expect(page.locator("h1:has-text('Edit Finding Model Draft')")).to_be_visible(timeout=10000)
@@ -95,7 +96,7 @@ class TestUnifiedDraftPage:
         draft_id = await seed_draft(user_id=TEST_USER_ID, name=draft_name, generated_json=gen_json, status="draft")
 
         # Navigate to draft in preview mode
-        await page.goto(f"http://localhost:8000/drafts/{draft_id}?mode=view")
+        await page.goto(f"{BASE_URL}/drafts/{draft_id}?mode=view")
 
         # Should show model display without edit controls
         # Draft preview shows the actual finding model name as h2, not "Your Finding Model is Ready!"
@@ -181,7 +182,7 @@ class TestFormValidation:
             # No generated_json
         )
 
-        await page.goto(f"http://localhost:8000/drafts/{draft_id}?mode=edit")
+        await page.goto(f"{BASE_URL}/drafts/{draft_id}?mode=edit")
 
         # Find the button and test its state
         button = page.locator("button:has-text('Update & Preview')")
@@ -217,7 +218,7 @@ class TestModelReuse:
             synonyms=["original"],
         )
 
-        await page.goto(f"http://localhost:8000/drafts/{draft_id}?mode=edit")
+        await page.goto(f"{BASE_URL}/drafts/{draft_id}?mode=edit")
 
         # Set up response listener
         reuse_header: dict[str, str] = {}
@@ -338,7 +339,7 @@ class TestDraftAutosave:
             user_id=TEST_USER_ID, name=draft_name, description="Original description for autosave test."
         )
 
-        await page.goto(f"http://localhost:8000/drafts/{draft_id}?mode=edit")
+        await page.goto(f"{BASE_URL}/drafts/{draft_id}?mode=edit")
 
         # Make changes
         desc_field = page.locator("textarea#description")
@@ -388,7 +389,7 @@ class TestDraftModalWorkflows:
         draft_id = await seed_draft(user_id=TEST_USER_ID, name=draft_name, generated_json=gen_json, status="public")
 
         # Navigate to draft in view mode to see action buttons
-        await page.goto(f"http://localhost:8000/drafts/{draft_id}?mode=view")
+        await page.goto(f"{BASE_URL}/drafts/{draft_id}?mode=view")
 
         # Verify the Submit Draft button is visible
         submit_button = page.locator("button:has-text('Submit Draft')")
@@ -452,7 +453,7 @@ class TestDraftModalWorkflows:
         draft_id = await seed_draft(user_id=TEST_USER_ID, name=draft_name, generated_json=gen_json, status="draft")
 
         # Navigate to draft in view mode to see action buttons
-        await page.goto(f"http://localhost:8000/drafts/{draft_id}?mode=view")
+        await page.goto(f"{BASE_URL}/drafts/{draft_id}?mode=view")
 
         # Verify the Delete button is visible (the trigger button, not the modal confirmation button)
         delete_button = page.locator("button[data-modal-target^='delete-draft-modal']:has-text('Delete')")
@@ -514,7 +515,7 @@ class TestDraftModalWorkflows:
         gen_json = await generate_valid_generated_json(draft_name)
         draft_id = await seed_draft(user_id=TEST_USER_ID, name=draft_name, generated_json=gen_json, status="public")
 
-        await page.goto(f"http://localhost:8000/drafts/{draft_id}?mode=view")
+        await page.goto(f"{BASE_URL}/drafts/{draft_id}?mode=view")
 
         # Test submit modal accessibility
         submit_button = page.locator("button:has-text('Submit Draft')")
@@ -551,7 +552,7 @@ class TestDraftModalWorkflows:
         gen_json = await generate_valid_generated_json(draft_name)
         draft_id = await seed_draft(user_id=TEST_USER_ID, name=draft_name, generated_json=gen_json, status="public")
 
-        await page.goto(f"http://localhost:8000/drafts/{draft_id}?mode=view")
+        await page.goto(f"{BASE_URL}/drafts/{draft_id}?mode=view")
 
         # Open submit modal and check HTMX attributes
         submit_button = page.locator("button:has-text('Submit Draft')")
@@ -596,7 +597,7 @@ class TestPublicDraftWorkflow:
         )
 
         # Navigate to the draft page
-        await page.goto(f"http://localhost:8000/drafts/{draft_id}?mode=view")
+        await page.goto(f"{BASE_URL}/drafts/{draft_id}?mode=view")
 
         # Verify "Make Public" button is visible and "Submit Draft" is NOT
         make_public_button = page.locator("button[data-modal-target*='make-public-modal']:has-text('Make Public')")
@@ -676,7 +677,7 @@ class TestPublicDraftWorkflow:
         )
 
         # Navigate to the draft page
-        await page.goto(f"http://localhost:8000/drafts/{draft_id}?mode=view")
+        await page.goto(f"{BASE_URL}/drafts/{draft_id}?mode=view")
 
         # Verify "Make Public" button is visible
         make_public_button = page.locator("button[data-modal-target*='make-public-modal']:has-text('Make Public')")
@@ -731,7 +732,7 @@ class TestPublicDraftWorkflow:
         )
 
         # Navigate to /drafts page
-        await page.goto("http://localhost:8000/drafts")
+        await page.goto(f"{BASE_URL}/drafts")
 
         # Verify page title and header
         await expect(page.locator("h1:has-text('Public Drafts for Review')")).to_be_visible(timeout=10000)
@@ -784,7 +785,7 @@ class TestPublicDraftsBreadcrumbNavigation:
         )
 
         # Navigate to public drafts list
-        await page.goto("http://localhost:8000/drafts")
+        await page.goto(f"{BASE_URL}/drafts")
         await expect(page.locator("h1:has-text('Public Drafts for Review')")).to_be_visible(timeout=10000)
 
         # Find and click the draft row
@@ -846,7 +847,7 @@ class TestPublicDraftAuthorPermissions:
         )
 
         # Navigate to the draft from public drafts list
-        await page.goto(f"http://localhost:8000/drafts/{draft_id}?from=public")
+        await page.goto(f"{BASE_URL}/drafts/{draft_id}?from=public")
         await expect(page.locator(f"h2:has-text('{draft_name}')")).to_be_visible(timeout=10000)
 
         # Author should see BOTH DELETE and EDIT buttons (public drafts are editable by authors)
@@ -884,7 +885,7 @@ class TestPublicDraftAuthorPermissions:
         )
 
         # Navigate to edit mode
-        await page.goto(f"http://localhost:8000/drafts/{draft_id}?mode=edit")
+        await page.goto(f"{BASE_URL}/drafts/{draft_id}?mode=edit")
         await expect(page.locator("h1:has-text('Edit Finding Model Draft')")).to_be_visible(timeout=10000)
 
         # Verify we're in edit mode with form fields visible
@@ -955,7 +956,7 @@ class TestPublicDraftAuthorPermissions:
         )
 
         # Navigate to the draft
-        await page.goto(f"http://localhost:8000/drafts/{draft_id}?from=public")
+        await page.goto(f"{BASE_URL}/drafts/{draft_id}?from=public")
         await expect(page.locator(f"h2:has-text('{draft_name}')")).to_be_visible(timeout=10000)
 
         # Non-author should NOT see any edit or delete buttons
@@ -990,7 +991,7 @@ class TestPublicDraftsMenuVerification:
         page, errors, warnings = authenticated_page_with_console
 
         # Navigate to any page to check the navigation menu
-        await page.goto("http://localhost:8000/drafts")
+        await page.goto(f"{BASE_URL}/drafts")
 
         # Check that navigation menu shows "Drafts" as the link text (not "Public Drafts")
         drafts_nav_link = page.locator("nav a:has-text('Drafts')").first
@@ -1015,7 +1016,7 @@ class TestPublicDraftsMenuVerification:
         """Test that public drafts page has correct title and header."""
         page, errors, warnings = authenticated_page_with_console
 
-        await page.goto("http://localhost:8000/drafts")
+        await page.goto(f"{BASE_URL}/drafts")
 
         # Check page title
         await expect(page).to_have_title("Public Drafts - Finding Model Forge")

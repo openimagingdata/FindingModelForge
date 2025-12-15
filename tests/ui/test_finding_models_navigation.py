@@ -6,6 +6,7 @@ import pytest
 from playwright.async_api import Page, expect
 
 from tests.ui.utils import (
+    BASE_URL,
     collect_console_errors,
     verify_no_console_errors,
     wait_for_htmx_settled,
@@ -16,7 +17,7 @@ pytestmark = [pytest.mark.integration, pytest.mark.slow, pytest.mark.playwright]
 
 async def navigate_to_finding_models_list(page: Page) -> None:
     """Navigate to the finding models list page."""
-    await page.goto("http://localhost:8000/finding-models")
+    await page.goto(f"{BASE_URL}/finding-models")
     # Playwright's expect() auto-waits for elements - no need for networkidle
 
 
@@ -69,7 +70,7 @@ class TestIndexCodeDisplay:
         errors, warnings = collect_console_errors(page)
 
         # Navigate to abdominal abscess model (has index codes)
-        await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
+        await page.goto(f"{BASE_URL}/finding-models/abdominal-abscess")
         # Playwright's expect() auto-waits for elements - no need for networkidle
 
         # Check for "Codes" heading at model level
@@ -98,7 +99,7 @@ class TestIndexCodeDisplay:
         """Test that attribute level index codes display correctly."""
         errors, warnings = collect_console_errors(page)
 
-        await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
+        await page.goto(f"{BASE_URL}/finding-models/abdominal-abscess")
         # Playwright's expect() auto-waits for elements - no need for networkidle
 
         # Should have multiple "Codes" headings (model + attributes)
@@ -129,7 +130,7 @@ class TestIndexCodeDisplay:
         """Test that value level popovers display correctly on hover."""
         errors, warnings = collect_console_errors(page)
 
-        await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
+        await page.goto(f"{BASE_URL}/finding-models/abdominal-abscess")
         # Playwright's expect() auto-waits for elements - no need for networkidle
 
         # Check that value buttons have popover attributes
@@ -172,7 +173,7 @@ class TestIndexCodeDisplay:
         """Test that multiple value popovers work correctly."""
         errors, warnings = collect_console_errors(page)
 
-        await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
+        await page.goto(f"{BASE_URL}/finding-models/abdominal-abscess")
         # Playwright's expect() auto-waits for elements - no need for networkidle
 
         # Test different value buttons
@@ -210,7 +211,7 @@ class TestIndexCodeDisplay:
         """Test that index code badges have correct two-line structure."""
         errors, warnings = collect_console_errors(page)
 
-        await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
+        await page.goto(f"{BASE_URL}/finding-models/abdominal-abscess")
         # Playwright's expect() auto-waits for elements - no need for networkidle
 
         # Get the first badge and check internal structure
@@ -243,7 +244,7 @@ class TestIndexCodeDisplay:
         errors, warnings = collect_console_errors(page)
 
         # Navigate to finding models list (shouldn't have index code sections)
-        await page.goto("http://localhost:8000/finding-models")
+        await page.goto(f"{BASE_URL}/finding-models")
         # Playwright's expect() auto-waits for elements - no need for networkidle
 
         # Should not have "Codes" headings on the listing page
@@ -267,7 +268,7 @@ class TestIndexCodeDisplay:
         """Test that popovers have proper accessibility attributes."""
         errors, warnings = collect_console_errors(page)
 
-        await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
+        await page.goto(f"{BASE_URL}/finding-models/abdominal-abscess")
         # Playwright's expect() auto-waits for elements - no need for networkidle
 
         # Check popover ARIA attributes
@@ -481,7 +482,7 @@ class TestFindingModelsDetailNavigation:
         errors, warnings = collect_console_errors(page)
 
         # Try to access a model directly (using common slug pattern)
-        await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
+        await page.goto(f"{BASE_URL}/finding-models/abdominal-abscess")
         # Playwright's expect() auto-waits for elements - no need for networkidle
 
         # Wait for HTMX to load model from GitHub
@@ -522,7 +523,7 @@ class TestFindingModelsDetailNavigation:
         errors, warnings = collect_console_errors(page)
 
         # Start on detail page
-        await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
+        await page.goto(f"{BASE_URL}/finding-models/abdominal-abscess")
         # Playwright's expect() auto-waits for elements - no need for networkidle
 
         if page.url.endswith("/abdominal-abscess"):
@@ -557,7 +558,7 @@ class TestFindingModelsDetailNavigation:
         """Test 404 handling for non-existent model."""
         errors, warnings = collect_console_errors(page)
 
-        await page.goto("http://localhost:8000/finding-models/non-existent-model-slug")
+        await page.goto(f"{BASE_URL}/finding-models/non-existent-model-slug")
         # Playwright's expect() auto-waits for elements - no need for networkidle
 
         # Should show 404 handling - verify it doesn't show broken page
@@ -690,7 +691,7 @@ class TestFindingModelsHistoryNavigation:
         errors, warnings = collect_console_errors(page)
 
         # Start at homepage
-        await page.goto("http://localhost:8000/")
+        await page.goto(f"{BASE_URL}/")
         # Playwright's expect() auto-waits for elements - no need for networkidle
         initial_title = await page.title()
 
@@ -822,7 +823,7 @@ class TestFindingModelsDynamicFeatures:
         """Test model-specific detail page title."""
         errors, warnings = collect_console_errors(page)
 
-        await page.goto("http://localhost:8000/finding-models/abdominal-abscess")
+        await page.goto(f"{BASE_URL}/finding-models/abdominal-abscess")
         # Playwright's expect() auto-waits for elements - no need for networkidle
         await wait_for_htmx_settled(page)
 

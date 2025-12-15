@@ -14,6 +14,7 @@ import pytest
 from playwright.async_api import Page, expect
 
 from .utils import (
+    BASE_URL,
     TEST_USER_ID,
     cleanup_test_data,
     generate_valid_generated_json,
@@ -182,7 +183,7 @@ class TestBasicCreationFlow:
         page, errors, warnings = page_with_console_tracking
 
         # Navigate to create page without authentication
-        await page.goto("http://localhost:8000/create-finding-model")
+        await page.goto(f"{BASE_URL}/create-finding-model")
 
         # Should show login required
         title = await page.title()
@@ -384,7 +385,7 @@ class TestMultipleEditCycles:
         )
 
         # Navigate to draft page in preview mode (has generated model)
-        await page.goto(f"http://localhost:8000/drafts/{draft_id}?mode=view")
+        await page.goto(f"{BASE_URL}/drafts/{draft_id}?mode=view")
 
         # Verify we're in preview mode with generated model (case-insensitive due to AI generation)
         await expect(page.locator("h2")).to_contain_text(finding_name, ignore_case=True)

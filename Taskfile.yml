@@ -56,9 +56,9 @@ tasks:
     cmds:
       - echo "🚀 Starting Finding Model Forge development server..."
       - task: setup
-      - echo "🌐 Starting server on http://localhost:8000"
+      - echo "🌐 Starting server on http://localhost:${PORT:-8000}"
       - echo "📝 Logging output to dev.log"
-      - uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --proxy-headers --forwarded-allow-ips "*" 2>&1 | tee dev.log
+      - uv run uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --reload --proxy-headers --forwarded-allow-ips "*" 2>&1 | tee dev.log
     silent: true
 
   dev-vite:
@@ -68,10 +68,10 @@ tasks:
       - task: setup
       - echo "👀 Starting Vite dev server in background..."
       - npm run dev &
-      - echo "🌐 Starting FastAPI server on http://localhost:8000"
+      - echo "🌐 Starting FastAPI server on http://localhost:${PORT:-8000}"
       - echo "💡 Vite dev server running on http://localhost:5173"
       - echo "💡 Frontend changes will auto-reload. Press Ctrl+C to stop both processes."
-      - uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --proxy-headers --forwarded-allow-ips "*"
+      - uv run uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --reload --proxy-headers --forwarded-allow-ips "*"
     silent: true
 
   dev-watch:
@@ -81,9 +81,9 @@ tasks:
       - task: setup
       - echo "👀 Starting CSS watch mode in background..."
       - npm run watch:css &
-      - echo "🌐 Starting server on http://localhost:8000"
+      - echo "🌐 Starting server on http://localhost:${PORT:-8000}"
       - echo "💡 CSS changes will auto-rebuild. Press Ctrl+C to stop both processes."
-      - uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --proxy-headers --forwarded-allow-ips "*"
+      - uv run uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --reload --proxy-headers --forwarded-allow-ips "*"
     silent: true
 
   run:
@@ -204,56 +204,75 @@ tasks:
       - echo "✅ Integration tests passed!"
     silent: true
 
+  health-check:
+    desc: "Check if dev server is running and healthy"
+    cmds:
+      - |
+        port=${PORT:-8000}
+        response=$(curl -sf http://localhost:$port/api/health 2>/dev/null) || true
+        if [ -z "$response" ]; then
+          echo "❌ Dev server not running on localhost:$port"
+          echo "   Start it with 'task dev' first"
+          exit 1
+        elif echo "$response" | grep -q '"status".*"healthy"'; then
+          echo "✅ Dev server is healthy (port $port)"
+        else
+          echo "❌ Dev server responded but not healthy:"
+          echo "   $response"
+          exit 1
+        fi
+    silent: true
+
   test-ui:
     desc: "Run all UI/browser tests (organized in tests/ui/)"
+    deps: [health-check]
     cmds:
       - echo "🎭 Running UI/browser tests..."
-      - echo "💡 Make sure the development server is running on localhost:8000"
       - uv run pytest tests/ui/ -v --no-cov
       - echo "✅ UI tests passed!"
     silent: true
 
   test-ui-headed:
     desc: "Run UI tests with visible browser (for debugging)"
+    deps: [health-check]
     cmds:
       - echo "🎭 Running UI tests with visible browser..."
-      - echo "💡 Make sure the development server is running on localhost:8000"
       - PLAYWRIGHT_HEADLESS=false uv run pytest tests/ui/ -v --no-cov -s
       - echo "✅ UI tests completed!"
     silent: true
 
   test-ui-profile:
     desc: "Run only profile page UI tests"
+    deps: [health-check]
     cmds:
       - echo "🏠 Running profile page tests..."
-      - echo "💡 Make sure the development server is running on localhost:8000"
       - uv run pytest tests/ui/test_profile.py -v --no-cov
       - echo "✅ Profile tests passed!"
     silent: true
 
   test-ui-creation:
     desc: "Run only creation workflow UI tests"
+    deps: [health-check]
     cmds:
       - echo "⚡ Running creation workflow tests..."
-      - echo "💡 Make sure the development server is running on localhost:8000"
       - uv run pytest tests/ui/test_creation_workflow.py -v --no-cov
       - echo "✅ Creation workflow tests passed!"
     silent: true
 
   test-ui-drafts:
     desc: "Run only draft management UI tests"
+    deps: [health-check]
     cmds:
       - echo "📝 Running draft management tests..."
-      - echo "💡 Make sure the development server is running on localhost:8000"
       - uv run pytest tests/ui/test_draft_management.py -v --no-cov
       - echo "✅ Draft management tests passed!"
     silent: true
 
   test-ui-comments:
     desc: "Run only comment system UI tests"
+    deps: [health-check]
     cmds:
       - echo "💬 Running comment system tests..."
-      - echo "💡 Make sure the development server is running on localhost:8000"
       - uv run pytest tests/ui/test_comments.py -v --no-cov
       - echo "✅ Comment tests passed!"
     silent: true
@@ -270,10 +289,14 @@ tasks:
       - task: test-ui-headed
 
   test-full:
-    desc: "Run full test suite with quality checks"
+    desc: "Run all tests (unit + integration + UI)"
+    deps: [health-check]
     cmds:
-      - task: check
-      - task: test
+      - task: test-unit
+      - task: test-integration
+      - echo "🎭 Running UI/browser tests..."
+      - uv run pytest tests/ui/ -v --no-cov
+      - echo "✅ All tests passed!"
     silent: true
 
   # Docker tasks

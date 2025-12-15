@@ -15,7 +15,7 @@ from __future__ import annotations
 import pytest
 from playwright.async_api import Page, expect
 
-from .utils import wait_for_htmx_settled
+from .utils import BASE_URL, wait_for_htmx_settled
 
 pytestmark = [pytest.mark.integration, pytest.mark.slow, pytest.mark.playwright]
 
@@ -25,7 +25,7 @@ class TestSuggestionBoxVisibility:
 
     async def test_navbar_suggest_link_visible_on_home_page(self, page: Page) -> None:
         """Test that 'Suggest' link is visible in navbar on home page."""
-        await page.goto("http://localhost:8000/")
+        await page.goto(f"{BASE_URL}/")
         await page.wait_for_load_state("domcontentloaded")
 
         # Check for the "Suggest" link in navbar (desktop or mobile)
@@ -34,7 +34,7 @@ class TestSuggestionBoxVisibility:
 
     async def test_navbar_suggest_link_visible_on_finding_models_page(self, page: Page) -> None:
         """Test that 'Suggest' link is visible in navbar on finding models page."""
-        await page.goto("http://localhost:8000/finding-models")
+        await page.goto(f"{BASE_URL}/finding-models")
         await page.wait_for_load_state("domcontentloaded")
 
         # Check for the "Suggest" link in navbar
@@ -44,14 +44,14 @@ class TestSuggestionBoxVisibility:
     async def test_hero_button_visible_on_home_page_only(self, page: Page) -> None:
         """Test that hero 'Suggest' button is visible only on home page."""
         # Home page - should have hero button
-        await page.goto("http://localhost:8000/")
+        await page.goto(f"{BASE_URL}/")
         await page.wait_for_load_state("domcontentloaded")
 
         hero_button = page.locator('button[data-modal-target="suggestion-modal"]:has-text("Suggest")')
         await expect(hero_button).to_be_visible(timeout=5000)
 
         # Finding models page - should NOT have hero button
-        await page.goto("http://localhost:8000/finding-models")
+        await page.goto(f"{BASE_URL}/finding-models")
         await page.wait_for_load_state("domcontentloaded")
 
         # Verify hero button is NOT visible (count should be 0)
@@ -66,7 +66,7 @@ class TestSuggestionBoxModalOpening:
 
     async def test_navbar_link_opens_modal(self, page: Page) -> None:
         """Test clicking navbar 'Suggest' link opens modal."""
-        await page.goto("http://localhost:8000/")
+        await page.goto(f"{BASE_URL}/")
         await page.wait_for_load_state("domcontentloaded")
 
         # Click navbar "Suggest" link
@@ -83,7 +83,7 @@ class TestSuggestionBoxModalOpening:
 
     async def test_hero_button_opens_modal(self, page: Page) -> None:
         """Test clicking hero button opens modal."""
-        await page.goto("http://localhost:8000/")
+        await page.goto(f"{BASE_URL}/")
         await page.wait_for_load_state("domcontentloaded")
 
         # Click hero button
@@ -104,7 +104,7 @@ class TestSuggestionBoxFormContent:
 
     async def test_form_shows_email_input_for_anonymous_users(self, page: Page) -> None:
         """Test that form shows email input field for anonymous users."""
-        await page.goto("http://localhost:8000/")
+        await page.goto(f"{BASE_URL}/")
         await page.wait_for_load_state("domcontentloaded")
 
         # Open modal
@@ -126,7 +126,7 @@ class TestSuggestionBoxFormContent:
 
     async def test_form_shows_user_info_for_authenticated_users(self, authenticated_page: Page) -> None:
         """Test that form shows user info (no email input) for authenticated users."""
-        await authenticated_page.goto("http://localhost:8000/")
+        await authenticated_page.goto(f"{BASE_URL}/")
         await authenticated_page.wait_for_load_state("domcontentloaded")
 
         # Open modal
@@ -155,7 +155,7 @@ class TestSuggestionBoxReactiveValidation:
         Note: Character counter was removed from UI as unnecessary clutter.
         The maxlength attribute provides sufficient user feedback.
         """
-        await page.goto("http://localhost:8000/")
+        await page.goto(f"{BASE_URL}/")
         await page.wait_for_load_state("domcontentloaded")
 
         # Open modal
@@ -181,7 +181,7 @@ class TestSuggestionBoxReactiveValidation:
 
     async def test_submit_button_disabled_when_content_empty(self, page: Page) -> None:
         """Test that submit button is disabled when content is empty."""
-        await page.goto("http://localhost:8000/")
+        await page.goto(f"{BASE_URL}/")
         await page.wait_for_load_state("domcontentloaded")
 
         # Open modal
@@ -203,7 +203,7 @@ class TestSuggestionBoxReactiveValidation:
         This test verifies that filling exactly 300 chars keeps the button enabled,
         demonstrating the validation boundary.
         """
-        await page.goto("http://localhost:8000/")
+        await page.goto(f"{BASE_URL}/")
         await page.wait_for_load_state("domcontentloaded")
 
         # Open modal
@@ -229,7 +229,7 @@ class TestSuggestionBoxReactiveValidation:
 
     async def test_submit_button_enabled_when_content_valid(self, page: Page) -> None:
         """Test that submit button is enabled when content is 1-300 characters."""
-        await page.goto("http://localhost:8000/")
+        await page.goto(f"{BASE_URL}/")
         await page.wait_for_load_state("domcontentloaded")
 
         # Open modal
@@ -255,7 +255,7 @@ class TestSuggestionBoxSubmissionFlow:
 
     async def test_modal_closes_and_alert_appears_after_submit(self, page: Page) -> None:
         """Test that modal closes and alert appears after successful submission."""
-        await page.goto("http://localhost:8000/")
+        await page.goto(f"{BASE_URL}/")
         await page.wait_for_load_state("domcontentloaded")
 
         # Open modal
@@ -288,7 +288,7 @@ class TestSuggestionBoxSubmissionFlow:
     async def test_user_stays_on_current_page_after_submit(self, page: Page) -> None:
         """Test that user stays on current page after submission (no navigation)."""
         # Start on home page
-        await page.goto("http://localhost:8000/")
+        await page.goto(f"{BASE_URL}/")
         await page.wait_for_load_state("domcontentloaded")
 
         # Open modal and submit suggestion
@@ -308,7 +308,7 @@ class TestSuggestionBoxSubmissionFlow:
         await wait_for_htmx_settled(page)
 
         # URL should remain on home page (may have # anchor from modal)
-        assert page.url.startswith("http://localhost:8000/"), "User should stay on the home page after submission"
+        assert page.url.startswith(f"{BASE_URL}/"), "User should stay on the home page after submission"
         # Should NOT navigate to different page
         assert "/suggestions" not in page.url, "Should not navigate to suggestions page"
 
@@ -319,7 +319,7 @@ class TestSuggestionBoxSubmissionFlow:
         instead of Flowbite data attributes. This test verifies the button exists and
         works correctly with Alpine.js.
         """
-        await page.goto("http://localhost:8000/")
+        await page.goto(f"{BASE_URL}/")
         await page.wait_for_load_state("domcontentloaded")
 
         # Submit suggestion to trigger alert
@@ -369,7 +369,7 @@ class TestSuggestionBoxStateManagement:
         For a clean submission flow, users should submit, which triggers HTMX to swap
         the alert, and then they can close the modal knowing submission succeeded.
         """
-        await page.goto("http://localhost:8000/")
+        await page.goto(f"{BASE_URL}/")
         await page.wait_for_load_state("domcontentloaded")
 
         # Open modal
@@ -420,7 +420,7 @@ class TestSuggestionBoxPersistence:
         test_content = f"Database persistence test suggestion {timestamp}"
 
         # Navigate and open modal
-        await authenticated_page.goto("http://localhost:8000/")
+        await authenticated_page.goto(f"{BASE_URL}/")
 
         # Open modal
         suggest_link = authenticated_page.locator('a[data-modal-target="suggestion-modal"]:has-text("Suggest")').first

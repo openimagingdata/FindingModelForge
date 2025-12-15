@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 from datetime import UTC, datetime
 from typing import Any
@@ -15,6 +16,9 @@ from app.config import settings
 # Test user ID for authentication (hardcoded for test-auth system)
 TEST_USER_ID = 999999  # This is hardcoded in the test-auth system
 
+# Base URL for tests - respects PORT environment variable (default: 8000)
+BASE_URL = f"http://localhost:{os.environ.get('PORT', '8000')}"
+
 
 async def authenticate_user(page: Page) -> None:
     """Authenticate user via test-auth endpoint.
@@ -22,7 +26,7 @@ async def authenticate_user(page: Page) -> None:
     This uses the test-auth system to log in user ID 999999
     and redirects to the create-finding-model page.
     """
-    await page.goto("http://localhost:8000/test-auth/login")
+    await page.goto(f"{BASE_URL}/test-auth/login")
     await page.wait_for_load_state("networkidle")
 
 
@@ -421,7 +425,7 @@ async def navigate_to_create_page(page: Page) -> None:
     Args:
         page: Playwright page instance
     """
-    await page.goto("http://localhost:8000/create-finding-model")
+    await page.goto(f"{BASE_URL}/create-finding-model")
     await page.wait_for_load_state("networkidle")
 
 
@@ -431,7 +435,7 @@ async def navigate_to_profile_page(page: Page) -> None:
     Args:
         page: Playwright page instance
     """
-    await page.goto("http://localhost:8000/profile")
+    await page.goto(f"{BASE_URL}/profile")
     # Don't wait for networkidle - it adds 500ms+ of unnecessary waiting
     # Playwright's auto-waiting will handle element visibility
 
