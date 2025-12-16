@@ -54,8 +54,10 @@ Migrate to `.claude/rules/*.md` pattern which:
 - Match tools to problems (Playwright for browser/HTMX, not curl)
 - Delegate to specialist agents instead of doing implementation work directly
 - When implementer reports "done but failing", delegate to reviewer immediately
-- **Full test suite before commit**: Run both `task test-unit` AND `task test-ui` before committing changes that affect user-facing behavior - UI tests are end-to-end and catch regressions in routes, services, templates, and their integration (note: `task test` excludes UI tests)
-- **Template changes REQUIRE UI tests**: Any modification to files in `templates/` MUST be followed by running `task test-ui` before committing. Template refactoring can break form submissions, button behaviors, and HTMX interactions in ways that unit tests cannot detect.
+- **Tiered testing requirements**:
+  - **WIP commits** (intermediate checkpoints): `task test-unit` + `task test-integration` adequate for backend-only work
+  - **Milestone commits** (phase complete, feature done, PR-ready): **REQUIRE `task test-full`** - no exceptions. This runs unit + integration + UI tests (~2.5 min). A "quick test" of one file is not verification.
+  - **Template changes**: Any modification to `templates/` requires UI tests even for WIP commits - template refactoring breaks form submissions, button behaviors, and HTMX interactions in ways unit tests cannot detect
 - **PORT variable for testing**: Dev server and UI tests respect the `PORT` environment variable (default: 8000). Use `PORT=8001 task dev` and `PORT=8001 task test-ui` to test on alternate ports.
 
 ## Priority
