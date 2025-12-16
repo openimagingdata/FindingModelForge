@@ -261,6 +261,60 @@ document.addEventListener("htmx:afterSwap", function (event) {
 })
 ```
 
+## HTMX/Alpine/Flowbite Integration Gotchas
+
+⚠️ **These three libraries have known integration issues. Read this before making changes.**
+
+### Known Issue: Global `initFlowbite()` Causes Duplicate Instances
+
+**Problem**: Calling `initFlowbite()` globally after HTMX swaps reinitializes ALL Flowbite components on the page, not just new ones. This can cause duplicate modal instances and unpredictable behavior.
+
+**Evidence**: [Flowbite GitHub Issue #820](https://github.com/themesberg/flowbite/issues/820)
+
+**Current State**: Our `main.js` calls `initFlowbite()` globally. We haven't hit this bug yet because our modals are mostly on initial page loads, but it's a latent issue.
+
+**Future Fix**: Use targeted initialization or wait for Flowbite's `initFlowbite({uninitializedOnly: true})` option.
+
+### Alpine.js State Preservation
+
+**Problem**: When HTMX swaps entire Alpine components, their internal state is lost.
+
+**Solution**: The [alpine-morph extension](https://v1.htmx.org/extensions/alpine-morph/) allows HTMX to use Alpine's morph plugin for swapping, preserving state.
+
+**Current State**: We don't use alpine-morph. Our patterns avoid this by keeping Alpine state local to components that don't get fully swapped.
+
+### Division of Responsibilities
+
+Per [InfoWorld](https://www.infoworld.com/article/3856520/htmx-and-alpine-js-how-to-combine-two-great-lean-front-ends.html) and [Ben Nadel](https://www.bennadel.com/blog/4787-using-alpine-js-in-htmx.htm):
+
+| Use HTMX for | Use Alpine.js for |
+|--------------|-------------------|
+| Server-driven HTML updates | Client-side state (toggles, counters) |
+| Form submissions with swaps | Dropdowns, accordions, filtering |
+| Live search | Smooth transitions and animations |
+| Loading data from server | Complex UI interactions |
+
+**Key insight**: HTMX state lives on the server. Alpine state lives on the client. Don't fight this.
+
+### `hx-boost` and Back Button
+
+**Problem**: Using `hx-boost` for AJAX navigation can cause Alpine components to lose state on browser back button.
+
+**Current State**: We don't use `hx-boost`, so this doesn't affect us.
+
+### Alpine Content with HTMX Attributes
+
+**Problem**: If Alpine.js dynamically creates elements with `hx-*` attributes (via `x-if` templates), HTMX won't process them automatically.
+
+**Solution**: Call `htmx.process(element)` after Alpine adds the content.
+
+### Resources
+
+- [Flowbite JavaScript Docs](https://flowbite.com/docs/getting-started/javascript/)
+- [HTMX alpine-morph Extension](https://v1.htmx.org/extensions/alpine-morph/)
+- [Ben Nadel - Using Alpine.js in HTMX](https://www.bennadel.com/blog/4787-using-alpine-js-in-htmx.htm)
+- [SaaS Pegasus - Django, HTMX and Alpine.js](https://www.saaspegasus.com/guides/modern-javascript-for-django-developers/htmx-alpine/)
+
 ## Tailwind CSS Guidelines
 
 ### 1. Use Utility Classes
