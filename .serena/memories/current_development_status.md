@@ -1,5 +1,50 @@
 # Current Development Status
 
+## Frontend Cleanup Push 1 (December 2025)
+
+### Status: ✅ COMPLETE
+
+**Project**: Standardize frontend patterns - eliminate custom JavaScript, use Flowbite/Alpine.js/HTMX consistently.
+
+**Documentation**: `tasks/done/frontend_cleanup_push_1.md`
+
+#### What Was Accomplished
+
+1. **Eliminated custom JavaScript** - No `<script>` blocks or `onclick` handlers in templates
+2. **Standardized buttons** - All buttons use `flowbite_button()` or `action_button()` macros
+3. **Standardized badges** - All badges use `flowbite_badge()` macro
+4. **Added `button_type` parameter** - Fixed form submission issues with `action_button` macro
+5. **Converted table row navigation** - From `onclick` to HTMX `hx-get` pattern
+
+#### Testing Infrastructure Improvements
+
+- Added `health-check` task to Taskfile
+- Added `test-full` task for milestone commits
+- All test tasks now respect `PORT` environment variable
+- Added tiered testing requirements (WIP vs milestone commits)
+
+#### Documentation Added
+
+- HTMX/Alpine/Flowbite integration gotchas section in `templates/CLAUDE.md`
+- Known issues: global `initFlowbite()` can cause duplicate modals
+- Division of responsibilities between HTMX and Alpine.js
+
+#### Results
+
+- **104 UI tests passing**
+- **523 unit tests passing**
+- Zero ad hoc button/badge patterns
+- Zero custom JavaScript in templates
+
+#### Push 2 Planned
+
+See `tasks/frontend_cleanup_push_2.md` for follow-up items:
+- HIGH: Fix global `initFlowbite()` latent bug
+- MEDIUM: Modal macro consolidation, alpine-morph evaluation
+- LOW: Profile alerts, visual regression tests
+
+---
+
 ## Service Layer Refactoring (December 2025)
 
 ### Status: ✅ PHASE 1 COMPLETE
