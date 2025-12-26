@@ -169,6 +169,8 @@ async def resume_draft(draft_id: str = Form(...)):
 
 ## Alpine.js and HTMX Integration
 
+For technology decisions about Alpine.js plugins and extensions, see `technology_decisions` memory and `research/` folder.
+
 ### Draft ID Management in Forms
 
 ```javascript

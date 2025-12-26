@@ -275,13 +275,9 @@ document.addEventListener("htmx:afterSwap", function (event) {
 
 **Future Fix**: Use targeted initialization or wait for Flowbite's `initFlowbite({uninitializedOnly: true})` option.
 
-### Alpine.js State Preservation
+### Alpine.js State with HTMX Swaps
 
-**Problem**: When HTMX swaps entire Alpine components, their internal state is lost.
-
-**Solution**: The [alpine-morph extension](https://v1.htmx.org/extensions/alpine-morph/) allows HTMX to use Alpine's morph plugin for swapping, preserving state.
-
-**Current State**: We don't use alpine-morph. Our patterns avoid this by keeping Alpine state local to components that don't get fully swapped.
+Server provides fresh state on each swap via Jinja2 templates (e.g., `x-data='{ name: {{ value | tojson }} }'`). After swaps, `Alpine.initTree(content)` initializes Alpine from these server-rendered values.
 
 ### Division of Responsibilities
 
@@ -311,7 +307,6 @@ Per [InfoWorld](https://www.infoworld.com/article/3856520/htmx-and-alpine-js-how
 ### Resources
 
 - [Flowbite JavaScript Docs](https://flowbite.com/docs/getting-started/javascript/)
-- [HTMX alpine-morph Extension](https://v1.htmx.org/extensions/alpine-morph/)
 - [Ben Nadel - Using Alpine.js in HTMX](https://www.bennadel.com/blog/4787-using-alpine-js-in-htmx.htm)
 - [SaaS Pegasus - Django, HTMX and Alpine.js](https://www.saaspegasus.com/guides/modern-javascript-for-django-developers/htmx-alpine/)
 
