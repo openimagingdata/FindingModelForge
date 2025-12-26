@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "macros/flowbite_components.html" import flowbite_icon_button, flowbite_badge, flowbite_button %}
+{% from 'macros/delete_draft_modal.html' import delete_draft_modal %}
 
 {% block content %}
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900" x-data='{
@@ -494,7 +495,6 @@
                 </div>
 
                 {% if d.status == 'draft' %}
-                    {% from 'macros/delete_draft_modal.html' import delete_draft_modal %}
                     {{ delete_draft_modal(d.id, hx_target='#draft-card-' ~ d.id, hx_swap='delete', extra_attributes='data-action="delete-draft"') }}
                 {% endif %}
                 {% endfor %}
