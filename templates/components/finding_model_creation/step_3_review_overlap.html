@@ -1,7 +1,7 @@
 {# Step 3: Similar Models Review Component #}
 {% extends "components/finding_model_creation/step_base.html" %}
-{% from "macros/create_workflow_elements.html" import back_button, submit_button %}
-{% from "macros/flowbite_components.html" import flowbite_badge %}
+{% from "macros/create_workflow_elements.html" import back_button %}
+{% from "macros/flowbite_components.html" import flowbite_badge, action_button %}
 
 {% set step_title = "Review Similar Models" %}
 {% set step_description = "We found some existing models that might be similar to yours. Review them to ensure your model is unique." %}
@@ -44,13 +44,11 @@
 {% block step_navigation %}
     <div class="flex justify-between pt-4">
         {{ back_button(2) }}
-        {{ submit_button(
+        {{ action_button(
             text="Continue to Edit Attributes",
             loading_text="Generating...",
             button_type="button",
-            hx_post="/create/step/3",
-            hx_target="#main-content",
-            hx_swap="innerHTML"
+            attributes='hx-post="/create/step/3" hx-target="#main-content" hx-swap="innerHTML"'
         ) }}
     </div>
 {% endblock %}

@@ -2,7 +2,7 @@
 {% from "macros/form_validation.html" import validated_textarea %}
 {% from "macros/synonym_manager.html" import synonym_manager %}
 {% from "macros/unified_form_data.html" import unified_form_data %}
-{% from "macros/flowbite_components.html" import flowbite_button %}
+{% from "macros/flowbite_components.html" import flowbite_button, action_button %}
 
 <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
     <div x-data='{{ unified_form_data(initial_description=draft.inputs.description or "", initial_attributes=draft.inputs.attributes_markdown or "", initial_synonyms=draft.inputs.synonyms or [], has_no_generated_json=not draft.generated_json) }}'>
@@ -77,22 +77,13 @@
                     </div>
 
                     <div class="flex items-center gap-3">
-
-
                         {% if draft.status != 'submitted' %}
-                        <button type="submit"
-                                :disabled="!canSubmit"
-                                :class="{'opacity-50 cursor-not-allowed': !canSubmit}"
-                                class="inline-flex items-center font-medium rounded-lg text-center transition-colors focus:outline-none focus:ring-4 px-5 py-2.5 text-sm text-white bg-blue-700 hover:bg-blue-800 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 disabled:opacity-50 disabled:cursor-not-allowed">
-                            <span class="htmx-indicator">
-                                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                Updating...
-                            </span>
-                            <span>Update & Preview</span>
-                        </button>
+                        {{ action_button(
+                            text="Update & Preview",
+                            loading_text="Updating...",
+                            button_type="submit",
+                            attributes=':disabled="!canSubmit" :class="{\'opacity-50 cursor-not-allowed\': !canSubmit}"'
+                        ) }}
                         {% else %}
                         <span class="text-sm text-gray-500 dark:text-gray-400">This draft has been submitted</span>
                         {% endif %}

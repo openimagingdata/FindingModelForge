@@ -111,6 +111,37 @@ class TestUnifiedDraftPage:
 
         await verify_no_console_errors(errors, warnings)
 
+    async def test_update_preview_button_renders_correctly(self, authenticated_page: Page):
+        """Regression test: Verify button renders properly without escaped HTML.
+
+        This test catches the bug where raw HTML was passed to a Jinja2 macro
+        and displayed as escaped text instead of rendering as a proper button.
+        """
+        draft_id = await seed_draft(
+            user_id=TEST_USER_ID,
+            name="UI Test Button Rendering",
+            description="Test that button HTML renders correctly",
+            attributes_markdown="Presence of test\n- present: visible\n- absent: not visible",
+            status="draft",
+        )
+
+        await authenticated_page.goto(f"{BASE_URL}/drafts/{draft_id}?mode=edit")
+
+        # Get the button element
+        button = authenticated_page.locator("button:has-text('Update & Preview')")
+        await expect(button).to_be_visible()
+
+        # CRITICAL: Verify button does NOT contain raw HTML/SVG markup as text
+        button_text = await button.inner_text()
+        assert "<span" not in button_text, f"Button contains raw HTML: {button_text}"
+        assert "<svg" not in button_text, f"Button contains raw SVG: {button_text}"
+        assert "htmx-indicator" not in button_text, f"Button shows CSS class as text: {button_text}"
+        assert "animate-spin" not in button_text, f"Button shows CSS class as text: {button_text}"
+
+        # Verify the visible text is clean
+        # The htmx-indicator span is hidden by default, so only "Update & Preview" should be visible
+        assert "Update & Preview" in button_text
+
 
 class TestFormValidation:
     """Test Alpine.js form validation behavior."""

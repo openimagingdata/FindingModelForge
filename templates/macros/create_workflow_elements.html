@@ -1,4 +1,5 @@
 {# Common HTMX form elements and patterns #}
+{% from "macros/flowbite_components.html" import action_button %}
 
 {# HTMX form wrapper macro #}
 {% macro htmx_form(step_number, method="post", extra_classes="") %}
@@ -12,24 +13,6 @@
 </form>
 {% endmacro %}
 
-{# Submit button with HTMX indicator #}
-{% macro submit_button(text="Continue", loading_text="Processing...", extra_classes="", disabled=false, button_type="submit", hx_post=none, hx_target=none, hx_swap=none) %}
-<button type="{{ button_type }}"
-        {% if hx_post %}hx-post="{{ hx_post }}"{% endif %}
-        {% if hx_target %}hx-target="{{ hx_target }}"{% endif %}
-        {% if hx_swap %}hx-swap="{{ hx_swap }}"{% endif %}
-        class="inline-flex items-center font-medium rounded-lg text-center transition-colors focus:outline-none focus:ring-4 px-5 py-2.5 text-sm text-white bg-blue-700 hover:bg-blue-800 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 disabled:opacity-50 disabled:cursor-not-allowed {{ extra_classes }}"
-        {% if disabled %}disabled{% endif %}>
-    <span class="htmx-indicator">
-        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        {{ loading_text }}
-    </span>
-    <span>{{ text }}</span>
-</button>
-{% endmacro %}
 
 {# Back button for navigation #}
 {% macro back_button(step_number, text="← Back", extra_classes="", session_id=None, draft_id=None) %}
@@ -54,7 +37,7 @@
     {% else %}
         <div></div>
     {% endif %}
-    {{ submit_button(submit_text, submit_loading) }}
+    {{ action_button(submit_text, loading_text=submit_loading, button_type="submit") }}
 </div>
 {% endmacro %}
 

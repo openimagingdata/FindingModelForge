@@ -1,6 +1,7 @@
 {# Step 1: Name Input Component #}
 {% extends "components/finding_model_creation/step_base.html" %}
-{% from "macros/create_workflow_elements.html" import htmx_form, submit_button, status_indicator %}
+{% from "macros/create_workflow_elements.html" import htmx_form, status_indicator %}
+{% from "macros/flowbite_components.html" import action_button, alert %}
 {% from "macros/form_validation.html" import validation_data, validated_input %}
 
 {% set step_title = "Finding Model Name" %}
@@ -9,7 +10,6 @@
 {% block step_content %}
     <div x-data='{{ validation_data(initial_name=form_data.name if form_data else "") }}'>
         {# Error message - moved here to be in Alpine scope #}
-        {% from "macros/flowbite_components.html" import alert %}
         {% if session_data.error_message %}
             <div x-show="(!name || name === '{{ (form_data.name if form_data and form_data.name else '') | replace("'", "\\'") }}')"
                  x-transition
@@ -46,10 +46,11 @@
                 {% endif %}
 
                 <div class="flex justify-end pt-4">
-                    {{ submit_button(
+                    {{ action_button(
                         text="Generate Description",
                         loading_text="Generating...",
-                        extra_classes=":disabled='!canSubmit' :class=\"{'opacity-50 cursor-not-allowed': !canSubmit}\""
+                        button_type="submit",
+                        attributes=':disabled="!canSubmit" :class="{\'opacity-50 cursor-not-allowed\': !canSubmit}"'
                     ) }}
                 </div>
             </div>

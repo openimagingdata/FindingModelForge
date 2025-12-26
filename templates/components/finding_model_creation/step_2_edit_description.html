@@ -3,6 +3,8 @@
 {% from "macros/form_validation.html" import validated_textarea %}
 {% from "macros/synonym_manager.html" import synonym_manager %}
 {% from "macros/unified_form_data.html" import unified_form_data %}
+{% from "macros/create_workflow_elements.html" import back_button %}
+{% from "macros/flowbite_components.html" import action_button %}
 
 {% set step_title = "Edit Description" %}
 {% set step_description = "Review and edit the AI-generated description for your finding model." %}
@@ -41,13 +43,13 @@
                 {{ synonym_manager() }}
 
                 <div class="flex justify-between pt-4">
-                    {% from "macros/create_workflow_elements.html" import back_button, submit_button %}
                     {{ back_button(step_number=1, text="Back") }}
 
-                    {{ submit_button(
+                    {{ action_button(
                         text="Check for Similar",
                         loading_text="Checking...",
-                        extra_classes=":disabled='!isFormValid()' :class=\"{'opacity-50 cursor-not-allowed': !isFormValid()}\""
+                        button_type="submit",
+                        attributes=':disabled="!isFormValid()" :class="{\'opacity-50 cursor-not-allowed\': !isFormValid()}"'
                     ) }}
                 </div>
             </div>

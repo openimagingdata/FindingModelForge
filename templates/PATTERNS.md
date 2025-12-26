@@ -14,9 +14,8 @@ When creating buttons throughout the application, use the appropriate macro base
 ### Macro Locations
 
 - **`flowbite_button()`**: `templates/macros/flowbite_components.html` - Use for navigation links
-- **`action_button()`**: `templates/macros/flowbite_components.html` - Use for form buttons and triggers
+- **`action_button()`**: `templates/macros/flowbite_components.html` - Use for form buttons and triggers (with optional HTMX loading indicator)
 - **`flowbite_icon_button()`**: `templates/macros/flowbite_components.html` - Use for icon-only buttons
-- **`submit_button()`**: `templates/macros/create_workflow_elements.html` - Special submit button with HTMX indicator (creation workflow only)
 - **`back_button()`**: `templates/macros/create_workflow_elements.html` - Special back navigation button (creation workflow only)
 
 ### Usage Examples
@@ -32,6 +31,14 @@ When creating buttons throughout the application, use the appropriate macro base
     {{ action_button("Save Changes", type="success", button_type="submit") }}
 </form>
 
+{# Submit button with HTMX loading indicator #}
+{{ action_button(
+    text="Update & Preview",
+    loading_text="Updating...",
+    button_type="submit",
+    attributes=':disabled="!canSubmit" :class="{\'opacity-50 cursor-not-allowed\': !canSubmit}"'
+) }}
+
 {# HTMX action button #}
 {{ action_button(
     "Delete",
@@ -46,21 +53,32 @@ When creating buttons throughout the application, use the appropriate macro base
 {{ flowbite_icon_button(edit_icon, color="blue", title="Edit") }}
 ```
 
-### Special Workflow Buttons
+### HTMX Loading Indicators
 
-The creation workflow uses specialized button macros that include HTMX loading indicators:
+The `action_button` macro supports an optional `loading_text` parameter. When provided, it renders an HTMX loading indicator with a spinner:
 
 ```jinja
-{# Submit button with loading state #}
-{% from "macros/create_workflow_elements.html" import submit_button %}
-{{ submit_button(text="Continue", loading_text="Processing...") }}
+{% from "macros/flowbite_components.html" import action_button %}
 
+{# Button with loading state #}
+{{ action_button(
+    text="Continue",
+    loading_text="Processing...",
+    button_type="submit"
+) }}
+```
+
+When `loading_text` is provided, the button will show a spinner and the loading text during HTMX requests, then switch back to the normal text when complete.
+
+### Workflow Navigation
+
+The creation workflow uses a specialized back navigation button:
+
+```jinja
 {# Back navigation button #}
 {% from "macros/create_workflow_elements.html" import back_button %}
 {{ back_button(step_number=1) }}
 ```
-
-**Note**: These workflow-specific macros preserve the HTMX indicator pattern and should only be used in the creation workflow templates.
 
 ## Clickable Table Rows Pattern
 
