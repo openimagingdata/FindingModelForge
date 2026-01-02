@@ -5,6 +5,9 @@ version: "3"
 vars:
   CONTAINER_NAME: ghcr.io/openimagingdata/findingmodelforge
   DATE_TAG: "{{now | date \"20060102\"}}"
+  # Server port (override with PORT env var)
+  PORT:
+    sh: echo "${PORT:-8000}"
   # Platform-specific data directory (override with FINDINGMODEL_DATA_DIR env var)
   DATA_DIR:
     sh: |
@@ -53,12 +56,13 @@ tasks:
   # Development tasks
   dev:
     desc: "Start development server"
+    deps: [_check-port-free]
     cmds:
       - echo "🚀 Starting Finding Model Forge development server..."
       - task: setup
-      - echo "🌐 Starting server on http://localhost:${PORT:-8000}"
+      - echo "🌐 Starting server on http://localhost:{{.PORT}}"
       - echo "📝 Logging output to dev.log"
-      - uv run uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --reload --proxy-headers --forwarded-allow-ips "*" 2>&1 | tee dev.log
+      - uv run uvicorn app.main:app --host 0.0.0.0 --port {{.PORT}} --reload --proxy-headers --forwarded-allow-ips "*" 2>&1 | tee dev.log
     silent: true
 
   dev-vite:
@@ -68,10 +72,10 @@ tasks:
       - task: setup
       - echo "👀 Starting Vite dev server in background..."
       - npm run dev &
-      - echo "🌐 Starting FastAPI server on http://localhost:${PORT:-8000}"
+      - echo "🌐 Starting FastAPI server on http://localhost:{{.PORT}}"
       - echo "💡 Vite dev server running on http://localhost:5173"
       - echo "💡 Frontend changes will auto-reload. Press Ctrl+C to stop both processes."
-      - uv run uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --reload --proxy-headers --forwarded-allow-ips "*"
+      - uv run uvicorn app.main:app --host 0.0.0.0 --port {{.PORT}} --reload --proxy-headers --forwarded-allow-ips "*"
     silent: true
 
   dev-watch:
@@ -81,9 +85,9 @@ tasks:
       - task: setup
       - echo "👀 Starting CSS watch mode in background..."
       - npm run watch:css &
-      - echo "🌐 Starting server on http://localhost:${PORT:-8000}"
+      - echo "🌐 Starting server on http://localhost:{{.PORT}}"
       - echo "💡 CSS changes will auto-rebuild. Press Ctrl+C to stop both processes."
-      - uv run uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --reload --proxy-headers --forwarded-allow-ips "*"
+      - uv run uvicorn app.main:app --host 0.0.0.0 --port {{.PORT}} --reload --proxy-headers --forwarded-allow-ips "*"
     silent: true
 
   run:
@@ -204,23 +208,67 @@ tasks:
       - echo "✅ Integration tests passed!"
     silent: true
 
-  health-check:
-    desc: "Check if dev server is running and healthy"
+  _check-port-free:
+    desc: "Internal: Ensure port is available"
+    internal: true
     cmds:
       - |
-        port=${PORT:-8000}
-        response=$(curl -sf http://localhost:$port/api/health 2>/dev/null) || true
-        if [ -z "$response" ]; then
-          echo "❌ Dev server not running on localhost:$port"
-          echo "   Start it with 'task dev' first"
-          exit 1
-        elif echo "$response" | grep -q '"status".*"healthy"'; then
-          echo "✅ Dev server is healthy (port $port)"
-        else
-          echo "❌ Dev server responded but not healthy:"
-          echo "   $response"
+        port={{.PORT}}
+        if lsof -i :$port -sTCP:LISTEN >/dev/null 2>&1; then
+          echo "❌ Port $port is already in use:"
+          lsof -i :$port -sTCP:LISTEN
           exit 1
         fi
+        echo "✅ Port $port is available"
+    silent: true
+
+  health-check:
+    desc: "Check if dev server is running and healthy"
+    vars:
+      RETRIES: '{{.RETRIES | default "0"}}'
+      RETRY_DELAY: '{{.RETRY_DELAY | default "2"}}'
+      CONTAINER: '{{.CONTAINER | default ""}}'
+    cmds:
+      - |
+        port={{.PORT}}
+        retries={{.RETRIES}}
+        delay={{.RETRY_DELAY}}
+        container="{{.CONTAINER}}"
+
+        for i in $(seq 0 $retries); do
+          # If checking a container, verify it's still running (exact name match)
+          if [ -n "$container" ]; then
+            if ! docker ps --format '{{"{{.Names}}"}}' | grep -qx "$container"; then
+              echo "❌ Container '$container' is not running"
+              docker logs "$container" 2>&1 | tail -20 || true
+              echo ""
+              echo "💡 Run 'task run-container-attached' to see full startup output"
+              exit 1
+            fi
+          fi
+
+          response=$(curl -sf http://localhost:$port/api/health 2>/dev/null) || true
+          if echo "$response" | grep -q '"status".*"healthy"'; then
+            echo "✅ Server is healthy (port $port)"
+            exit 0
+          fi
+          if [ $i -lt $retries ]; then
+            echo "⏳ Waiting for server... (attempt $((i+1))/$((retries+1)))"
+            sleep $delay
+          fi
+        done
+
+        if [ -z "$response" ]; then
+          echo "❌ Server not running on localhost:$port"
+        else
+          echo "❌ Server responded but not healthy:"
+          echo "   $response"
+        fi
+        if [ -n "$container" ]; then
+          echo ""
+          echo "💡 Run 'task run-container-attached' to see full startup output"
+        fi
+        exit 1
     silent: true
 
   test-ui:
@@ -310,35 +358,65 @@ tasks:
       - echo "✅ Docker build complete!"
     silent: true
 
-  run-container:
-    desc: "Run the app in a Docker container (requires pre-built DuckDB files)"
+  _validate-container-prereqs:
+    desc: "Internal: Validate DuckDB files and container prerequisites"
+    internal: true
     cmds:
-      - echo "Running FindingModelForge container..."
-      - echo "Using data directory {{.DATA_DIR}}"
       - |
-        # Validate required DuckDB files exist
+        if [ ! -f ".env.container" ]; then
+          echo "❌ Missing .env.container file"
+          echo "   Copy .env.container.sample to .env.container and fill in your values"
+          exit 1
+        fi
+        echo "✅ Environment file found"
+      - echo "📂 Using data directory {{.DATA_DIR}}"
+      - |
         if [ ! -f "{{.DATA_DIR}}/finding_models.duckdb" ]; then
-          echo "ERROR: Required file not found: {{.DATA_DIR}}/finding_models.duckdb"
-          echo "Download or build the finding models database first"
+          echo "❌ Required file not found: {{.DATA_DIR}}/finding_models.duckdb"
+          echo "   Download or build the finding models database first"
           exit 1
         fi
         if [ ! -f "{{.DATA_DIR}}/anatomic_locations.duckdb" ]; then
-          echo "ERROR: Required file not found: {{.DATA_DIR}}/anatomic_locations.duckdb"
-          echo "Download or build the anatomic locations database first"
+          echo "❌ Required file not found: {{.DATA_DIR}}/anatomic_locations.duckdb"
+          echo "   Download or build the anatomic locations database first"
           exit 1
         fi
-        echo "DuckDB files validated"
+        echo "✅ DuckDB files validated"
+    silent: true
+
+  run-container:
+    desc: "Run the app in a Docker container (detached with health check)"
+    deps: [_check-port-free, _validate-container-prereqs]
+    cmds:
+      - echo "🐳 Starting FindingModelForge container (detached)..."
       - |
         docker run --name findingmodelforge --platform linux/amd64 -d \
           --env-file .env.container \
-          -p 8000:8000 \
+          -p {{.PORT}}:8000 \
           -v "{{.DATA_DIR}}:/mnt/findingmodel:ro" \
           --rm \
           {{.CONTAINER_NAME}}:latest
-      - echo "Container running on http://localhost:8000"
-      - echo "DuckDB databases mounted from {{.DATA_DIR}}"
-      - echo "Use 'docker logs -f findingmodelforge' to follow logs"
-      - echo "Use 'task stop-container' to stop"
+      - task: health-check
+        vars:
+          RETRIES: "15"
+          RETRY_DELAY: "2"
+          CONTAINER: "findingmodelforge"
+      - echo "📋 Use 'docker logs -f findingmodelforge' to follow logs"
+      - echo "🛑 Use 'task stop-container' to stop"
+    silent: true
+
+  run-container-attached:
+    desc: "Run the app in a Docker container (attached for debugging)"
+    deps: [_check-port-free, _validate-container-prereqs]
+    cmds:
+      - echo "🐳 Starting FindingModelForge container (attached - Ctrl+C to stop)..."
+      - |
+        docker run --name findingmodelforge --platform linux/amd64 \
+          --env-file .env.container \
+          -p {{.PORT}}:8000 \
+          -v "{{.DATA_DIR}}:/mnt/findingmodel:ro" \
+          --rm \
+          {{.CONTAINER_NAME}}:latest
     silent: true
 
   stop-container:

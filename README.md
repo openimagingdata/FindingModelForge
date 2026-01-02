@@ -18,17 +18,16 @@ Requirements:
   curl -LsSf https://astral.sh/uv/install.sh | sh
   ```
 
-- [Task](https://taskfile.dev): Install depends on system;
-
-  MacOS:
+- [Task](https://taskfile.dev): Install via uv (recommended), brew, or winget:
 
   ```sh
-  brew install gotask
-  ```
+  # Using uv (cross-platform, recommended)
+  uv tool install go-task-bin
 
-  Windows:
+  # Or using Homebrew (macOS/Linux)
+  brew install go-task
 
-  ```ps
+  # Or using winget (Windows)
   winget install Task.Task
   ```
 
@@ -36,12 +35,62 @@ Requirements:
 
 ### Build/Run Docker Image
 
+#### Prerequisites
+
+1. **Backing services** - MongoDB and Redis must be running locally (default ports 27017 and 6379).
+   You can use the included docker-compose file or run them however you prefer:
+   ```sh
+   docker-compose up -d
+   ```
+
+2. **DuckDB data files** must exist in your data directory:
+   - macOS: `~/Library/Application Support/findingmodel/`
+   - Linux: `~/.local/share/findingmodel/`
+
+   Required files: `finding_models.duckdb`, `anatomic_locations.duckdb`
+
+3. **GitHub OAuth App** - Create one at [GitHub Developer Settings](https://github.com/settings/developers):
+   - **Homepage URL**: `http://localhost:8000`
+   - **Authorization callback URL**: `http://localhost:8000/auth/callback`
+
+4. **Environment configuration**:
+   ```sh
+   cp .env.container.sample .env.container
+   # Edit .env.container with your GitHub OAuth credentials and OpenAI API key
+   ```
+
+#### Running the Container
+
 ```sh
+# Build the image
 task build
+
+# Run in detached mode (with health check)
 task run-container
+
+# Stop the container
+task stop-container
 ```
 
 Browse to [localhost:8000](http://localhost:8000) to access the web application.
+
+#### Debugging Container Issues
+
+If the container fails to start, run in attached mode to see the full output:
+
+```sh
+task run-container-attached
+```
+
+Press `Ctrl+C` to stop.
+
+#### Custom Port
+
+Override the default port (8000) with the `PORT` environment variable:
+
+```sh
+PORT=8080 task run-container
+```
 
 ### Development Mode
 

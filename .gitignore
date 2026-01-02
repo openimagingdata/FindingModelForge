@@ -60,6 +60,7 @@ __pypackages__/
 .env.*
 !.env.sample
 !.env.example
+!.env.container.sample
 .venv
 env/
 venv/
